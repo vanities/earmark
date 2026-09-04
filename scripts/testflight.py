@@ -164,9 +164,9 @@ def cmd_notes(asc: ASC, text: str, build_number: str | None) -> None:
     target = next((b for b in builds if build_number is None or b["attributes"]["version"] == build_number), None) or sys.exit("build not found")
     localizations = asc.get(f"/v1/builds/{target['id']}/betaBuildLocalizations")["data"]
     if localizations:
-        asc.patch(f"/v1/betaBuildLocalizations/{localizations[0]['id']}", {"data": {"type": "betaBuildLocalizations", "id": localizations[0]["id"], "attributes": {"whatsToTest": text}}})
+        asc.patch(f"/v1/betaBuildLocalizations/{localizations[0]['id']}", {"data": {"type": "betaBuildLocalizations", "id": localizations[0]["id"], "attributes": {"whatsNew": text}}})
     else:
-        asc.post("/v1/betaBuildLocalizations", {"data": {"type": "betaBuildLocalizations", "attributes": {"locale": "en-US", "whatsToTest": text}, "relationships": {"build": {"data": {"type": "builds", "id": target["id"]}}}}})
+        asc.post("/v1/betaBuildLocalizations", {"data": {"type": "betaBuildLocalizations", "attributes": {"locale": "en-US", "whatsNew": text}, "relationships": {"build": {"data": {"type": "builds", "id": target["id"]}}}}})
     print(f"set test notes on build {target['attributes']['version']}")
 
 
