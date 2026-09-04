@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Device builds. Add com.apple.developer.carplay-audio here after Apple approves
+	     the CarPlay audio entitlement for com.vanities.earmark; until then automatic
+	     signing would refuse to build. Now Playing controls in the car work regardless. -->
+</dict>
+</plist>

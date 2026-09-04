@@ -1,0 +1,97 @@
+name: Earmark
+options:
+  bundleIdPrefix: com.vanities
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  developmentLanguage: en
+
+packages:
+  AMSMB2:
+    url: https://github.com/amosavian/AMSMB2.git
+    from: 4.0.3
+
+settings:
+  base:
+    # Default team for automatic signing (Xcode Cloud needs one). Forks override it in
+    # Config/Signing.xcconfig without touching this file.
+    DEVELOPMENT_TEAM: 8Q3RG3ULSU
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    CODE_SIGN_STYLE: Automatic
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      ONLY_ACTIVE_ARCH: YES
+
+targets:
+  Earmark:
+    type: application
+    platform: iOS
+    sources:
+      - path: Earmark
+        excludes:
+          - "Resources/Info.plist"
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    dependencies:
+      - package: AMSMB2
+    settings:
+      base:
+        PRODUCT_NAME: Earmark
+        PRODUCT_BUNDLE_IDENTIFIER: com.vanities.earmark
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Earmark/Resources/Info.plist
+        # CarPlay entitlement only where it can be signed (see Earmark-Device.entitlements).
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Earmark/Resources/Earmark.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Earmark/Resources/Earmark-Device.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        ENABLE_PREVIEWS: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+
+  EarmarkTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: EarmarkTests
+    dependencies:
+      - target: Earmark
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vanities.earmarkTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Earmark.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Earmark"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Earmark:
+    build:
+      targets:
+        Earmark: all
+        EarmarkTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - EarmarkTests
+    profile:
+      config: Release
+    archive:
+      config: Release

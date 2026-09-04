@@ -1,0 +1,345 @@
+import SwiftUI
+import UniformTypeIdentifiers
+import os
+
+struct LibraryView: View {
+    @Environment(LibraryModel.self) private var library
+    @Environment(PlayerEngine.self) private var player
+    @Environment(AppSettings.self) private var settings
+    let openPlayer: () -> Void
+
+    @State private var searchText = ""
+    @State private var showImporter = false
+    @State private var importError: String?
+
+    private var filteredBooks: [Book] {
+        var books = library.visibleBooks
+        if !settings.showFinishedBooks {
+            books = books.filter { !library.isFinished($0) }
+        }
+        books = library.search(searchText, in: books)
+        return library.sorted(books, by: settings.librarySort)
+    }
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationTitle("Library")
+                .searchable(text: $searchText, prompt: "Books, authors, series")
+                .toolbar { toolbar }
+                .navigationDestination(for: Book.self) { book in
+                    BookDetailView(book: book, openPlayer: openPlayer)
+                }
+                .navigationDestination(for: LibraryGroup.self) { group in
+                    BookGridView(title: group.title, books: group.books)
+                }
+                .fileImporter(isPresented: $showImporter, allowedContentTypes: [.folder], allowsMultipleSelection: true) { result in
+                    switch result {
+                    case .success(let urls):
+                        Logger.ui.info("[ui] picked \(urls.count) folder(s)")
+                        library.addFolders(urls)
+                    case .failure(let error):
+                        importError = error.localizedDescription
+                    }
+                }
+                .alert("Couldn't Add Folder", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+                    Button("OK") {}
+                } message: {
+                    Text(importError ?? "")
+                }
+                .alert("Folders", isPresented: Binding(get: { library.notice != nil }, set: { if !$0 { library.notice = nil } })) {
+                    Button("OK") {}
+                } message: {
+                    Text(library.notice ?? "")
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if library.visibleBooks.isEmpty {
+            if library.isScanning {
+                ContentUnavailableView {
+                    ProgressView().controlSize(.large)
+                } description: {
+                    Text("Reading your folders…")
+                }
+            } else {
+                EmptyLibraryView(addFolder: { showImporter = true })
+            }
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    if searchText.isEmpty, settings.libraryGrouping == .all, !library.inProgressBooks.isEmpty {
+                        ContinueListeningSection(books: library.inProgressBooks, openPlayer: openPlayer)
+                    }
+                    if settings.libraryGrouping == .all {
+                        BookGridSection(title: searchText.isEmpty ? "All Books" : "Results", books: filteredBooks, layout: settings.libraryLayout)
+                    } else {
+                        GroupListSection(groups: library.groups(settings.libraryGrouping, from: filteredBooks))
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 4)
+                .padding(.bottom, 24)
+            }
+            .overlay(alignment: .bottom) {
+                if library.isScanning {
+                    ScanBanner().padding(.bottom, 12)
+                }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Picker("Group By", selection: Bindable(settings).libraryGrouping) {
+                    ForEach(LibraryGrouping.allCases, id: \.self) { grouping in
+                        Label(grouping.title, systemImage: grouping.systemImage).tag(grouping)
+                    }
+                }
+                Picker("Sort By", selection: Bindable(settings).librarySort) {
+                    ForEach(LibrarySort.allCases, id: \.self) { sort in
+                        Text(sort.title).tag(sort)
+                    }
+                }
+                Picker("Layout", selection: Bindable(settings).libraryLayout) {
+                    Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
+                    Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
+                }
+                Toggle("Show Finished", isOn: Bindable(settings).showFinishedBooks)
+            } label: {
+                Label("View Options", systemImage: "line.3.horizontal.decrease")
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Add Folder", systemImage: "plus") { showImporter = true }
+        }
+    }
+}
+
+// MARK: - Sections
+
+struct ContinueListeningSection: View {
+    @Environment(LibraryModel.self) private var library
+    @Environment(PlayerEngine.self) private var player
+    let books: [Book]
+    let openPlayer: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader("Continue Listening")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(books.prefix(12)) { book in
+                        ContinueCard(book: book, openPlayer: openPlayer)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollClipDisabled()
+        }
+    }
+}
+
+struct ContinueCard: View {
+    @Environment(LibraryModel.self) private var library
+    @Environment(PlayerEngine.self) private var player
+    let book: Book
+    let openPlayer: () -> Void
+
+    private var isCurrent: Bool { player.book?.id == book.id }
+
+    var body: some View {
+        let progress = library.progress(for: book.id)
+        let chapter = book.chapter(at: progress.trackIndex, time: progress.time)
+        Button {
+            if isCurrent && player.isPlaying {
+                player.pause()
+            } else {
+                player.load(book, autoplay: true)
+                openPlayer()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 10)
+                    .frame(width: 84, height: 84)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(book.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Text(chapter?.title ?? book.displayAuthor)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    ProgressBar(fraction: progress.fraction(of: book))
+                        .padding(.top, 2)
+                    Text("\(progress.remaining(in: book).shortDurationString) left")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: isCurrent && player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 34))
+                    .foregroundStyle(.tint)
+            }
+            .padding(12)
+            .frame(width: 320, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .contextMenu { BookContextMenu(book: book) }
+    }
+}
+
+struct BookGridSection: View {
+    let title: String
+    let books: [Book]
+    let layout: LibraryLayout
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title, count: books.count)
+            if books.isEmpty {
+                Text("No matches.")
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 24)
+            } else if layout == .grid {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 16, alignment: .top)], alignment: .leading, spacing: 22) {
+                    ForEach(books) { book in
+                        NavigationLink(value: book) {
+                            BookCardView(book: book)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(books) { book in
+                        NavigationLink(value: book) {
+                            BookRowView(book: book)
+                        }
+                        .buttonStyle(.plain)
+                        Divider()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct GroupListSection: View {
+    let groups: [LibraryGroup]
+
+    var body: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(groups) { group in
+                NavigationLink(value: group) {
+                    HStack(spacing: 14) {
+                        CoverStack(books: group.books)
+                            .frame(width: 72, height: 72)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(group.title)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Text(group.subtitle ?? "\(group.books.count) books")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Divider()
+            }
+        }
+    }
+}
+
+/// Up to three fanned covers for a shelf.
+struct CoverStack: View {
+    let books: [Book]
+
+    var body: some View {
+        ZStack {
+            ForEach(Array(books.prefix(3).enumerated().reversed()), id: \.element.id) { index, book in
+                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 8)
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
+                    .offset(x: CGFloat(index) * 8, y: CGFloat(-index) * 6)
+            }
+        }
+        .frame(width: 72, height: 72, alignment: .bottomLeading)
+    }
+}
+
+struct ScanBanner: View {
+    @Environment(LibraryModel.self) private var library
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ProgressView()
+            Text(label)
+                .font(.footnote.weight(.medium))
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassEffect()
+    }
+
+    private var label: String {
+        for status in library.scanStatus.values {
+            if case .scanning(let progress) = status {
+                switch progress.phase {
+                case .enumerating: return "Reading folders…"
+                case .metadata: return progress.total > 0 ? "Reading tags \(progress.processed)/\(progress.total)" : "Reading tags…"
+                case .artwork: return "Finding covers…"
+                }
+            }
+        }
+        return "Scanning…"
+    }
+}
+
+struct EmptyLibraryView: View {
+    let addFolder: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Your Shelf Is Empty", systemImage: "books.vertical")
+        } description: {
+            Text("Add a folder of audiobooks. Earmark plays them right where they are — nothing gets copied.\n\nOr move files into **On My iPhone › Earmark** in the Files app.")
+        } actions: {
+            Button("Add a Folder", systemImage: "folder.badge.plus", action: addFolder)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        }
+    }
+}
+
+struct BookGridView: View {
+    @Environment(AppSettings.self) private var settings
+    let title: String
+    let books: [Book]
+
+    var body: some View {
+        ScrollView {
+            BookGridSection(title: title, books: books, layout: settings.libraryLayout)
+                .padding(.horizontal)
+                .padding(.bottom, 24)
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}

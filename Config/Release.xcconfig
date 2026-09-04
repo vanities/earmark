@@ -1,0 +1,2 @@
+// Shared Release settings. Personal signing lives in Signing.xcconfig (gitignored).
+#include? "Signing.xcconfig"

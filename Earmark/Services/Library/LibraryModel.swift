@@ -1,0 +1,671 @@
+import AVFoundation
+import Foundation
+import Observation
+import UIKit
+import os
+
+/// Source of truth for the library on the main actor. Owns the security scopes of
+/// every folder the user added, runs scans off-main, and persists user state.
+@MainActor @Observable
+final class LibraryModel {
+    enum ScanStatus: Equatable {
+        case idle
+        case scanning(ScanProgress)
+        case failed(String)
+    }
+
+    enum DuplicateScanState: Equatable {
+        case idle
+        case running(done: Int, total: Int)
+        case finished(Date)
+    }
+
+    enum NASStatus: Equatable {
+        case unknown, connecting, online
+        case offline(String)
+    }
+
+    /// What the player needs to play one track: a local file asset, or an SMB-streamed one.
+    struct PlaybackSource {
+        var asset: AVURLAsset
+        var loader: SMBResourceLoader?
+        var isRemote: Bool
+        var serverName: String?
+    }
+
+    private(set) var sources: [LibrarySource] = []
+    private(set) var books: [Book] = []
+    private(set) var progress: [String: PlaybackProgress] = [:]
+    private(set) var hiddenBookIDs: Set<String> = []
+    private(set) var lastBookID: String?
+    private(set) var scanStatus: [UUID: ScanStatus] = [:]
+    private(set) var unsupportedFiles: [UUID: [String]] = [:]
+    private(set) var duplicateGroups: [DuplicateGroup] = []
+    private(set) var duplicateScan: DuplicateScanState = .idle
+    private(set) var hasLoaded = false
+    private(set) var nasServers: [NASServer] = []
+    private(set) var nasStatus: [UUID: NASStatus] = [:]
+    /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
+    var notice: String?
+
+    /// Called after any scan changes `books` (the player refreshes its copy).
+    @ObservationIgnored var onBooksChanged: (() -> Void)?
+
+    @ObservationIgnored private let store: LibraryStore
+    @ObservationIgnored private let settings: AppSettings
+    @ObservationIgnored private let scanner: LibraryScanner
+    @ObservationIgnored private var resolvedRoots: [UUID: URL] = [:]
+    @ObservationIgnored private var scanTasks: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var fingerprints: [String: FileFingerprint] = [:]
+    @ObservationIgnored private var fingerprintsLoaded = false
+    @ObservationIgnored private var backgroundObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var nasClients: [UUID: NASClient] = [:]
+
+    var isScanning: Bool {
+        scanStatus.values.contains { if case .scanning = $0 { return true } else { return false } }
+    }
+
+    init(store: LibraryStore, settings: AppSettings) {
+        self.store = store
+        self.settings = settings
+        self.scanner = LibraryScanner(cache: MetadataCache(store: store), artwork: .shared)
+    }
+
+    // MARK: - Lifecycle
+
+    func bootstrap() {
+        let sw = Stopwatch()
+        let state = store.loadLibrary()
+        sources = state.sources
+        books = state.books
+        progress = state.progress
+        hiddenBookIDs = state.hiddenBookIDs
+        lastBookID = state.lastBookID
+        nasServers = state.nasServers
+        ensureAppDocumentsSource()
+        for source in sources {
+            resolveRoot(for: source)
+        }
+        hasLoaded = true
+        Logger.library.info("[library] bootstrap sources=\(self.sources.count) books=\(self.books.count) progress=\(self.progress.count) in \(sw.ms, format: .fixed(precision: 1))ms")
+
+        backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.save() }
+        }
+        rescanAll(reason: "launch")
+    }
+
+    static var documentsURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    /// Path with a trailing slash so prefix checks don't match "Books" against "Books 2".
+    nonisolated static func directoryPath(_ url: URL) -> String {
+        var path = url.path(percentEncoded: false)
+        while path.hasSuffix("/") { path.removeLast() }
+        return path + "/"
+    }
+
+    private func ensureAppDocumentsSource() {
+        guard !sources.contains(where: { $0.kind == .appDocuments }) else { return }
+        let source = LibrarySource(id: UUID(), kind: .appDocuments, displayName: "On My iPhone", bookmark: nil, addedAt: .now)
+        sources.insert(source, at: 0)
+        Logger.library.info("[library] created app documents source")
+    }
+
+    private func resolveRoot(for source: LibrarySource) {
+        switch source.kind {
+        case .appDocuments:
+            resolvedRoots[source.id] = Self.documentsURL
+        case .smb:
+            break // no local root; see `client(forServer:)`
+        case .folder, .file:
+            guard let data = source.bookmark else {
+                setSourceError(source.id, "Missing bookmark. Remove this folder and add it again.")
+                return
+            }
+            do {
+                let resolved = try BookmarkStore.resolveAndStartAccess(data)
+                resolvedRoots[source.id] = resolved.url
+                if let index = sourceIndex(source.id) {
+                    sources[index].lastError = nil
+                    if resolved.isStale, let fresh = try? BookmarkStore.makeBookmark(for: resolved.url) {
+                        sources[index].bookmark = fresh
+                        scheduleSave()
+                    }
+                }
+            } catch {
+                Logger.bookmarks.error("[bookmark] resolve failed for \(source.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                setSourceError(source.id, "This folder isn't reachable anymore. Remove it and add it again.")
+            }
+        }
+    }
+
+    private func setSourceError(_ id: UUID, _ message: String) {
+        if let index = sourceIndex(id) { sources[index].lastError = message }
+        scanStatus[id] = .failed(message)
+    }
+
+    private func sourceIndex(_ id: UUID) -> Int? {
+        sources.firstIndex { $0.id == id }
+    }
+
+    // MARK: - URLs
+
+    func rootURL(for sourceID: UUID) -> URL? { resolvedRoots[sourceID] }
+
+    func url(forBook book: Book) -> URL? {
+        guard let root = resolvedRoots[book.sourceID], !isRemote(book) else { return nil }
+        if book.kind == .singleFile, sources.first(where: { $0.id == book.sourceID })?.kind == .file {
+            return root
+        }
+        return root.appending(path: book.relativePath)
+    }
+
+    func url(forTrack track: Track, in book: Book) -> URL? {
+        guard let root = resolvedRoots[book.sourceID], !isRemote(book) else { return nil }
+        if sources.first(where: { $0.id == book.sourceID })?.kind == .file {
+            return root
+        }
+        return root.appending(path: track.relativePath)
+    }
+
+    func sourceName(for id: UUID) -> String {
+        sources.first { $0.id == id }?.displayName ?? "Unknown"
+    }
+
+    func source(for book: Book) -> LibrarySource? {
+        sources.first { $0.id == book.sourceID }
+    }
+
+    // MARK: - Sources
+
+    func addFolders(_ urls: [URL]) {
+        for url in urls {
+            addSource(url: url, kind: .folder)
+        }
+    }
+
+    func addOpenedFile(_ url: URL) {
+        addSource(url: url, kind: .file)
+    }
+
+    private func addSource(url: URL, kind: LibrarySource.Kind) {
+        let standardized = url.standardizedFileURL
+        if let existing = sources.first(where: { resolvedRoots[$0.id]?.standardizedFileURL == standardized }) {
+            Logger.library.notice("[library] \(url.lastPathComponent, privacy: .public) already added — rescanning")
+            notice = "\(url.lastPathComponent) is already in your library. Rescanning it."
+            rescan(existing.id)
+            return
+        }
+        // A folder nested inside (or enclosing) an existing one would list the same files twice
+        // and make them look like duplicates of themselves.
+        let newPath = Self.directoryPath(standardized)
+        for source in sources {
+            guard let root = resolvedRoots[source.id] else { continue }
+            let existingPath = Self.directoryPath(root.standardizedFileURL)
+            if newPath.hasPrefix(existingPath) {
+                Logger.library.notice("[library] refused \(url.lastPathComponent, privacy: .public): inside existing source \(source.displayName, privacy: .public)")
+                notice = "\(url.lastPathComponent) is already covered by \(source.kind == .appDocuments ? "On My iPhone › Earmark" : source.displayName), so it wasn't added again."
+                return
+            }
+            if existingPath.hasPrefix(newPath), source.isRemovable {
+                Logger.library.notice("[library] \(url.lastPathComponent, privacy: .public) encloses \(source.displayName, privacy: .public) — replacing the smaller source")
+                notice = "\(url.lastPathComponent) contains \(source.displayName), which was replaced by the larger folder."
+                removeSource(source.id)
+            }
+        }
+        let started = url.startAccessingSecurityScopedResource()
+        do {
+            let bookmark = try BookmarkStore.makeBookmark(for: url)
+            let source = LibrarySource(id: UUID(), kind: kind, displayName: url.lastPathComponent, bookmark: bookmark, addedAt: .now)
+            sources.append(source)
+            resolvedRoots[source.id] = url
+            Logger.library.info("[library] added source \(url.lastPathComponent, privacy: .public) kind=\(kind.rawValue, privacy: .public) scoped=\(started)")
+            save()
+            scan(source)
+        } catch {
+            if started { url.stopAccessingSecurityScopedResource() }
+            Logger.library.error("[library] add source failed for \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func removeSource(_ id: UUID) {
+        guard let source = sources.first(where: { $0.id == id }), source.isRemovable else { return }
+        Logger.library.info("[library] removing source \(source.displayName, privacy: .public)")
+        scanTasks[id]?.cancel()
+        scanTasks[id] = nil
+        if let root = resolvedRoots[id] {
+            root.stopAccessingSecurityScopedResource()
+        }
+        resolvedRoots[id] = nil
+        if let serverID = source.serverID {
+            let client = nasClients.removeValue(forKey: serverID)
+            Task { await client?.disconnect() }
+            nasServers.removeAll { $0.id == serverID }
+            nasStatus[serverID] = nil
+            KeychainStore.delete(Self.keychainKey(for: serverID))
+        }
+        books.removeAll { $0.sourceID == id }
+        sources.removeAll { $0.id == id }
+        scanStatus[id] = nil
+        unsupportedFiles[id] = nil
+        duplicateGroups = []
+        let cache = scanner.cache
+        Task.detached(priority: .utility) {
+            await cache.removeEntries(withPrefix: id.uuidString)
+            await cache.flush()
+        }
+        save()
+        onBooksChanged?()
+    }
+
+    // MARK: - Scanning
+
+    func rescanAll(reason: String) {
+        Logger.scan.info("[scan] rescan all (\(reason, privacy: .public)) sources=\(self.sources.count)")
+        for source in sources {
+            scan(source)
+        }
+    }
+
+    func rescan(_ id: UUID) {
+        guard let source = sources.first(where: { $0.id == id }) else { return }
+        if resolvedRoots[id] == nil { resolveRoot(for: source) }
+        scan(source)
+    }
+
+    private func scan(_ source: LibrarySource) {
+        scanTasks[source.id]?.cancel()
+        if source.kind == .smb {
+            scanRemote(source)
+            return
+        }
+        guard let root = resolvedRoots[source.id] else {
+            if scanStatus[source.id] == nil || scanStatus[source.id] == .idle {
+                setSourceError(source.id, "Folder unavailable.")
+            }
+            return
+        }
+        scanStatus[source.id] = .scanning(ScanProgress(phase: .enumerating, processed: 0, total: 0))
+        let scanner = self.scanner
+        let sourceID = source.id
+        let reportProgress: @Sendable (ScanProgress) -> Void = { [weak self] progress in
+            Task { @MainActor [weak self] in
+                guard let self, case .scanning = self.scanStatus[sourceID] else { return }
+                self.scanStatus[sourceID] = .scanning(progress)
+            }
+        }
+        scanTasks[sourceID] = Task { [weak self] in
+            do {
+                let result = try await scanner.scan(source: source, root: root, progress: reportProgress)
+                guard !Task.isCancelled else { return }
+                self?.apply(result, for: sourceID)
+            } catch is CancellationError {
+                Logger.scan.info("[scan] cancelled for source \(sourceID.uuidString, privacy: .public)")
+            } catch {
+                Logger.scan.error("[scan] failed: \(error.localizedDescription, privacy: .public)")
+                self?.scanStatus[sourceID] = .failed(error.localizedDescription)
+                if let self, let index = self.sourceIndex(sourceID) {
+                    self.sources[index].lastError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func apply(_ result: ScanResult, for sourceID: UUID) {
+        let existing = Dictionary(books.filter { $0.sourceID == sourceID }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let updated = result.books.map { book -> Book in
+            var book = book
+            if let old = existing[book.id] {
+                book.addedAt = old.addedAt
+                // Keep precise durations learned during playback over scan-time estimates.
+                for (index, track) in old.tracks.enumerated() where book.tracks.indices.contains(index) && book.tracks[index].relativePath == track.relativePath && book.tracks[index].fileSize == track.fileSize {
+                    if track.duration > 0 { book.tracks[index].duration = track.duration }
+                }
+            }
+            return book
+        }
+        let added = updated.filter { existing[$0.id] == nil }.count
+        let removed = existing.count - (updated.count - added)
+        if sources.first(where: { $0.id == sourceID })?.kind == .appDocuments {
+            // A book that was just downloaded from a NAS keeps the listening position of its remote twin.
+            let remoteByPath = Dictionary(books.filter { isRemote($0) }.map { ($0.relativePath, $0) }, uniquingKeysWith: { first, _ in first })
+            for book in updated where existing[book.id] == nil && progress[book.id] == nil {
+                if let twin = remoteByPath[book.relativePath], let twinProgress = progress[twin.id] {
+                    progress[book.id] = twinProgress
+                    Logger.library.info("[library] adopted progress from remote twin for \(book.title, privacy: .public)")
+                }
+            }
+        }
+        books.removeAll { $0.sourceID == sourceID }
+        books.append(contentsOf: updated)
+        BookGrouper.canonicalizeAuthors(&books)
+        if let index = sourceIndex(sourceID) {
+            sources[index].lastScanAt = .now
+            sources[index].lastScanBookCount = updated.count
+            sources[index].lastScanFileCount = result.fileCount
+            sources[index].lastError = nil
+        }
+        unsupportedFiles[sourceID] = result.unsupportedFiles
+        scanStatus[sourceID] = .idle
+        Logger.library.notice("[library] applied scan source=\(self.sourceName(for: sourceID), privacy: .public) books=\(updated.count) files=\(result.fileCount) added=\(added) removed=\(removed)")
+        for book in updated.sorted(by: { $0.title.naturallyPrecedes($1.title) }) {
+            let series = book.series.map { $0 + (book.seriesIndex.map { " #\(BookDetailView.format($0))" } ?? "") } ?? "-"
+            Logger.library.notice("[library] book \"\(book.title, privacy: .public)\" by \(book.displayAuthor, privacy: .public) | series=\(series, privacy: .public) | narrator=\(book.narrator ?? "-", privacy: .public) | \(book.tracks.count) files, \(book.chapters.count) chapters, \(book.totalDuration.shortDurationString, privacy: .public) | \(book.relativePath, privacy: .public)")
+        }
+        save()
+        onBooksChanged?()
+    }
+
+    private func scanRemote(_ source: LibrarySource) {
+        guard let serverID = source.serverID, let client = client(forServer: serverID) else {
+            setSourceError(source.id, "This NAS isn't configured anymore. Remove it and add it again.")
+            return
+        }
+        let sourceID = source.id
+        nasStatus[serverID] = .connecting
+        scanStatus[sourceID] = .scanning(ScanProgress(phase: .enumerating, processed: 0, total: 0))
+        let scanner = self.scanner
+        let reportProgress: @Sendable (ScanProgress) -> Void = { [weak self] progress in
+            Task { @MainActor [weak self] in
+                guard let self, case .scanning = self.scanStatus[sourceID] else { return }
+                self.scanStatus[sourceID] = .scanning(progress)
+            }
+        }
+        scanTasks[sourceID] = Task { [weak self] in
+            do {
+                try await client.ensureConnected()
+                self?.nasStatus[serverID] = .online
+                let result = try await scanner.scanRemote(source: source, client: client, progress: reportProgress)
+                guard !Task.isCancelled else { return }
+                self?.apply(result, for: sourceID)
+            } catch is CancellationError {
+                Logger.scan.info("[scan] remote cancelled")
+            } catch {
+                Logger.scan.error("[scan] remote failed: \(error.localizedDescription, privacy: .public)")
+                guard let self else { return }
+                self.nasStatus[serverID] = .offline(error.localizedDescription)
+                self.scanStatus[sourceID] = .failed(error.localizedDescription)
+                if let index = self.sourceIndex(sourceID) { self.sources[index].lastError = error.localizedDescription }
+            }
+        }
+    }
+
+    // MARK: - NAS
+
+    static func keychainKey(for serverID: UUID) -> String { "nas.\(serverID.uuidString)" }
+
+    func server(id: UUID) -> NASServer? {
+        nasServers.first { $0.id == id }
+    }
+
+    func server(for book: Book) -> NASServer? {
+        guard let serverID = source(for: book)?.serverID else { return nil }
+        return server(id: serverID)
+    }
+
+    func isRemote(_ book: Book) -> Bool {
+        source(for: book)?.kind == .smb
+    }
+
+    func client(forServer id: UUID) -> NASClient? {
+        if let client = nasClients[id] { return client }
+        guard let server = server(id: id), let password = KeychainStore.get(Self.keychainKey(for: id)) else {
+            Logger.nas.error("[nas] no credentials for server \(id.uuidString, privacy: .public)")
+            return nil
+        }
+        do {
+            let client = try NASClient(server: server, password: password)
+            nasClients[id] = client
+            return client
+        } catch {
+            Logger.nas.error("[nas] client init failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    func client(for book: Book) -> NASClient? {
+        guard let serverID = source(for: book)?.serverID else { return nil }
+        return client(forServer: serverID)
+    }
+
+    /// Connects, verifies the folder is listable, stores the password, and starts the first scan.
+    func addNAS(_ server: NASServer, password: String) async throws {
+        Logger.nas.info("[nas] adding \(server.displayLocation, privacy: .public)")
+        let client = try NASClient(server: server, password: password)
+        try await client.connect()
+        _ = try await client.list("")
+        try KeychainStore.set(password, for: Self.keychainKey(for: server.id))
+        nasClients[server.id] = client
+        nasServers.removeAll { $0.id == server.id }
+        nasServers.append(server)
+        nasStatus[server.id] = .online
+        let source = LibrarySource(id: UUID(), kind: .smb, displayName: server.name, bookmark: nil, addedAt: .now, serverID: server.id)
+        sources.append(source)
+        save()
+        scan(source)
+    }
+
+    /// Streams remote tracks through `SMBResourceLoader`; local tracks read the file directly.
+    func playbackSource(forTrack track: Track, in book: Book) -> PlaybackSource? {
+        guard let source = source(for: book) else { return nil }
+        if source.kind == .smb {
+            guard let serverID = source.serverID, let client = client(forServer: serverID) else { return nil }
+            let (asset, loader) = client.makeAsset(relativePath: track.relativePath, size: track.fileSize, preciseTiming: false)
+            return PlaybackSource(asset: asset, loader: loader, isRemote: true, serverName: client.server.name)
+        }
+        guard let url = url(forTrack: track, in: book) else { return nil }
+        let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        return PlaybackSource(asset: asset, loader: nil, isRemote: false, serverName: nil)
+    }
+
+    /// A downloaded copy of a remote book, matched by its path relative to the library root.
+    func localTwin(of book: Book) -> Book? {
+        guard isRemote(book) else { return nil }
+        return books.first { candidate in
+            candidate.id != book.id && candidate.relativePath == book.relativePath && source(for: candidate)?.kind == .appDocuments
+        }
+    }
+
+    // MARK: - Progress
+
+    func progress(for bookID: String) -> PlaybackProgress {
+        progress[bookID] ?? PlaybackProgress()
+    }
+
+    func recordPosition(bookID: String, trackIndex: Int, time: TimeInterval) {
+        var entry = progress[bookID] ?? PlaybackProgress()
+        entry.trackIndex = trackIndex
+        entry.time = time
+        entry.lastPlayedAt = .now
+        if entry.startedAt == nil { entry.startedAt = .now }
+        entry.isFinished = false
+        progress[bookID] = entry
+        lastBookID = bookID
+        scheduleSave()
+    }
+
+    func setCurrentBook(_ bookID: String) {
+        lastBookID = bookID
+        scheduleSave()
+    }
+
+    func setSpeed(_ speed: Float, for bookID: String) {
+        var entry = progress[bookID] ?? PlaybackProgress()
+        entry.speed = speed
+        progress[bookID] = entry
+        scheduleSave()
+    }
+
+    func markFinished(_ bookID: String) {
+        var entry = progress[bookID] ?? PlaybackProgress()
+        entry.isFinished = true
+        entry.lastPlayedAt = .now
+        if let book = book(id: bookID), let last = book.tracks.last {
+            entry.trackIndex = book.tracks.count - 1
+            entry.time = last.duration
+        }
+        progress[bookID] = entry
+        Logger.library.info("[library] marked finished \(bookID, privacy: .public)")
+        scheduleSave()
+    }
+
+    func resetProgress(_ bookID: String) {
+        let speed = progress[bookID]?.speed
+        progress[bookID] = speed.map { var fresh = PlaybackProgress(); fresh.speed = $0; return fresh }
+        Logger.library.info("[library] reset progress \(bookID, privacy: .public)")
+        scheduleSave()
+    }
+
+    func setHidden(_ hidden: Bool, bookID: String) {
+        if hidden { hiddenBookIDs.insert(bookID) } else { hiddenBookIDs.remove(bookID) }
+        scheduleSave()
+    }
+
+    func updateTrackDuration(bookID: String, trackIndex: Int, duration: TimeInterval) {
+        guard let index = books.firstIndex(where: { $0.id == bookID }), books[index].tracks.indices.contains(trackIndex) else { return }
+        let old = books[index].tracks[trackIndex].duration
+        guard abs(old - duration) > 0.5 else { return }
+        books[index].tracks[trackIndex].duration = duration
+        let chaptersInTrack = books[index].chapters.indices.filter { books[index].chapters[$0].trackIndex == trackIndex }
+        if chaptersInTrack.count == 1, let only = chaptersInTrack.first, books[index].chapters[only].start == 0 {
+            books[index].chapters[only].duration = duration
+        }
+        Logger.library.debug("[library] precise duration track=\(trackIndex) \(old, format: .fixed(precision: 1)) → \(duration, format: .fixed(precision: 1))")
+        scheduleSave()
+    }
+
+    // MARK: - Persistence
+
+    func save() {
+        saveTask?.cancel()
+        saveTask = nil
+        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers)
+        let store = self.store
+        Task.detached(priority: .utility) {
+            do {
+                try store.saveLibrary(state)
+            } catch {
+                Logger.store.error("[store] save failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func scheduleSave() {
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled else { return }
+            self?.save()
+        }
+    }
+
+    // MARK: - Duplicates
+
+    private struct FingerprintTarget: Sendable {
+        var key: String
+        var url: URL
+        var size: Int64
+    }
+
+    func findDuplicates() {
+        if case .running = duplicateScan { return }
+        if !fingerprintsLoaded {
+            fingerprints = store.loadJSON([String: FileFingerprint].self, named: LibraryStore.fingerprintsFile) ?? [:]
+            fingerprintsLoaded = true
+        }
+        let targets: [FingerprintTarget] = visibleBooks.flatMap { book in
+            book.tracks.compactMap { track -> FingerprintTarget? in
+                guard let url = url(forTrack: track, in: book) else { return nil }
+                return FingerprintTarget(key: DuplicateFinder.trackKey(book.sourceID, track.relativePath), url: url, size: track.fileSize)
+            }
+        }
+        let known = fingerprints
+        let total = targets.count
+        duplicateScan = .running(done: 0, total: total)
+        Logger.duplicates.info("[duplicates] start files=\(total) cached=\(known.count)")
+        let sw = Stopwatch()
+
+        Task { [weak self] in
+            let computed: [String: FileFingerprint] = await Task.detached(priority: .userInitiated) {
+                var out: [String: FileFingerprint] = [:]
+                for (index, target) in targets.enumerated() {
+                    if let cached = known[target.key], cached.size == target.size {
+                        out[target.key] = cached
+                    } else {
+                        do {
+                            out[target.key] = try DuplicateFinder.fingerprint(url: target.url)
+                        } catch {
+                            Logger.duplicates.error("[duplicates] fingerprint failed \(target.url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                        }
+                    }
+                    if index % 25 == 0 {
+                        let done = index + 1
+                        Task { @MainActor [weak self] in self?.duplicateScan = .running(done: done, total: total) }
+                    }
+                }
+                return out
+            }.value
+            guard let self else { return }
+            self.fingerprints = computed
+            let store = self.store
+            Task.detached(priority: .utility) {
+                try? store.saveJSON(computed, named: LibraryStore.fingerprintsFile)
+            }
+            self.duplicateGroups = DuplicateFinder.duplicateGroups(books: self.visibleBooks, fingerprints: computed)
+            self.duplicateScan = .finished(.now)
+            Logger.duplicates.info("[duplicates] done groups=\(self.duplicateGroups.count) in \(sw.ms, format: .fixed(precision: 0))ms")
+        }
+    }
+
+    /// Permanently deletes files from disk. Returns human-readable errors, if any.
+    func deleteFiles(_ files: [DuplicateFile]) -> [String] {
+        var errors: [String] = []
+        var touchedSources: Set<UUID> = []
+        for file in files {
+            guard let root = resolvedRoots[file.sourceID] else {
+                errors.append("\(file.relativePath): folder unavailable")
+                continue
+            }
+            let url = root.appending(path: file.relativePath)
+            do {
+                try FileManager.default.removeItem(at: url)
+                touchedSources.insert(file.sourceID)
+                Logger.duplicates.notice("[duplicates] deleted \(file.relativePath, privacy: .public)")
+            } catch {
+                errors.append("\(file.relativePath): \(error.localizedDescription)")
+                Logger.duplicates.error("[duplicates] delete failed \(file.relativePath, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        duplicateGroups = []
+        duplicateScan = .idle
+        for id in touchedSources { rescan(id) }
+        return errors
+    }
+
+    func deleteBookFiles(_ book: Book) -> [String] {
+        let files = book.tracks.map {
+            DuplicateFile(bookID: book.id, bookTitle: book.title, sourceID: book.sourceID, relativePath: $0.relativePath, size: $0.fileSize)
+        }
+        let errors = deleteFiles(files)
+        if errors.isEmpty, book.kind == .folder, let folder = url(forBook: book) {
+            let leftovers = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+            if leftovers.allSatisfy({ AudioFileTypes.images.contains(($0 as NSString).pathExtension.lowercased()) || $0.hasPrefix(".") }) {
+                try? FileManager.default.removeItem(at: folder)
+            }
+        }
+        return errors
+    }
+
+    // MARK: - Files app
+
+    func revealInFiles(_ book: Book) {
+        guard let url = url(forBook: book) else { return }
+        let target = "shareddocuments://" + url.path(percentEncoded: true)
+        guard let filesURL = URL(string: target) else { return }
+        Logger.ui.info("[ui] reveal in Files \(book.title, privacy: .public)")
+        UIApplication.shared.open(filesURL)
+    }
+}

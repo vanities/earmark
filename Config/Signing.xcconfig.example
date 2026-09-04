@@ -1,0 +1,3 @@
+// Copy to Config/Signing.xcconfig (gitignored) and fill in your Apple Developer team.
+// Only needed to run on a physical iPhone / in a real car. The simulator needs nothing.
+DEVELOPMENT_TEAM = ABCDE12345

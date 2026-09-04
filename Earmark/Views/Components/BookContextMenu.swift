@@ -1,0 +1,45 @@
+import SwiftUI
+
+/// Shared actions for a book: play, finish/reset, reveal, hide.
+struct BookContextMenu: View {
+    @Environment(LibraryModel.self) private var library
+    @Environment(PlayerEngine.self) private var player
+    let book: Book
+
+    var body: some View {
+        let progress = library.progress(for: book.id)
+        Button(progress.hasStarted && !progress.isFinished ? "Resume" : "Play", systemImage: "play.fill") {
+            player.load(book, autoplay: true)
+        }
+        if progress.isFinished {
+            Button("Start Over", systemImage: "arrow.counterclockwise") {
+                library.resetProgress(book.id)
+                player.load(book, autoplay: true, startAt: BookPosition(trackIndex: 0, time: 0))
+            }
+        } else {
+            Button("Mark as Finished", systemImage: "checkmark.circle") {
+                library.markFinished(book.id)
+                if player.book?.id == book.id { player.pause() }
+            }
+            if progress.hasStarted {
+                Button("Reset Progress", systemImage: "arrow.counterclockwise") {
+                    library.resetProgress(book.id)
+                    if player.book?.id == book.id {
+                        player.load(book, autoplay: false, startAt: BookPosition(trackIndex: 0, time: 0))
+                    }
+                }
+            }
+        }
+        Divider()
+        if !library.isRemote(book) {
+            Button("Show in Files", systemImage: "folder") {
+                library.revealInFiles(book)
+            }
+        }
+        if library.hiddenBookIDs.contains(book.id) {
+            Button("Unhide", systemImage: "eye") { library.setHidden(false, bookID: book.id) }
+        } else {
+            Button("Hide from Library", systemImage: "eye.slash") { library.setHidden(true, bookID: book.id) }
+        }
+    }
+}

@@ -1,0 +1,182 @@
+import Foundation
+import MediaPlayer
+import UIKit
+import os
+
+/// Mirrors player state to the lock screen, Control Center, CarPlay Now Playing,
+/// headphones, and the car's steering-wheel buttons.
+@MainActor
+final class NowPlayingController {
+    private let player: PlayerEngine
+    private let settings: AppSettings
+    private var artworkImage: UIImage?
+    private var artworkBookID: String?
+
+    init(player: PlayerEngine, settings: AppSettings) {
+        self.player = player
+        self.settings = settings
+    }
+
+    func activate() {
+        registerCommands()
+        player.stateDidChange = { [weak self] in
+            self?.update()
+        }
+        update()
+        Logger.nowPlaying.info("[nowplaying] activated")
+    }
+
+    // MARK: - Remote commands
+
+    private func registerCommands() {
+        let center = MPRemoteCommandCenter.shared()
+
+        center.playCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.player.play() }
+            return .success
+        }
+        center.pauseCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.player.pause() }
+            return .success
+        }
+        center.stopCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.player.pause() }
+            return .success
+        }
+        center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.player.togglePlayPause() }
+            return .success
+        }
+
+        center.skipForwardCommand.isEnabled = true
+        center.skipForwardCommand.preferredIntervals = [NSNumber(value: settings.skipForwardInterval)]
+        center.skipForwardCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.player.skipForward() }
+            return .success
+        }
+        center.skipBackwardCommand.isEnabled = true
+        center.skipBackwardCommand.preferredIntervals = [NSNumber(value: settings.skipBackInterval)]
+        center.skipBackwardCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated { self?.player.skipBackward() }
+            return .success
+        }
+
+        center.nextTrackCommand.isEnabled = true
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                switch self.settings.headphoneTrackAction {
+                case .skip: self.player.skipForward()
+                case .chapter: self.player.nextChapter()
+                }
+            }
+            return .success
+        }
+        center.previousTrackCommand.isEnabled = true
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                switch self.settings.headphoneTrackAction {
+                case .skip: self.player.skipBackward()
+                case .chapter: self.player.previousChapter()
+                }
+            }
+            return .success
+        }
+
+        center.changePlaybackPositionCommand.isEnabled = true
+        center.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            let position = event.positionTime
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                switch self.settings.lockScreenTimeMode {
+                case .chapter: self.player.seek(toChapterTime: position)
+                case .book: self.player.seek(toBookOffset: position)
+                }
+            }
+            return .success
+        }
+
+        center.changePlaybackRateCommand.isEnabled = true
+        center.changePlaybackRateCommand.supportedPlaybackRates = AppSettings.speedPresets.map { NSNumber(value: $0) }
+        center.changePlaybackRateCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackRateCommandEvent else { return .commandFailed }
+            let rate = event.playbackRate
+            MainActor.assumeIsolated { self?.player.setSpeed(rate) }
+            return .success
+        }
+
+        center.seekForwardCommand.isEnabled = false
+        center.seekBackwardCommand.isEnabled = false
+        center.bookmarkCommand.isEnabled = false
+        center.likeCommand.isEnabled = false
+        center.dislikeCommand.isEnabled = false
+        center.ratingCommand.isEnabled = false
+        center.enableLanguageOptionCommand.isEnabled = false
+        center.disableLanguageOptionCommand.isEnabled = false
+    }
+
+    // MARK: - Now playing info
+
+    func update() {
+        let center = MPNowPlayingInfoCenter.default()
+        guard let book = player.book else {
+            center.nowPlayingInfo = nil
+            artworkImage = nil
+            artworkBookID = nil
+            return
+        }
+
+        if artworkBookID != book.id {
+            artworkBookID = book.id
+            artworkImage = nil
+            let artworkID = book.artworkID
+            Task { [weak self] in
+                let image = await ArtworkStore.shared.loadImage(for: artworkID)
+                guard let self, self.artworkBookID == book.id else { return }
+                self.artworkImage = image
+                self.update()
+            }
+        }
+
+        let chapter = player.currentChapter
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: chapter?.title ?? book.title,
+            MPMediaItemPropertyAlbumTitle: book.title,
+            MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue,
+            MPNowPlayingInfoPropertyIsLiveStream: false,
+            MPNowPlayingInfoPropertyPlaybackRate: player.isPlaying ? Double(player.speed) : 0.0,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: Double(player.speed),
+        ]
+        if let author = book.author {
+            info[MPMediaItemPropertyArtist] = author
+        }
+        let elapsed: TimeInterval
+        let duration: TimeInterval
+        switch settings.lockScreenTimeMode {
+        case .chapter:
+            elapsed = player.chapterElapsed
+            duration = player.chapterDuration
+        case .book:
+            elapsed = player.bookElapsed
+            duration = player.bookDuration
+        }
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        if let index = player.currentChapterIndex {
+            info[MPNowPlayingInfoPropertyChapterNumber] = index + 1
+            info[MPNowPlayingInfoPropertyChapterCount] = book.chapters.count
+        }
+        if let image = artworkImage {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        }
+        center.nowPlayingInfo = info
+
+        let commands = MPRemoteCommandCenter.shared()
+        commands.skipForwardCommand.preferredIntervals = [NSNumber(value: settings.skipForwardInterval)]
+        commands.skipBackwardCommand.preferredIntervals = [NSNumber(value: settings.skipBackInterval)]
+
+        Logger.nowPlaying.debug("[nowplaying] \(chapter?.title ?? book.title, privacy: .public) elapsed=\(elapsed, format: .fixed(precision: 0)) dur=\(duration, format: .fixed(precision: 0)) playing=\(self.player.isPlaying)")
+    }
+}
