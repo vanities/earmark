@@ -24,3 +24,6 @@ fixtures/
 # App Store Connect credentials
 .env.appstore-connect
 *.p8
+
+# Python bytecode from the release scripts
+__pycache__/

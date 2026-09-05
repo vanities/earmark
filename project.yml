@@ -43,7 +43,10 @@ targets:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig
     dependencies:
+      # AMSMB2 ships as a dynamic framework: it must be embedded or the app dies at launch on device
+      # with "Library not loaded: @rpath/AMSMB2.framework/AMSMB2" (the simulator masks this).
       - package: AMSMB2
+        embed: true
     settings:
       base:
         PRODUCT_NAME: Earmark

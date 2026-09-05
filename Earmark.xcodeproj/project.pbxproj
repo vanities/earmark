@@ -45,6 +45,7 @@
 		9A150893EE91E002D6D1BC39 /* Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA9C1B59012131A51DF6716 /* Book.swift */; };
 		9DD0D41C4F266ECFE170B009 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF1C494AE7F0A4EC67C96742 /* KeychainStore.swift */; };
 		A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 261DF5544E541EB03D960595 /* CarPlaySceneDelegate.swift */; };
+		A607C6CF0359985629181990 /* AMSMB2 in Embed Frameworks */ = {isa = PBXBuildFile; productRef = F56A508B36B9A9CBCA46A207 /* AMSMB2 */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A78F5BEAF59C065D7CA8E0D6 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C57B260908E128DE2B07322 /* ProgressBar.swift */; };
 		AB6F08EFFEA0C2C4B16D6C7B /* DuplicateFinderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */; };
 		ACA01A55A610A0839A8F4561 /* LibraryScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2830512E63C478A2F7832BA2 /* LibraryScannerTests.swift */; };
@@ -83,6 +84,20 @@
 			remoteInfo = Earmark;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		73275C8F9CD9BA57AEA485F4 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				A607C6CF0359985629181990 /* AMSMB2 in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		004868C0050F08507DC20E10 /* PlaybackProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackProgress.swift; sourceTree = "<group>"; };
@@ -423,6 +438,7 @@
 				8621CC55D19C854DFE66AB94 /* Sources */,
 				E4A2C9EAE9B8BD65D1800DC2 /* Resources */,
 				99B6306A1360263DD3A883FB /* Frameworks */,
+				73275C8F9CD9BA57AEA485F4 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
