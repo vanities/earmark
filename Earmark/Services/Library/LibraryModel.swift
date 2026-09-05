@@ -46,6 +46,8 @@ final class LibraryModel {
     private(set) var nasServers: [NASServer] = []
     private(set) var nasStatus: [UUID: NASStatus] = [:]
     private(set) var customArtwork: [String: String] = [:]
+    private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
+    private(set) var bookmarks: [String: [Bookmark]] = [:]
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
 
@@ -85,6 +87,8 @@ final class LibraryModel {
         lastBookID = state.lastBookID
         nasServers = state.nasServers
         customArtwork = state.customArtwork
+        metadataOverrides = state.metadataOverrides
+        bookmarks = state.bookmarks
         ensureAppDocumentsSource()
         for source in sources {
             resolveRoot(for: source)
@@ -347,6 +351,7 @@ final class LibraryModel {
         books.removeAll { $0.sourceID == sourceID }
         books.append(contentsOf: updated)
         BookGrouper.canonicalizeAuthors(&books)
+        applyMetadataOverrides()
         if let index = sourceIndex(sourceID) {
             sources[index].lastScanAt = .now
             sources[index].lastScanBookCount = updated.count
@@ -563,7 +568,7 @@ final class LibraryModel {
     func save() {
         saveTask?.cancel()
         saveTask = nil
-        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork)
+        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, metadataOverrides: metadataOverrides, bookmarks: bookmarks)
         let store = self.store
         Task.detached(priority: .utility) {
             do {
@@ -707,6 +712,76 @@ final class LibraryModel {
         save()
         onBooksChanged?()
         return true
+    }
+
+    // MARK: - Metadata corrections
+
+    /// Overlays the user's saved corrections onto every book in place. Called after each scan so
+    /// corrections win over detection but never fight the metadata cache.
+    private func applyMetadataOverrides() {
+        guard !metadataOverrides.isEmpty else { return }
+        for index in books.indices {
+            if let override = metadataOverrides[books[index].id] {
+                books[index] = override.applied(to: books[index])
+            }
+        }
+    }
+
+    /// Records a correction (only the fields that changed) and applies it immediately.
+    func setMetadataOverride(_ diff: BookMetadataOverride, for book: Book) {
+        guard !diff.isEmpty else { return }
+        let merged = (metadataOverrides[book.id] ?? BookMetadataOverride()).merged(with: diff)
+        metadataOverrides[book.id] = merged.isEmpty ? nil : merged
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index] = diff.applied(to: books[index])
+            BookGrouper.canonicalizeAuthors(&books)
+        }
+        Logger.library.info("[library] metadata corrected for \(book.title, privacy: .public)")
+        save()
+        onBooksChanged?()
+    }
+
+    /// Drops all corrections for a book and rescans its source so detected values come back.
+    func resetMetadataOverride(for book: Book) {
+        guard metadataOverrides[book.id] != nil else { return }
+        metadataOverrides[book.id] = nil
+        save()
+        rescan(book.sourceID)
+    }
+
+    /// The corrections currently stored for a book (for pre-filling the edit form).
+    func metadataOverride(for book: Book) -> BookMetadataOverride? { metadataOverrides[book.id] }
+
+    // MARK: - Bookmarks
+
+    func bookmarks(for book: Book) -> [Bookmark] { bookmarks[book.id] ?? [] }
+
+    @discardableResult
+    func addBookmark(for book: Book, offset: TimeInterval, note: String = "") -> Bookmark {
+        var list = bookmarks[book.id] ?? []
+        let mark = Bookmark(offset: max(0, offset), note: note)
+        list.append(mark)
+        bookmarks[book.id] = list.sorted { $0.offset < $1.offset }
+        Logger.library.info("[library] bookmark added for \(book.title, privacy: .public) at \(Int(offset))s")
+        save()
+        onBooksChanged?()
+        return mark
+    }
+
+    func updateBookmark(_ id: String, for book: Book, note: String) {
+        guard var list = bookmarks[book.id], let i = list.firstIndex(where: { $0.id == id }) else { return }
+        list[i].note = note
+        bookmarks[book.id] = list
+        save()
+        onBooksChanged?()
+    }
+
+    func removeBookmark(_ id: String, for book: Book) {
+        guard var list = bookmarks[book.id] else { return }
+        list.removeAll { $0.id == id }
+        bookmarks[book.id] = list.isEmpty ? nil : list
+        save()
+        onBooksChanged?()
     }
 
     // MARK: - Files app

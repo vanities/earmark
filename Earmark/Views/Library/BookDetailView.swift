@@ -11,6 +11,7 @@ struct BookDetailView: View {
     @State private var confirmDelete = false
     @State private var deleteErrors: [String] = []
     @State private var showCoverPicker = false
+    @State private var showEditDetails = false
 
     /// Always render the library's live copy so rescans show up.
     private var current: Book { library.book(id: book.id) ?? book }
@@ -118,10 +119,14 @@ struct BookDetailView: View {
         .sheet(isPresented: $showCoverPicker) {
             CoverPickerView(book: book)
         }
+        .sheet(isPresented: $showEditDetails) {
+            EditBookDetailsView(book: book)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     BookContextMenu(book: book)
+                    Button("Edit Details…", systemImage: "pencil") { showEditDetails = true }
                     Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { showCoverPicker = true }
                     if !library.isRemote(book) {
                         Divider()

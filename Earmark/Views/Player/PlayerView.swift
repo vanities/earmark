@@ -2,11 +2,12 @@ import SwiftUI
 
 struct PlayerView: View {
     enum Sheet: Identifiable {
-        case speed, sleep, chapters
+        case speed, sleep, chapters, bookmarks
         var id: Self { self }
     }
 
     @Environment(PlayerEngine.self) private var player
+    @Environment(LibraryModel.self) private var library
     @Environment(\.dismiss) private var dismiss
     @State private var sheet: Sheet?
 
@@ -26,6 +27,12 @@ struct PlayerView: View {
                 if let book = player.book {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
+                            Button("Add Bookmark", systemImage: "bookmark") {
+                                _ = library.addBookmark(for: book, offset: player.bookElapsed)
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            }
+                            Button("Bookmarks\u{2026}", systemImage: "bookmark.fill") { sheet = .bookmarks }
+                            Divider()
                             BookContextMenu(book: book)
                         } label: {
                             Image(systemName: "ellipsis.circle")
@@ -40,6 +47,7 @@ struct PlayerView: View {
             case .speed: SpeedSheet().presentationDetents([.height(360)])
             case .sleep: SleepTimerSheet().presentationDetents([.medium, .large])
             case .chapters: ChapterListSheet().presentationDetents([.medium, .large])
+            case .bookmarks: BookmarksSheet().presentationDetents([.medium, .large])
             }
         }
         .presentationDragIndicator(.visible)

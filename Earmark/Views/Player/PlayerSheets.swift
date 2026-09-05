@@ -159,3 +159,69 @@ struct ChapterListSheet: View {
         .presentationDragIndicator(.visible)
     }
 }
+
+struct BookmarksSheet: View {
+    @Environment(PlayerEngine.self) private var player
+    @Environment(LibraryModel.self) private var library
+    @Environment(\.dismiss) private var dismiss
+    @State private var editing: Bookmark?
+    @State private var noteDraft = ""
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let book = player.book {
+                    let marks = library.bookmarks(for: book)
+                    if marks.isEmpty {
+                        ContentUnavailableView("No Bookmarks", systemImage: "bookmark",
+                            description: Text("Tap Add Bookmark while listening to save your spot."))
+                    } else {
+                        List {
+                            ForEach(marks) { mark in
+                                Button {
+                                    player.seek(toBookOffset: mark.offset)
+                                    dismiss()
+                                } label: { row(for: mark, in: book) }
+                                .swipeActions(edge: .trailing) {
+                                    Button("Delete", systemImage: "trash", role: .destructive) {
+                                        library.removeBookmark(mark.id, for: book)
+                                    }
+                                    Button("Note", systemImage: "square.and.pencil") {
+                                        noteDraft = mark.note; editing = mark
+                                    }.tint(.indigo)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    ContentUnavailableView("Nothing Playing", systemImage: "play.slash")
+                }
+            }
+            .navigationTitle("Bookmarks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .alert("Bookmark Note", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
+                TextField("Note", text: $noteDraft)
+                Button("Save") {
+                    if let mark = editing, let book = player.book { library.updateBookmark(mark.id, for: book, note: noteDraft) }
+                    editing = nil
+                }
+                Button("Cancel", role: .cancel) { editing = nil }
+            }
+        }
+    }
+
+    private func row(for mark: Bookmark, in book: Book) -> some View {
+        let pos = book.position(atAbsoluteOffset: mark.offset)
+        let chapter = book.chapter(at: pos.trackIndex, time: pos.time)
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Image(systemName: "bookmark.fill").foregroundStyle(.tint).font(.caption)
+                Text(mark.offset.shortDurationString).font(.subheadline.weight(.medium)).monospacedDigit()
+                Spacer()
+                if book.chapters.count > 1, let chapter { Text(chapter.title).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+            }
+            if !mark.note.isEmpty { Text(mark.note).font(.footnote).foregroundStyle(.secondary) }
+        }
+    }
+}
