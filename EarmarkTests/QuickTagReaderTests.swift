@@ -32,6 +32,18 @@ final class QuickTagReaderTests: XCTestCase {
         XCTAssertEqual(quick.trackTotal, 4)
     }
 
+    func testSniffsContainerFromHeader() throws {
+        let (mp3, _) = try fixture("raven")
+        XCTAssertEqual(QuickTagReader.container(of: mp3), "mp3", "ID3-tagged MP3")
+        var frame = Data([0xFF, 0xFB, 0x90, 0x00]); frame.append(Data(count: 16))
+        XCTAssertEqual(QuickTagReader.container(of: frame), "mp3", "bare MPEG frame sync")
+        var mp4 = Data([0x00, 0x00, 0x00, 0x18]); mp4.append(Data("ftypM4A ".utf8)); mp4.append(Data(count: 8))
+        XCTAssertEqual(QuickTagReader.container(of: mp4), "mp4")
+        XCTAssertEqual(QuickTagReader.container(of: Data("fLaC0000000000".utf8)), "flac")
+        XCTAssertEqual(QuickTagReader.container(of: Data("RIFF....WAVEfmt ".utf8)), "wav")
+        XCTAssertNil(QuickTagReader.container(of: Data("hello world!".utf8)))
+    }
+
     func testRejectsNonMP3Data() {
         XCTAssertNil(QuickTagReader.parseMP3(head: Data(repeating: 0x41, count: 4096), fileSize: 4096))
         XCTAssertNil(QuickTagReader.id3TagSize(Data("hello".utf8)))

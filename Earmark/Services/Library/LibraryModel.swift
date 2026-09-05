@@ -45,6 +45,7 @@ final class LibraryModel {
     private(set) var hasLoaded = false
     private(set) var nasServers: [NASServer] = []
     private(set) var nasStatus: [UUID: NASStatus] = [:]
+    private(set) var customArtwork: [String: String] = [:]
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
 
@@ -83,6 +84,7 @@ final class LibraryModel {
         hiddenBookIDs = state.hiddenBookIDs
         lastBookID = state.lastBookID
         nasServers = state.nasServers
+        customArtwork = state.customArtwork
         ensureAppDocumentsSource()
         for source in sources {
             resolveRoot(for: source)
@@ -318,6 +320,9 @@ final class LibraryModel {
         let existing = Dictionary(books.filter { $0.sourceID == sourceID }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let updated = result.books.map { book -> Book in
             var book = book
+            if let custom = customArtwork[book.id], ArtworkStore.shared.hasImage(id: custom) {
+                book.artworkID = custom
+            }
             if let old = existing[book.id] {
                 book.addedAt = old.addedAt
                 // Keep precise durations learned during playback over scan-time estimates.
@@ -453,7 +458,7 @@ final class LibraryModel {
         guard let source = source(for: book) else { return nil }
         if source.kind == .smb {
             guard let serverID = source.serverID, let client = client(forServer: serverID) else { return nil }
-            let (asset, loader) = client.makeAsset(relativePath: track.relativePath, size: track.fileSize, preciseTiming: false)
+            let (asset, loader) = client.makeAsset(relativePath: track.relativePath, size: track.fileSize, preciseTiming: false, containerHint: track.containerHint)
             return PlaybackSource(asset: asset, loader: loader, isRemote: true, serverName: client.server.name)
         }
         guard let url = url(forTrack: track, in: book) else { return nil }
@@ -558,7 +563,7 @@ final class LibraryModel {
     func save() {
         saveTask?.cancel()
         saveTask = nil
-        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers)
+        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork)
         let store = self.store
         Task.detached(priority: .utility) {
             do {
@@ -673,6 +678,35 @@ final class LibraryModel {
             }
         }
         return errors
+    }
+
+    // MARK: - Cover art
+
+    /// Saves user-chosen cover art for a book: into the art cache (kept across rescans) and, for
+    /// books on this phone, as cover.jpg next to the audio so other apps see it too.
+    func setCustomArtwork(_ data: Data, for book: Book) -> Bool {
+        let id = ArtworkStore.shared.id(for: book.id + "|custom")
+        guard ArtworkStore.shared.store(imageData: data, id: id) else { return false }
+        customArtwork[book.id] = id
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index].artworkID = id
+        }
+        if !isRemote(book), let bookURL = url(forBook: book) {
+            let folder = book.kind == .folder ? bookURL : bookURL.deletingLastPathComponent()
+            let target = folder.appending(path: "cover.jpg")
+            if !FileManager.default.fileExists(atPath: target.path) {
+                do {
+                    try data.write(to: target, options: .atomic)
+                    Logger.artwork.info("[covers] wrote cover.jpg for \(book.title, privacy: .public)")
+                } catch {
+                    Logger.artwork.notice("[covers] couldn't write cover.jpg: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+        }
+        Logger.artwork.info("[covers] custom cover set for \(book.title, privacy: .public)")
+        save()
+        onBooksChanged?()
+        return true
     }
 
     // MARK: - Files app

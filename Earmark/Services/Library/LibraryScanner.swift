@@ -141,15 +141,16 @@ struct LibraryScanner: Sendable {
         var processed = 0
         var cacheHits = 0
         progress(ScanProgress(phase: .metadata, processed: 0, total: total))
-        try await withThrowingTaskGroup(of: (Int, AudioMetadata?, Bool).self) { group in
+        try await withThrowingTaskGroup(of: (Int, AudioMetadata?, Bool, String?).self) { group in
             var next = 0
             let concurrency = 2
             for _ in 0..<min(concurrency, files.count) {
                 enqueueRemote(files[next], index: next, sourceID: source.id, client: client, into: &group)
                 next += 1
             }
-            while let (index, metadata, fromCache) = try await group.next() {
+            while let (index, metadata, fromCache, container) = try await group.next() {
                 files[index].metadata = metadata
+                if let container { files[index].containerHint = container }
                 processed += 1
                 if fromCache { cacheHits += 1 }
                 progress(ScanProgress(phase: .metadata, processed: processed, total: total))
@@ -178,37 +179,42 @@ struct LibraryScanner: Sendable {
         return ScanResult(books: books, unsupportedFiles: walk.unsupported, fileCount: total, elapsed: sw.seconds)
     }
 
-    private func enqueueRemote(_ file: ScannedFile, index: Int, sourceID: UUID, client: NASClient, into group: inout ThrowingTaskGroup<(Int, AudioMetadata?, Bool), any Error>) {
+    private func enqueueRemote(_ file: ScannedFile, index: Int, sourceID: UUID, client: NASClient, into group: inout ThrowingTaskGroup<(Int, AudioMetadata?, Bool, String?), any Error>) {
         let key = "\(sourceID.uuidString)|\(file.relativePath)"
         let cache = cache
         let reader = reader
         group.addTask {
             try Task.checkCancellation()
             if let cached = await cache.metadata(forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt) {
-                return (index, cached, true)
+                return (index, cached, true, nil)
             }
-            if file.ext == "mp3", let quick = await Self.quickRemoteMP3(file, client: client) {
+            // Sniff the real container from the header: misnamed files are common ("x.m4b" that is MP3).
+            let head = (try? await client.readAll(file.relativePath, maxBytes: Int64(QuickTagReader.initialWindow))) ?? Data()
+            let container = QuickTagReader.container(of: head) ?? file.ext
+            var file = file
+            file.containerHint = container
+            if container == "mp3", let quick = await Self.quickRemoteMP3(file, head: head, client: client) {
                 await cache.store(quick, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt)
-                return (index, quick, false)
+                return (index, quick, false, container)
             }
-            let (asset, loader) = client.makeAsset(relativePath: file.relativePath, size: file.fileSize)
+            let (asset, loader) = client.makeAsset(relativePath: file.relativePath, size: file.fileSize, containerHint: container)
             defer { _ = loader }
             do {
                 let metadata = try await reader.read(asset: asset, name: file.fileName)
                 await cache.store(metadata, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt)
-                return (index, metadata, false)
+                return (index, metadata, false, container)
             } catch {
-                Logger.scan.error("[scan] remote tags failed for \(file.relativePath, privacy: .public): \(error.localizedDescription, privacy: .public)")
-                return (index, nil, false)
+                Logger.scan.error("[scan] remote tags failed for \(file.relativePath, privacy: .public) (\(container, privacy: .public)): \(error.localizedDescription, privacy: .public)")
+                return (index, nil, false, container)
             }
         }
     }
 
     /// Tags + duration from the head of a remote MP3 (a few hundred KB) instead of the whole file.
-    private static func quickRemoteMP3(_ file: ScannedFile, client: NASClient) async -> AudioMetadata? {
+    private static func quickRemoteMP3(_ file: ScannedFile, head initialHead: Data, client: NASClient) async -> AudioMetadata? {
         let sw = Stopwatch()
         do {
-            var head = try await client.readAll(file.relativePath, maxBytes: Int64(QuickTagReader.initialWindow))
+            var head = initialHead
             let needed = QuickTagReader.requiredLength(head)
             if needed > head.count, Int64(head.count) < file.fileSize {
                 let more = OSAllocatedUnfairLock(initialState: Data())

@@ -17,6 +17,9 @@ struct Track: Identifiable, Codable, Hashable, Sendable {
     var discNumber: Int?
     /// True when the file lives in iCloud (or another provider) and isn't downloaded yet.
     var needsDownload: Bool = false
+    /// Container detected from the file header during a remote scan ("mp3", "mp4"); files are
+    /// often misnamed (an MP3 called .m4b), and AVFoundation needs the real type when streaming.
+    var containerHint: String?
 
     var fileExtension: String { (fileName as NSString).pathExtension.lowercased() }
 }

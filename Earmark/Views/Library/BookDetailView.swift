@@ -10,6 +10,7 @@ struct BookDetailView: View {
 
     @State private var confirmDelete = false
     @State private var deleteErrors: [String] = []
+    @State private var showCoverPicker = false
 
     /// Always render the library's live copy so rescans show up.
     private var current: Book { library.book(id: book.id) ?? book }
@@ -24,6 +25,18 @@ struct BookDetailView: View {
                     .frame(width: 220, height: 220)
                     .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
                     .padding(.top, 8)
+                    .overlay(alignment: .bottomTrailing) {
+                        if book.artworkID == nil {
+                            Button {
+                                showCoverPicker = true
+                            } label: {
+                                Label("Find Cover", systemImage: "photo.badge.magnifyingglass")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .buttonStyle(.glass)
+                            .padding(10)
+                        }
+                    }
 
                 VStack(spacing: 6) {
                     Text(book.title)
@@ -102,10 +115,14 @@ struct BookDetailView: View {
             .padding(.bottom, 32)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showCoverPicker) {
+            CoverPickerView(book: book)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     BookContextMenu(book: book)
+                    Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { showCoverPicker = true }
                     if !library.isRemote(book) {
                         Divider()
                         Button("Delete Files…", systemImage: "trash", role: .destructive) { confirmDelete = true }

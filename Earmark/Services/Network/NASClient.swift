@@ -185,10 +185,10 @@ final class NASClient: @unchecked Sendable {
 
     /// An asset that streams from this server through `SMBResourceLoader`. Keep the loader
     /// alive for as long as the asset is in use.
-    func makeAsset(relativePath: String, size: Int64, preciseTiming: Bool = false) -> (asset: AVURLAsset, loader: SMBResourceLoader) {
+    func makeAsset(relativePath: String, size: Int64, preciseTiming: Bool = false, containerHint: String? = nil) -> (asset: AVURLAsset, loader: SMBResourceLoader) {
         let url = Self.assetURL(serverID: server.id, relativePath: relativePath)
         let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: preciseTiming])
-        let loader = SMBResourceLoader(client: self, relativePath: relativePath, fileSize: size)
+        let loader = SMBResourceLoader(client: self, relativePath: relativePath, fileSize: size, containerHint: containerHint)
         asset.resourceLoader.setDelegate(loader, queue: loader.queue)
         return (asset, loader)
     }

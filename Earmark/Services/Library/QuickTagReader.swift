@@ -17,6 +17,20 @@ enum QuickTagReader {
         var xingFrameCount: Int?
     }
 
+    // MARK: - Sniffing
+
+    /// "mp3" for ID3/MPEG-audio headers, "mp4" for ISO base media (ftyp), nil when unsure.
+    static func container(of head: Data) -> String? {
+        guard head.count >= 12 else { return nil }
+        let b = [UInt8](head.prefix(12))
+        if b[0] == 0x49, b[1] == 0x44, b[2] == 0x33 { return "mp3" } // "ID3"
+        if b[0] == 0xFF, (b[1] & 0xE0) == 0xE0 { return "mp3" }   // MPEG frame sync
+        if b[4] == 0x66, b[5] == 0x74, b[6] == 0x79, b[7] == 0x70 { return "mp4" } // "ftyp"
+        if b[0] == 0x66, b[1] == 0x4C, b[2] == 0x61, b[3] == 0x43 { return "flac" } // "fLaC"
+        if b[0] == 0x52, b[1] == 0x49, b[2] == 0x46, b[3] == 0x46 { return "wav" } // "RIFF"
+        return nil
+    }
+
     // MARK: - Entry points
 
     /// Total bytes needed from the file start: the whole ID3v2 tag plus a frame window.

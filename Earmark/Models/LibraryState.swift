@@ -9,4 +9,6 @@ struct LibraryState: Codable, Sendable {
     var hiddenBookIDs: Set<String> = []
     var lastBookID: String?
     var nasServers: [NASServer] = []
+    /// Book ID → artwork ID chosen by the user via Find Cover. Survives rescans.
+    var customArtwork: [String: String] = [:]
 }

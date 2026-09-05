@@ -14,12 +14,20 @@ final class SMBResourceLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
     private let contentType: String
     private let inflight = OSAllocatedUnfairLock(initialState: [ObjectIdentifier: (task: Task<Void, Never>, cancelled: OSAllocatedUnfairLock<Bool>)]())
 
-    init(client: NASClient, relativePath: String, fileSize: Int64) {
+    init(client: NASClient, relativePath: String, fileSize: Int64, containerHint: String? = nil) {
         self.client = client
         self.relativePath = relativePath
         self.fileSize = fileSize
-        let ext = (relativePath as NSString).pathExtension
-        contentType = UTType(filenameExtension: ext)?.identifier ?? UTType.audio.identifier
+        // Prefer what the scanner sniffed from the header (files are often misnamed), and never
+        // advertise Apple's *protected* audiobook type for plain .m4b files.
+        let ext = containerHint ?? (relativePath as NSString).pathExtension.lowercased()
+        switch ext {
+        case "mp4", "m4b", "m4a", "aac": contentType = "public.mpeg-4-audio"
+        case "mp3": contentType = UTType.mp3.identifier
+        case "flac": contentType = "org.xiph.flac"
+        case "wav": contentType = UTType.wav.identifier
+        default: contentType = UTType(filenameExtension: ext)?.identifier ?? UTType.audio.identifier
+        }
     }
 
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader, shouldWaitForLoadingOfRequestedResource loadingRequest: AVAssetResourceLoadingRequest) -> Bool {

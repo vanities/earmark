@@ -31,7 +31,11 @@ struct LibraryView: View {
                     BookDetailView(book: book, openPlayer: openPlayer)
                 }
                 .navigationDestination(for: LibraryGroup.self) { group in
-                    BookGridView(title: group.title, books: group.books)
+                    if group.id.hasPrefix("author:") {
+                        AuthorShelfView(group: group)
+                    } else {
+                        BookGridView(title: group.title, books: group.books)
+                    }
                 }
                 .fileImporter(isPresented: $showImporter, allowedContentTypes: [.folder], allowsMultipleSelection: true) { result in
                     switch result {
@@ -70,12 +74,13 @@ struct LibraryView: View {
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 28) {
-                    if searchText.isEmpty, settings.libraryGrouping == .all, !library.inProgressBooks.isEmpty {
+                    if searchText.isEmpty, !library.inProgressBooks.isEmpty {
                         ContinueListeningSection(books: library.inProgressBooks, openPlayer: openPlayer)
                     }
-                    if settings.libraryGrouping == .all {
+                    if settings.libraryGrouping == .all || !searchText.isEmpty {
                         BookGridSection(title: searchText.isEmpty ? "All Books" : "Results", books: filteredBooks, layout: settings.libraryLayout)
                     } else {
+                        SectionHeader(settings.libraryGrouping.title, count: library.groups(settings.libraryGrouping, from: filteredBooks).count)
                         GroupListSection(groups: library.groups(settings.libraryGrouping, from: filteredBooks))
                     }
                 }

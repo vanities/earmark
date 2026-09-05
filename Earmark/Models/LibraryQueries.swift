@@ -5,8 +5,8 @@ enum LibraryGrouping: String, CaseIterable, Codable, Sendable {
 
     var title: String {
         switch self {
-        case .all: "All Books"
-        case .author: "Authors"
+        case .all: "All Books (flat)"
+        case .author: "Authors → Series"
         case .series: "Series"
         case .folder: "Folders"
         }

@@ -57,7 +57,7 @@ final class AppSettings {
         smartRewind = defaults.object(forKey: Key.smartRewind) as? Bool ?? true
         headphoneTrackAction = HeadphoneTrackAction(rawValue: defaults.string(forKey: Key.headphoneAction) ?? "") ?? .skip
         lockScreenTimeMode = LockScreenTimeMode(rawValue: defaults.string(forKey: Key.lockScreenTime) ?? "") ?? .chapter
-        libraryGrouping = LibraryGrouping(rawValue: defaults.string(forKey: Key.grouping) ?? "") ?? .all
+        libraryGrouping = LibraryGrouping(rawValue: defaults.string(forKey: Key.grouping) ?? "") ?? .author // Author → Series → Book by default
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinishedBooks = defaults.object(forKey: Key.showFinished) as? Bool ?? true

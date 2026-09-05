@@ -7,6 +7,7 @@ struct ScannedFile: Hashable, Sendable {
     var modifiedAt: Date?
     var metadata: AudioMetadata?
     var needsDownload = false
+    var containerHint: String?
 
     var fileName: String { (relativePath as NSString).lastPathComponent }
     /// Directory relative to the source root; "" for files sitting at the root.
@@ -226,7 +227,8 @@ enum BookGrouper {
                 modifiedAt: file.modifiedAt,
                 trackNumber: file.metadata?.trackNumber,
                 discNumber: discByFile[file.relativePath] ?? file.metadata?.discNumber,
-                needsDownload: file.needsDownload
+                needsDownload: file.needsDownload,
+                containerHint: file.containerHint
             )
         }
         let chapters = buildChapters(files: ordered, tracks: tracks, bookTitle: title, author: author)
@@ -306,7 +308,8 @@ enum BookGrouper {
             modifiedAt: file.modifiedAt,
             trackNumber: meta?.trackNumber,
             discNumber: meta?.discNumber,
-            needsDownload: file.needsDownload
+            needsDownload: file.needsDownload,
+            containerHint: file.containerHint
         )
         let chapters: [Chapter]
         if let embedded = meta?.chapters, !embedded.isEmpty {

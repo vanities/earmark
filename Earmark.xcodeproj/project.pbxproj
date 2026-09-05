@@ -30,6 +30,7 @@
 		56D848C9D4236C5B79568674 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3E28E8D16340B9AFD1E8F80 /* DownloadManager.swift */; };
 		5D0244837C62F5C0525249F8 /* PlayerSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE056FF40D4D5AE2F9BDC5B6 /* PlayerSheets.swift */; };
 		667D28B426ECD4C26731841A /* BookGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4318C49E54FDB7B284984534 /* BookGrouper.swift */; };
+		6F8D6EBFB6792D7B83659D92 /* AuthorShelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3457D77DB1151DAFB56F79 /* AuthorShelfView.swift */; };
 		7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7A3575E89FE9701132A68 /* Chapter.swift */; };
 		736C0E1F111EAA5C052D24F0 /* EarmarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64354FEC8BAE495A5FABA85 /* EarmarkApp.swift */; };
 		74004571BB6526C746CB5353 /* String+Natural.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45A581851B7063C9FA6A72FB /* String+Natural.swift */; };
@@ -45,6 +46,7 @@
 		9A150893EE91E002D6D1BC39 /* Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA9C1B59012131A51DF6716 /* Book.swift */; };
 		9DD0D41C4F266ECFE170B009 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF1C494AE7F0A4EC67C96742 /* KeychainStore.swift */; };
 		A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 261DF5544E541EB03D960595 /* CarPlaySceneDelegate.swift */; };
+		A4F337EE34090B232B78240B /* CoverSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */; };
 		A607C6CF0359985629181990 /* AMSMB2 in Embed Frameworks */ = {isa = PBXBuildFile; productRef = F56A508B36B9A9CBCA46A207 /* AMSMB2 */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A78F5BEAF59C065D7CA8E0D6 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C57B260908E128DE2B07322 /* ProgressBar.swift */; };
 		AB6F08EFFEA0C2C4B16D6C7B /* DuplicateFinderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */; };
@@ -63,6 +65,7 @@
 		CDAD45988D1942735D85673D /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63EF2B848B1A36EDA036BF9F /* LibraryStore.swift */; };
 		D5CE1A01B633A8DE08F66D1D /* PlayerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27B3D8FEA19546CFA173987A /* PlayerEngine.swift */; };
 		D75496E8EFD9EB117DCC5840 /* TransportControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB98C6335A7018E5235A76C /* TransportControls.swift */; };
+		D7B7CB040A9E935D47B6EDDC /* CoverPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55737A1219DD9B7F7846B451 /* CoverPickerView.swift */; };
 		D7E20811D3F344ABAEA0E9B7 /* NASClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B109B71AE8D04ABEE3D1F75B /* NASClient.swift */; };
 		DC573F9124C7D83A64021012 /* MetadataReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD89F1372BCDEC869661AF28 /* MetadataReader.swift */; };
 		DE74BDC705D67C6CB9E56C11 /* AudioFileTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A3712B6BBC374281EF3C06 /* AudioFileTypes.swift */; };
@@ -124,9 +127,11 @@
 		3C57B260908E128DE2B07322 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
 		4318C49E54FDB7B284984534 /* BookGrouper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookGrouper.swift; sourceTree = "<group>"; };
 		45A581851B7063C9FA6A72FB /* String+Natural.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Natural.swift"; sourceTree = "<group>"; };
+		4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
 		4C32B20761401506F2E5104B /* BookmarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkStore.swift; sourceTree = "<group>"; };
 		4EA9C1B59012131A51DF6716 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
 		50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinderTests.swift; sourceTree = "<group>"; };
+		55737A1219DD9B7F7846B451 /* CoverPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPickerView.swift; sourceTree = "<group>"; };
 		5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Queries.swift"; sourceTree = "<group>"; };
 		597D893ECB9BAFC906BA9061 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track.swift; sourceTree = "<group>"; };
 		5C69D2873FA693457F574DB5 /* RoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePickerView.swift; sourceTree = "<group>"; };
@@ -162,6 +167,7 @@
 		D4AB7E053E1EDBD08ABF661A /* chapter1.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chapter1.mp3; sourceTree = "<group>"; };
 		D85D1074D532B131D98066F4 /* ArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStore.swift; sourceTree = "<group>"; };
 		DBC158F247888142811C2A71 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		DC3457D77DB1151DAFB56F79 /* AuthorShelfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthorShelfView.swift; sourceTree = "<group>"; };
 		DF1C494AE7F0A4EC67C96742 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		E039F76BC4094453B23E6C1E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E2E4D363B49AD5CFC7F0AFE9 /* SMBResourceLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMBResourceLoader.swift; sourceTree = "<group>"; };
@@ -321,8 +327,10 @@
 		A48145A6CE87FED9AD649044 /* Library */ = {
 			isa = PBXGroup;
 			children = (
+				DC3457D77DB1151DAFB56F79 /* AuthorShelfView.swift */,
 				94D6CF1F3D54A0E4772BA746 /* BookCardView.swift */,
 				692A485EFDE03BB1D9D10A80 /* BookDetailView.swift */,
+				55737A1219DD9B7F7846B451 /* CoverPickerView.swift */,
 				C266E3FFEA78B55E971D7D96 /* LibraryView.swift */,
 			);
 			path = Library;
@@ -379,6 +387,7 @@
 				37A3712B6BBC374281EF3C06 /* AudioFileTypes.swift */,
 				4318C49E54FDB7B284984534 /* BookGrouper.swift */,
 				4C32B20761401506F2E5104B /* BookmarkStore.swift */,
+				4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */,
 				B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */,
 				9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */,
 				5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */,
@@ -559,6 +568,7 @@
 				B4292618A2466AB51B857F84 /* ArtworkView.swift in Sources */,
 				DE74BDC705D67C6CB9E56C11 /* AudioFileTypes.swift in Sources */,
 				C22F8BA6F00A09953C46DFA2 /* AudioSessionManager.swift in Sources */,
+				6F8D6EBFB6792D7B83659D92 /* AuthorShelfView.swift in Sources */,
 				9A150893EE91E002D6D1BC39 /* Book.swift in Sources */,
 				C5969D5FCCA912DB5ECEAA33 /* BookCardView.swift in Sources */,
 				32C224FAF75DAF8F54BCA093 /* BookContextMenu.swift in Sources */,
@@ -568,6 +578,8 @@
 				0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */,
 				A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */,
 				7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */,
+				D7B7CB040A9E935D47B6EDDC /* CoverPickerView.swift in Sources */,
+				A4F337EE34090B232B78240B /* CoverSearch.swift in Sources */,
 				56D848C9D4236C5B79568674 /* DownloadManager.swift in Sources */,
 				53406C677A959DAEC0FA9D63 /* DuplicateFinder.swift in Sources */,
 				43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */,

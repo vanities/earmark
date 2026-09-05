@@ -31,8 +31,10 @@ Earmark/
                   BookGrouper (pure logic), LibraryScanner,
                   DuplicateFinder, LibraryModel (@MainActor @Observable source of truth)
     Playback/     PlayerEngine (AVPlayer), AudioSessionManager, NowPlayingController (lock screen/CarPlay)
-    Network/      NASClient (AMSMB2 wrapper), SMBResourceLoader (AVAssetResourceLoaderDelegate streaming),
-                  DownloadManager (remote book → Documents), KeychainStore
+    Network/      NASClient (AMSMB2 wrapper; bounded range reads only — never abort a stream mid-callback),
+                  SMBResourceLoader (AVAssetResourceLoaderDelegate streaming), DownloadManager (downloads,
+                  Move-into-Earmark, persisted queue, BGProcessingTask), KeychainStore
+    Library/      also CoverSearch (iTunes + Open Library lookups) and QuickTagReader (header sniffing + ID3)
   CarPlay/        CarPlaySceneDelegate (from Info.plist), CarPlayInterface (templates)
   Views/          Root (TabView + bottom-accessory mini player), Library, Player, Folders, Settings, Components
   Resources/      Info.plist (background audio, Files integration, CarPlay scene), assets, entitlements
@@ -75,6 +77,13 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - UI is native iOS 26 (Liquid Glass): `tabViewBottomAccessory` mini player,
   `glassProminent` primary buttons, SF Symbols. Keep hit targets ≥ 44pt — this is used in cars.
 - SwiftLint config in `.swiftlint.yml`; run `swiftlint` before committing.
+
+## Stress testing
+
+`python3 scripts/monkey.py --udid <sim>` runs scripted NAS scenarios (stream, skip, speed, sleep,
+switch books, download/cancel/resume, background/foreground, kill mid-scan) and then random taps
+that avoid destructive actions. It reports simulator crash reports and whether the app stayed up.
+Run it against a simulator that already has the NAS source configured.
 
 ## Releasing
 

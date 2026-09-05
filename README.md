@@ -17,6 +17,11 @@ own sandbox, and interrupt you with donation screens. Earmark does none of that:
 - **Auto-organized.** A folder of MP3s is a book, each `.m4b` is a book, `Disc 1/Disc 2`
   folders merge, and `Author / Series / Book` trees (or tags) fill in author and series.
   Group by author, series, or folder; search everything.
+- **Consolidate.** "Move into Earmark" copies books from any folder you picked (another
+  player's folder, Downloads) into On My iPhone › Earmark, verifies them, deletes the originals,
+  and carries your listening position, so everything ends up in one place.
+- **Find covers.** One tap searches Apple's audiobook catalog and Open Library for artwork and saves
+  your pick (as `cover.jpg` next to the files for local books).
 - **Find duplicates.** Fingerprints every file (size + content hash) and shows identical
   books or stray copies so you can reclaim space — deletion always asks first.
 - **A player that just works.** Big skip back/forward (configurable), 0.5–3× speed with
@@ -54,6 +59,13 @@ make fixtures && make install-fixtures   # sample audiobooks with real narration
 
 To run on your iPhone, copy `Config/Signing.xcconfig.example` to `Config/Signing.xcconfig`
 and put your Apple Developer team ID in it (or pick a team in Xcode's Signing tab).
+
+## Browsing
+
+The default view is **Authors → Series → Book**: open an author to see their sets of work in
+chronological order (years come from tags or `[Y=1998]`-style folder names), with standalone books
+after. Series, Folders, and a flat "All Books" grid are one tap away in the view menu, and search
+always shows a flat result list.
 
 ## Getting your books in
 
@@ -113,6 +125,10 @@ downloading it.
 
 Two useful patterns: keep the NAS as the master library and download only what you're about
 to listen to, or point the phone's NAS folder at the same tree you already curate.
+
+Transfers run one at a time and keep going while Earmark is open or a book is playing (the screen
+stays awake). If iOS suspends the app they pause, survive termination, and resume from partial
+files on the next launch; a background processing task also picks them up while the phone is idle.
 
 ## TestFlight / App Store Connect
 
