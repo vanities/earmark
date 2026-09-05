@@ -144,7 +144,6 @@ final class DownloadManager {
                     return !cancelled.withLock { $0.contains(jobID) }
                 }
                 if cancelled.withLock({ $0.contains(job.id) }) {
-                    try? FileManager.default.removeItem(at: partial)
                     update(job.id) { $0.state = .cancelled }
                     return
                 }
@@ -153,13 +152,12 @@ final class DownloadManager {
                 done += file.size
                 update(job.id) { $0.doneBytes = done }
             } catch is CancellationError {
-                try? FileManager.default.removeItem(at: partial)
+                // keep the .part file: the next attempt resumes from it
                 update(job.id) { $0.state = .cancelled }
                 Logger.downloads.info("[downloads] cancelled \(book.title, privacy: .public)")
                 return
             } catch {
-                try? FileManager.default.removeItem(at: partial)
-                Logger.downloads.error("[downloads] failed \(file.remote, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                Logger.downloads.error("[downloads] failed \(file.remote, privacy: .public): \(error.localizedDescription, privacy: .public) (partial kept for resume)")
                 update(job.id) { $0.state = .failed; $0.error = error.localizedDescription }
                 return
             }

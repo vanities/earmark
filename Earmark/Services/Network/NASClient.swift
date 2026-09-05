@@ -139,11 +139,18 @@ final class NASClient: @unchecked Sendable {
         try FileManager.default.createDirectory(at: localURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let total = try await fileSize(relativePath)
         let sw = Stopwatch()
-        FileManager.default.createFile(atPath: localURL.path, contents: nil)
+        // Resume a partial file from a previous attempt instead of starting over.
+        var position: Int64 = 0
+        if let existing = try? localURL.resourceValues(forKeys: [.fileSizeKey]).fileSize, Int64(existing) < total {
+            position = Int64(existing)
+            Logger.nas.info("[nas] resuming \(relativePath, privacy: .public) at \(position) of \(total)")
+        } else {
+            FileManager.default.createFile(atPath: localURL.path, contents: nil)
+        }
         let handle = try FileHandle(forWritingTo: localURL)
         defer { try? handle.close() }
+        try handle.seek(toOffset: UInt64(position))
         let remote = server.remotePath(for: relativePath)
-        var position: Int64 = 0
         while position < total {
             let chunkEnd = min(total, position + Self.chunkSize * 4)
             let data = try await manager.contents(atPath: remote, range: position..<chunkEnd, progress: nil)

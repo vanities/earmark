@@ -70,6 +70,7 @@ struct LibraryScanner: Sendable {
                     lastReport = Date()
                     progress(ScanProgress(phase: .metadata, processed: processed, total: total))
                 }
+                if processed % 25 == 0 { await cache.flush() } // resumable: a crash mid-scan keeps what was read
                 if next < files.count {
                     enqueue(files[next], index: next, sourceID: source.id, root: root, into: &group)
                     next += 1
@@ -152,6 +153,7 @@ struct LibraryScanner: Sendable {
                 processed += 1
                 if fromCache { cacheHits += 1 }
                 progress(ScanProgress(phase: .metadata, processed: processed, total: total))
+                if processed % 10 == 0 { await cache.flush() } // remote reads are slow; keep progress often
                 if next < files.count {
                     enqueueRemote(files[next], index: next, sourceID: source.id, client: client, into: &group)
                     next += 1
