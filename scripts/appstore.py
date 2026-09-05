@@ -70,7 +70,7 @@ AGE_RATING = {
     "contests": "NONE",
     "gamblingSimulated": "NONE",
     "gunsOrOtherWeapons": "NONE",
-    "healthOrWellnessTopics": "NONE",
+    "healthOrWellnessTopics": False,
     "horrorOrFearThemes": "NONE",
     "matureOrSuggestiveThemes": "NONE",
     "medicalOrTreatmentInformation": "NONE",
