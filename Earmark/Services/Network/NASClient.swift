@@ -101,60 +101,66 @@ final class NASClient: @unchecked Sendable {
 
     // MARK: - Reading
 
-    /// Streams `length` bytes from `offset`; `onChunk` returns false to stop early.
+    /// Read chunk size. Each chunk is a bounded SMB read that runs to completion; we only ever
+    /// stop *between* chunks. Aborting a libsmb2 read mid-stream (returning false from AMSMB2's
+    /// streaming callbacks) crashed on device with a use-after-free in `read_cb`.
+    static let chunkSize: Int64 = 1_048_576
+
+    /// Delivers `length` bytes from `offset` in bounded chunks; `onChunk` returns false to stop
+    /// after the current chunk.
     func read(_ relativePath: String, offset: Int64, length: Int64, onChunk: @escaping @Sendable (Data) -> Bool) async throws {
         try await ensureConnected()
-        let remaining = OSAllocatedUnfairLock(initialState: length)
         let remote = server.remotePath(for: relativePath)
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            manager.contents(atPath: remote, offset: offset, fetchedData: { _, _, data in
-                let slice: Data? = remaining.withLock { left in
-                    guard left > 0 else { return nil }
-                    let take = Int(min(Int64(data.count), left))
-                    left -= Int64(take)
-                    return take == data.count ? data : data.prefix(take)
-                }
-                guard let slice else { return false }
-                let keepGoing = onChunk(slice)
-                return keepGoing && remaining.withLock { $0 > 0 }
-            }, completionHandler: { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
-            })
+        var position = offset
+        let end = offset + length
+        while position < end {
+            let chunkEnd = min(end, position + Self.chunkSize)
+            let data = try await manager.contents(atPath: remote, range: position..<chunkEnd, progress: nil)
+            if data.isEmpty { break }
+            position += Int64(data.count)
+            if !onChunk(data) { break }
+            if Int64(data.count) < chunkEnd - (position - Int64(data.count)) { break } // short read = EOF
         }
     }
 
-    /// Whole small files (cover images). Refuses anything over `maxBytes`.
+    /// Whole small files (cover images, tag headers). Never reads past `maxBytes`.
     func readAll(_ relativePath: String, maxBytes: Int64 = 25_000_000) async throws -> Data {
-        let collected = OSAllocatedUnfairLock(initialState: Data())
-        try await read(relativePath, offset: 0, length: maxBytes) { chunk in
-            collected.withLock { $0.append(chunk) }
-            return true
-        }
-        return collected.withLock { $0 }
+        try await ensureConnected()
+        let remote = server.remotePath(for: relativePath)
+        return try await manager.contents(atPath: remote, range: Int64(0)..<maxBytes, progress: nil)
     }
 
     // MARK: - Downloading
 
-    /// Copies a remote file to a local URL, reporting (bytes, total); return false from `progress` to cancel.
+    /// Copies a remote file to a local URL in bounded chunks, reporting (bytes, total); return
+    /// false from `progress` to cancel between chunks.
     func download(_ relativePath: String, to localURL: URL, progress: @escaping @Sendable (Int64, Int64) -> Bool) async throws {
         try await ensureConnected()
         try FileManager.default.createDirectory(at: localURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let remote = server.remotePath(for: relativePath)
+        let total = try await fileSize(relativePath)
         let sw = Stopwatch()
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            manager.downloadItem(atPath: remote, to: localURL, progress: progress) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
-                }
+        FileManager.default.createFile(atPath: localURL.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: localURL)
+        defer { try? handle.close() }
+        let remote = server.remotePath(for: relativePath)
+        var position: Int64 = 0
+        while position < total {
+            let chunkEnd = min(total, position + Self.chunkSize * 4)
+            let data = try await manager.contents(atPath: remote, range: position..<chunkEnd, progress: nil)
+            if data.isEmpty { break }
+            try handle.write(contentsOf: data)
+            position += Int64(data.count)
+            if !progress(position, total) {
+                throw CancellationError()
             }
         }
-        Logger.nas.info("[nas] downloaded \(relativePath, privacy: .public) in \(sw.seconds, format: .fixed(precision: 1))s")
+        Logger.nas.info("[nas] downloaded \(relativePath, privacy: .public) \(position) bytes in \(sw.seconds, format: .fixed(precision: 1))s")
+    }
+
+    func fileSize(_ relativePath: String) async throws -> Int64 {
+        try await ensureConnected()
+        let attrs = try await manager.attributesOfItem(atPath: server.remotePath(for: relativePath))
+        return (attrs[.fileSizeKey] as? NSNumber)?.int64Value ?? (attrs[.fileSizeKey] as? Int64) ?? 0
     }
 
     // MARK: - AVFoundation bridge

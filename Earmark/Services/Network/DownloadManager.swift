@@ -152,6 +152,11 @@ final class DownloadManager {
                 try FileManager.default.moveItem(at: partial, to: destination)
                 done += file.size
                 update(job.id) { $0.doneBytes = done }
+            } catch is CancellationError {
+                try? FileManager.default.removeItem(at: partial)
+                update(job.id) { $0.state = .cancelled }
+                Logger.downloads.info("[downloads] cancelled \(book.title, privacy: .public)")
+                return
             } catch {
                 try? FileManager.default.removeItem(at: partial)
                 Logger.downloads.error("[downloads] failed \(file.remote, privacy: .public): \(error.localizedDescription, privacy: .public)")
