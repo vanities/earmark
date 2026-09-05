@@ -24,12 +24,14 @@
 		3EEBE763303B22E8E1DF4574 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 865231380D0FAD86ADF60709 /* PrivacyInfo.xcprivacy */; };
 		43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD632FF90D5B26691454004 /* DuplicatesView.swift */; };
 		460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */; };
+		52B95B9DFF6E6BEAC1EFC712 /* PlaybackAudioProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */; };
 		53406C677A959DAEC0FA9D63 /* DuplicateFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */; };
 		53C1D700C302D5DB6385CA15 /* NASSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5721CF982CD099319BA150D /* NASSetupView.swift */; };
 		56462B7A6E95C5FB03115A80 /* RoutePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C69D2873FA693457F574DB5 /* RoutePickerView.swift */; };
 		56D848C9D4236C5B79568674 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3E28E8D16340B9AFD1E8F80 /* DownloadManager.swift */; };
 		5ABD03D05251F2037C706E79 /* LibraryStateCompatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEC263012AC9050C84B7BDB /* LibraryStateCompatTests.swift */; };
 		5D0244837C62F5C0525249F8 /* PlayerSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE056FF40D4D5AE2F9BDC5B6 /* PlayerSheets.swift */; };
+		5DEB6B9E1B8DCCBDDBB6B28F /* SilenceGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ED8B718298C42A17D2AA118 /* SilenceGateTests.swift */; };
 		667D28B426ECD4C26731841A /* BookGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4318C49E54FDB7B284984534 /* BookGrouper.swift */; };
 		6F8D6EBFB6792D7B83659D92 /* AuthorShelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3457D77DB1151DAFB56F79 /* AuthorShelfView.swift */; };
 		7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7A3575E89FE9701132A68 /* Chapter.swift */; };
@@ -133,6 +135,7 @@
 		3C57B260908E128DE2B07322 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
 		4318C49E54FDB7B284984534 /* BookGrouper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookGrouper.swift; sourceTree = "<group>"; };
 		45A581851B7063C9FA6A72FB /* String+Natural.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Natural.swift"; sourceTree = "<group>"; };
+		48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackAudioProcessor.swift; sourceTree = "<group>"; };
 		4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
 		4C32B20761401506F2E5104B /* BookmarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkStore.swift; sourceTree = "<group>"; };
 		4EA9C1B59012131A51DF6716 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
@@ -142,6 +145,7 @@
 		597D893ECB9BAFC906BA9061 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track.swift; sourceTree = "<group>"; };
 		5C69D2873FA693457F574DB5 /* RoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePickerView.swift; sourceTree = "<group>"; };
 		5DFF0FA0AB57CFA5C1612B67 /* raven.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = raven.mp3; sourceTree = "<group>"; };
+		5ED8B718298C42A17D2AA118 /* SilenceGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceGateTests.swift; sourceTree = "<group>"; };
 		622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingController.swift; sourceTree = "<group>"; };
 		63EF2B848B1A36EDA036BF9F /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
 		692A485EFDE03BB1D9D10A80 /* BookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailView.swift; sourceTree = "<group>"; };
@@ -322,6 +326,7 @@
 			children = (
 				3643A3F6C6C35669E6BFFAC5 /* AudioSessionManager.swift */,
 				622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */,
+				48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */,
 				27B3D8FEA19546CFA173987A /* PlayerEngine.swift */,
 			);
 			path = Playback;
@@ -447,6 +452,7 @@
 				ECEC263012AC9050C84B7BDB /* LibraryStateCompatTests.swift */,
 				733FE2BA19BAE04E429DD74D /* NameParserTests.swift */,
 				9A93D89577F53EEDBAAAAA2E /* QuickTagReaderTests.swift */,
+				5ED8B718298C42A17D2AA118 /* SilenceGateTests.swift */,
 				10518312DDC7F76E5CCF837D /* Fixtures */,
 			);
 			path = EarmarkTests;
@@ -572,6 +578,7 @@
 				5ABD03D05251F2037C706E79 /* LibraryStateCompatTests.swift in Sources */,
 				BC7DACEF8F6E6F0BEC8CD474 /* NameParserTests.swift in Sources */,
 				CD57393E50706A383CCB9C61 /* QuickTagReaderTests.swift in Sources */,
+				5DEB6B9E1B8DCCBDDBB6B28F /* SilenceGateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -623,6 +630,7 @@
 				53C1D700C302D5DB6385CA15 /* NASSetupView.swift in Sources */,
 				96452920141A5BF5A62DB5E3 /* NameParser.swift in Sources */,
 				460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */,
+				52B95B9DFF6E6BEAC1EFC712 /* PlaybackAudioProcessor.swift in Sources */,
 				89C8384597C8D3CE0D5A588C /* PlaybackProgress.swift in Sources */,
 				D5CE1A01B633A8DE08F66D1D /* PlayerEngine.swift in Sources */,
 				5D0244837C62F5C0525249F8 /* PlayerSheets.swift in Sources */,

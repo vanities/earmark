@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryModel.self) private var library
+    @Environment(PlayerEngine.self) private var player
 
     var body: some View {
         @Bindable var settings = settings
@@ -42,6 +43,21 @@ struct SettingsView: View {
                     Text("Speed")
                 } footer: {
                     Text("New books start at the default speed. With per-book memory on, each book keeps the speed you last used for it.")
+                }
+
+                Section {
+                    Toggle("Skip Silence", isOn: $settings.skipSilence)
+                        .onChange(of: settings.skipSilence) { player.applyPlaybackEffects() }
+                    Picker("Volume Boost", selection: $settings.volumeBoost) {
+                        ForEach(AppSettings.boostChoices, id: \.self) { boost in
+                            Text(boost == 1 ? "Off" : TransportControls.speedLabel(boost)).tag(boost)
+                        }
+                    }
+                    .onChange(of: settings.volumeBoost) { player.applyPlaybackEffects() }
+                } header: {
+                    Text("Audio")
+                } footer: {
+                    Text("Skip Silence races through quiet gaps so a book finishes sooner. Volume Boost lifts quiet narration, with a limiter so it never clips. Both work on downloaded and streamed books.")
                 }
 
                 Section {

@@ -60,6 +60,7 @@ final class PlayerEngine {
     @ObservationIgnored private var itemGeneration = 0
     @ObservationIgnored private var didFinishCurrentBook = false
     @ObservationIgnored private var currentLoader: SMBResourceLoader?
+    @ObservationIgnored private let audioProcessor = PlaybackAudioProcessor()
 
     init(library: LibraryModel, settings: AppSettings) {
         self.library = library
@@ -67,6 +68,11 @@ final class PlayerEngine {
         player.automaticallyWaitsToMinimizeStalling = false
         AudioSessionManager.configure()
         installObservers()
+        audioProcessor.onRateChange = { [weak self] rate in
+            // Only nudge the rate while actually playing; never resume a paused book.
+            guard let self, self.isPlaying else { return }
+            self.player.rate = rate
+        }
     }
 
     // MARK: - Derived state
@@ -175,6 +181,7 @@ final class PlayerEngine {
         player.automaticallyWaitsToMinimizeStalling = source.isRemote
         let item = AVPlayerItem(asset: source.asset)
         item.audioTimePitchAlgorithm = .timeDomain
+        attachAudioProcessor(to: item, asset: source.asset, generation: generation)
         if source.isRemote { item.preferredForwardBufferDuration = 30 }
 
         statusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] _, _ in
@@ -398,12 +405,40 @@ final class PlayerEngine {
 
     // MARK: - Speed
 
+    /// Routes the current item through the volume-boost / skip-silence tap. No-op on failure, so a
+    /// book always plays even if the effect can't attach.
+    private func attachAudioProcessor(to item: AVPlayerItem, asset: AVAsset, generation: Int) {
+        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed)
+        // Only build the (CPU-touching) tap when an effect is actually on.
+        guard settings.volumeBoost != 1 || settings.skipSilence else { return }
+        Task { [weak self] in
+            guard let track = try? await asset.loadTracks(withMediaType: .audio).first else { return }
+            await MainActor.run {
+                guard let self, generation == self.itemGeneration,
+                      self.player.currentItem === item,
+                      let mix = self.audioProcessor.makeAudioMix(for: track) else { return }
+                item.audioMix = mix
+            }
+        }
+    }
+
+    /// Pushes the latest boost / skip-silence settings to the live tap (called when the user changes
+    /// them in Settings). If the current item has no tap yet and an effect just turned on, reattach.
+    func applyPlaybackEffects() {
+        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed)
+        if let item = player.currentItem, item.audioMix == nil, (settings.volumeBoost != 1 || settings.skipSilence) {
+            attachAudioProcessor(to: item, asset: item.asset, generation: itemGeneration)
+        }
+        notify()
+    }
+
     func setSpeed(_ value: Float) {
         let range = AppSettings.speedRange
         let clamped = (min(max(value, range.lowerBound), range.upperBound) * 100).rounded() / 100
         speed = clamped
         player.defaultRate = clamped
         if isPlaying { player.rate = clamped }
+        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: clamped)
         if let book, settings.rememberSpeedPerBook {
             library.setSpeed(clamped, for: book.id)
         }

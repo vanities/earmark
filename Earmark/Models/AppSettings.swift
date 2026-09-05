@@ -32,6 +32,7 @@ final class AppSettings {
     static let skipIntervalChoices: [TimeInterval] = [5, 10, 15, 20, 30, 45, 60, 90]
     static let speedPresets: [Float] = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
     static let speedRange: ClosedRange<Float> = 0.5...3.0
+    static let boostChoices: [Float] = [1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
 
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -47,6 +48,10 @@ final class AppSettings {
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
     var libraryLayout: LibraryLayout { didSet { defaults.set(libraryLayout.rawValue, forKey: Key.layout) } }
     var showFinishedBooks: Bool { didSet { defaults.set(showFinishedBooks, forKey: Key.showFinished) } }
+    /// Amplifies quiet narration. 1.0 = untouched; up to 3x with a limiter to avoid clipping.
+    var volumeBoost: Float { didSet { defaults.set(volumeBoost, forKey: Key.volumeBoost) } }
+    /// Speeds through silent gaps in real time (Smart Speed).
+    var skipSilence: Bool { didSet { defaults.set(skipSilence, forKey: Key.skipSilence) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -61,6 +66,8 @@ final class AppSettings {
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinishedBooks = defaults.object(forKey: Key.showFinished) as? Bool ?? true
+        volumeBoost = defaults.object(forKey: Key.volumeBoost) as? Float ?? 1.0
+        skipSilence = defaults.object(forKey: Key.skipSilence) as? Bool ?? false
     }
 
     private enum Key {
@@ -75,5 +82,7 @@ final class AppSettings {
         static let sort = "library.sort"
         static let layout = "library.layout"
         static let showFinished = "library.showFinished"
+        static let volumeBoost = "playback.volumeBoost"
+        static let skipSilence = "playback.skipSilence"
     }
 }
