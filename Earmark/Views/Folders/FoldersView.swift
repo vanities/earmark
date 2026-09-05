@@ -263,6 +263,10 @@ struct SourceDetailView: View {
                     MoveIntoEarmarkButton(source: source)
                         .padding(.horizontal)
                 }
+                if (source.kind == .appDocuments || source.kind == .folder), !library.nasServers.isEmpty {
+                    MirrorToNASButton(source: source)
+                        .padding(.horizontal)
+                }
                 if !unsupported.isEmpty {
                     DisclosureGroup {
                         ForEach(unsupported, id: \.self) { path in
@@ -293,6 +297,70 @@ struct SourceDetailView: View {
         }
         .navigationDestination(for: Book.self) { book in
             BookDetailView(book: book, openPlayer: {})
+        }
+    }
+}
+
+struct MirrorToNASButton: View {
+    @Environment(DownloadManager.self) private var downloads
+    @Environment(LibraryModel.self) private var library
+    let source: LibrarySource
+    @State private var confirming: LibrarySource?
+
+    var body: some View {
+        let books = downloads.mirrorable(in: source)
+        let bytes = books.reduce(Int64(0)) { $0 + $1.totalBytes }
+        let serverName = downloads.mirrorServerID.flatMap { library.server(id: $0)?.name } ?? "NAS"
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                confirming = source
+            } label: {
+                Label(books.isEmpty ? "All Backed Up to \(serverName)" : "Mirror to \(serverName)", systemImage: "arrow.up.doc.on.clipboard")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(books.isEmpty)
+            if !books.isEmpty {
+                Text("\(books.count) book\(books.count == 1 ? "" : "s") · \(bytes.byteCountString). Uploads to \(serverName), one at a time, keeping your files here. Books already on the NAS are skipped.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .mirrorConfirmation(source: $confirming)
+    }
+}
+
+extension View {
+    func mirrorConfirmation(source: Binding<LibrarySource?>) -> some View {
+        modifier(MirrorConfirmationModifier(source: source))
+    }
+}
+
+private struct MirrorConfirmationModifier: ViewModifier {
+    @Environment(DownloadManager.self) private var downloads
+    @Environment(LibraryModel.self) private var library
+    @Binding var source: LibrarySource?
+
+    func body(content: Content) -> some View {
+        let books = source.map { downloads.mirrorable(in: $0) } ?? []
+        let bytes = books.reduce(Int64(0)) { $0 + $1.totalBytes }
+        let serverName = downloads.mirrorServerID.flatMap { library.server(id: $0)?.name } ?? "NAS"
+        content.confirmationDialog(
+            "Mirror \(books.count) book\(books.count == 1 ? "" : "s") (\(bytes.byteCountString)) to \(serverName)?",
+            isPresented: Binding(get: { source != nil }, set: { if !$0 { source = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(books.isEmpty ? "Nothing to Mirror" : "Mirror All") {
+                if let source { _ = downloads.mirrorAll(from: source) }
+                source = nil
+            }
+            .disabled(books.isEmpty)
+            Button("Cancel", role: .cancel) { source = nil }
+        } message: {
+            Text("Each book is uploaded to \(serverName), one at a time. Your local copies stay where they are; books already on the NAS are skipped. Keep Earmark open while it runs.")
         }
     }
 }
@@ -333,7 +401,7 @@ struct DownloadJobRow: View {
                 Spacer()
                 switch job.state {
                 case .queued: Text("Queued").font(.caption).foregroundStyle(.secondary)
-                case .running: Text("\(job.kind == .move ? "Moving" : "Downloading") \(Int(job.fraction * 100))%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                case .running: Text("\(job.kind == .move ? "Moving" : job.kind == .mirror ? "Uploading" : "Downloading") \(Int(job.fraction * 100))%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                 case .cancelled: Text("Cancelled").font(.caption).foregroundStyle(.secondary)

@@ -25,6 +25,12 @@ extension LibraryModel {
             .sorted { (progress[$0.id]?.lastPlayedAt ?? .distantPast) > (progress[$1.id]?.lastPlayedAt ?? .distantPast) }
     }
 
+    /// A remote (NAS) book mirroring the same relative path as a local one, if any.
+    func remoteTwin(of book: Book) -> Book? {
+        guard !isRemote(book) else { return nil }
+        return books.first { isRemote($0) && $0.relativePath == book.relativePath }
+    }
+
     func book(id: String) -> Book? {
         books.first { $0.id == id }
     }

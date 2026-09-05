@@ -10,11 +10,12 @@ import os
 final class DownloadManager {
     struct Job: Identifiable, Equatable, Codable {
         enum State: String, Equatable, Codable { case queued, running, done, failed, cancelled }
-        enum Kind: String, Equatable, Codable { case download, move }
+        enum Kind: String, Equatable, Codable { case download, move, mirror }
         let id: UUID
         let bookID: String
         let title: String
         var kind: Kind = .download
+        var serverID: UUID?
         var totalBytes: Int64
         var doneBytes: Int64 = 0
         var state: State = .queued
@@ -214,6 +215,38 @@ final class DownloadManager {
         return books.count
     }
 
+    // MARK: Mirroring local books up to the NAS
+
+    /// The NAS this phone mirrors to (its first configured server), if any.
+    var mirrorServerID: UUID? { library.nasServers.first?.id }
+
+    /// Local books not already present on the NAS (by relative path) and not already queued.
+    func mirrorable(in source: LibrarySource) -> [Book] {
+        guard source.kind == .appDocuments || source.kind == .folder, mirrorServerID != nil else { return [] }
+        return library.books(inSource: source.id).filter { book in
+            library.remoteTwin(of: book) == nil && !(job(for: book.id)?.isActive ?? false)
+        }
+    }
+
+    func mirror(_ book: Book, to serverID: UUID) {
+        if let existing = job(for: book.id), existing.isActive { return }
+        jobs.removeAll { $0.bookID == book.id && !$0.isActive }
+        var job = Job(id: UUID(), bookID: book.id, title: book.title, kind: .mirror, totalBytes: max(book.totalBytes, 1))
+        job.serverID = serverID
+        jobs.append(job)
+        Logger.downloads.info("[downloads] queued mirror \(book.title, privacy: .public) bytes=\(book.totalBytes)")
+        runNext()
+    }
+
+    /// "Mirror to NAS": upload every local book that isn't on the NAS yet, one at a time.
+    func mirrorAll(from source: LibrarySource) -> Int {
+        guard let serverID = mirrorServerID else { return 0 }
+        let books = mirrorable(in: source)
+        Logger.downloads.info("[downloads] mirror from \(source.displayName, privacy: .public): \(books.count) books")
+        for book in library.sorted(books, by: .author) { mirror(book, to: serverID) }
+        return books.count
+    }
+
     func cancel(_ jobID: UUID) {
         cancelled.withLock { _ = $0.insert(jobID) }
         if let index = jobs.firstIndex(where: { $0.id == jobID }), jobs[index].state == .queued {
@@ -330,9 +363,83 @@ final class DownloadManager {
         library.rescan(book.sourceID)
     }
 
+    /// Uploads a local book's files to the NAS, skipping any already there at the right size, keeping
+    /// the same relative layout so the mirrored copy groups exactly like the local one.
+    private func performMirror(_ job: Job) async {
+        guard let serverID = job.serverID,
+              let book = library.book(id: job.bookID),
+              let root = library.rootURL(for: book.sourceID),
+              let client = library.client(forServer: serverID) else {
+            update(job.id) { $0.state = .failed; $0.error = "This book or the NAS isn't available." }
+            return
+        }
+        let background = UIApplication.shared.beginBackgroundTask(withName: "earmark.mirror")
+        defer { UIApplication.shared.endBackgroundTask(background) }
+        let sw = Stopwatch()
+        let fileManager = FileManager.default
+
+        var relatives = book.tracks.map(\.relativePath)
+        let folders = Set(book.tracks.map { ($0.relativePath as NSString).deletingLastPathComponent })
+        for folder in folders {
+            let folderURL = root.appending(path: folder)
+            if let names = try? fileManager.contentsOfDirectory(atPath: folderURL.path) {
+                for name in names where AudioFileTypes.images.contains((name as NSString).pathExtension.lowercased()) {
+                    relatives.append(folder.isEmpty ? name : folder + "/" + name)
+                }
+            }
+        }
+        let files: [(url: URL, rel: String, size: Int64)] = relatives.map { rel in
+            let url = root.appending(path: rel)
+            let size = Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            return (url, rel, size)
+        }
+        update(job.id) { $0.totalBytes = max(1, files.reduce(0) { $0 + $1.size }) }
+
+        var done: Int64 = 0
+        for file in files {
+            if cancelled.withLock({ $0.contains(job.id) }) {
+                update(job.id) { $0.state = .cancelled }
+                return
+            }
+            if let remoteSize = await client.remoteSizeIfExists(file.rel), remoteSize == file.size {
+                done += file.size
+                update(job.id) { $0.doneBytes = done }
+                continue
+            }
+            let base = done
+            let jobID = job.id
+            let cancelled = self.cancelled
+            do {
+                try await client.upload(file.url, to: file.rel) { written, _ in
+                    Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + written } }
+                    return !cancelled.withLock { $0.contains(jobID) }
+                }
+            } catch is CancellationError {
+                update(job.id) { $0.state = .cancelled }
+                return
+            } catch {
+                Logger.downloads.error("[downloads] mirror upload failed \(file.url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                update(job.id) { $0.state = .failed; $0.error = "Couldn't upload \(file.url.lastPathComponent): \(error.localizedDescription)" }
+                return
+            }
+            done += file.size
+            update(job.id) { $0.doneBytes = done }
+        }
+        update(job.id) { $0.state = .done; $0.doneBytes = $0.totalBytes }
+        Logger.downloads.info("[downloads] mirrored \(book.title, privacy: .public) files=\(files.count) in \(sw.seconds, format: .fixed(precision: 1))s")
+        // Surface the mirrored book as a remote twin (hidden in the shelf while the local copy exists).
+        if let nasSource = library.sources.first(where: { $0.serverID == serverID }) {
+            library.rescan(nasSource.id)
+        }
+    }
+
     private func perform(_ job: Job) async {
         if job.kind == .move {
             await performMove(job)
+            return
+        }
+        if job.kind == .mirror {
+            await performMirror(job)
             return
         }
         guard let book = library.book(id: job.bookID), let client = library.client(for: book) else {

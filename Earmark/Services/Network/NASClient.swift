@@ -164,6 +164,38 @@ final class NASClient: @unchecked Sendable {
         Logger.nas.info("[nas] downloaded \(relativePath, privacy: .public) \(position) bytes in \(sw.seconds, format: .fixed(precision: 1))s")
     }
 
+    // MARK: - Uploading
+
+    /// Uploads a local file to `relativePath` on the share, creating parent folders first and
+    /// clearing any partial remote file so the write starts clean. Reports (bytes, total); return
+    /// false from `progress` to stop (AMSMB2 aborts the transfer).
+    func upload(_ localURL: URL, to relativePath: String, progress: @escaping @Sendable (Int64, Int64) -> Bool) async throws {
+        try await ensureConnected()
+        let remote = server.remotePath(for: relativePath)
+        try await ensureDirectory((remote as NSString).deletingLastPathComponent)
+        let total = Int64((try? localURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        try? await manager.removeItem(atPath: remote)
+        let sw = Stopwatch()
+        try await manager.uploadItem(at: localURL, toPath: remote) { written in progress(written, total) }
+        Logger.nas.info("[nas] uploaded \(relativePath, privacy: .public) \(total) bytes in \(sw.seconds, format: .fixed(precision: 1))s")
+    }
+
+    /// Size of a remote file, or nil when it isn't there (used to skip files already mirrored).
+    func remoteSizeIfExists(_ relativePath: String) async -> Int64? {
+        guard let size = try? await fileSize(relativePath), size > 0 else { return nil }
+        return size
+    }
+
+    /// Creates each level of a directory path, ignoring "already exists".
+    private func ensureDirectory(_ dir: String) async throws {
+        guard !dir.isEmpty else { return }
+        var path = ""
+        for comp in dir.split(separator: "/").map(String.init) {
+            path = path.isEmpty ? comp : path + "/" + comp
+            try? await manager.createDirectory(atPath: path)
+        }
+    }
+
     func fileSize(_ relativePath: String) async throws -> Int64 {
         try await ensureConnected()
         let attrs = try await manager.attributesOfItem(atPath: server.remotePath(for: relativePath))
