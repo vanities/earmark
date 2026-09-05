@@ -8,6 +8,10 @@ struct PlaybackProgress: Codable, Hashable, Sendable {
     var lastPlayedAt: Date?
     var startedAt: Date?
     var isFinished = false
+    /// When the book was finished (may be backdated by the user). Falls back to `lastPlayedAt`.
+    var finishedAt: Date?
+    /// The listener's rating, 1–5 stars. `nil` = unrated.
+    var rating: Int?
     /// Per-book speed override. `nil` → app default.
     var speed: Float?
 

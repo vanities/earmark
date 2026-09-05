@@ -20,10 +20,12 @@ struct LibraryState: Codable, Sendable {
     var metadataOverrides: [String: BookMetadataOverride] = [:]
     /// Book ID → saved spots. Survives rescans.
     var bookmarks: [String: [Bookmark]] = [:]
+    /// Books finished before/outside the app, for Stats history.
+    var readingLog: [ReadingLogEntry] = []
 
     init(sources: [LibrarySource] = [], books: [Book] = [], progress: [String: PlaybackProgress] = [:],
          hiddenBookIDs: Set<String> = [], lastBookID: String? = nil, nasServers: [NASServer] = [],
-         customArtwork: [String: String] = [:], metadataOverrides: [String: BookMetadataOverride] = [:], bookmarks: [String: [Bookmark]] = [:]) {
+         customArtwork: [String: String] = [:], metadataOverrides: [String: BookMetadataOverride] = [:], bookmarks: [String: [Bookmark]] = [:], readingLog: [ReadingLogEntry] = []) {
         self.sources = sources
         self.books = books
         self.progress = progress
@@ -33,6 +35,7 @@ struct LibraryState: Codable, Sendable {
         self.customArtwork = customArtwork
         self.metadataOverrides = metadataOverrides
         self.bookmarks = bookmarks
+        self.readingLog = readingLog
     }
 
     /// User state worth protecting: anything beyond the always-present Documents source.
@@ -56,6 +59,8 @@ struct LibraryState: Codable, Sendable {
         for (key, value) in old.progress where progress[key] == nil { progress[key] = value }
         for (key, value) in old.customArtwork where customArtwork[key] == nil { customArtwork[key] = value }
         for (key, value) in old.metadataOverrides where metadataOverrides[key] == nil { metadataOverrides[key] = value }
+        let logIDs = Set(readingLog.map(\.id))
+        readingLog.append(contentsOf: old.readingLog.filter { !logIDs.contains($0.id) })
         for (key, oldList) in old.bookmarks {
             var list = bookmarks[key] ?? []
             let known = Set(list.map(\.id))
@@ -67,7 +72,7 @@ struct LibraryState: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, metadataOverrides, bookmarks
+        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, metadataOverrides, bookmarks, readingLog
     }
 
     init(from decoder: any Decoder) throws {
@@ -82,5 +87,6 @@ struct LibraryState: Codable, Sendable {
         customArtwork = try c.decodeIfPresent([String: String].self, forKey: .customArtwork) ?? [:]
         metadataOverrides = try c.decodeIfPresent([String: BookMetadataOverride].self, forKey: .metadataOverrides) ?? [:]
         bookmarks = try c.decodeIfPresent([String: [Bookmark]].self, forKey: .bookmarks) ?? [:]
+        readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
     }
 }

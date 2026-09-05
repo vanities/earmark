@@ -48,6 +48,7 @@ final class LibraryModel {
     private(set) var customArtwork: [String: String] = [:]
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
+    private(set) var readingLog: [ReadingLogEntry] = []
     @ObservationIgnored private let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
@@ -90,6 +91,7 @@ final class LibraryModel {
         customArtwork = state.customArtwork
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
+        readingLog = state.readingLog
         ensureAppDocumentsSource()
         cloudSync.onExternalChange = { [weak self] in self?.mergeCloudProgress() }
         cloudSync.start()
@@ -530,17 +532,72 @@ final class LibraryModel {
         scheduleSave()
     }
 
-    func markFinished(_ bookID: String) {
+    func markFinished(_ bookID: String, on date: Date? = nil) {
         var entry = progress[bookID] ?? PlaybackProgress()
         entry.isFinished = true
-        entry.lastPlayedAt = .now
+        entry.finishedAt = date ?? .now
+        entry.lastPlayedAt = entry.lastPlayedAt ?? (date ?? .now)
         if let book = book(id: bookID), let last = book.tracks.last {
             entry.trackIndex = book.tracks.count - 1
             entry.time = last.duration
         }
         progress[bookID] = entry
-        Logger.library.info("[library] marked finished \(bookID, privacy: .public)")
+        Logger.library.info("[library] marked finished \(bookID, privacy: .public) on \(entry.finishedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "now", privacy: .public)")
         scheduleSave()
+    }
+
+    /// Backdates (or changes) when a finished book was completed, for accurate per-year stats.
+    func setFinishedDate(_ bookID: String, _ date: Date) {
+        var entry = progress[bookID] ?? PlaybackProgress()
+        entry.isFinished = true
+        entry.finishedAt = date
+        progress[bookID] = entry
+        scheduleSave()
+    }
+
+    /// The listener's star rating (1–5, or nil to clear) for a library book.
+    func setRating(_ bookID: String, _ rating: Int?) {
+        var entry = progress[bookID] ?? PlaybackProgress()
+        entry.rating = rating.map { min(5, max(1, $0)) }
+        progress[bookID] = entry
+        scheduleSave()
+    }
+
+    // MARK: - Reading log (books finished outside the app)
+
+    @discardableResult
+    func addReadingLogEntry(title: String, author: String?, finishedAt: Date, rating: Int? = nil, hours: Double? = nil) -> ReadingLogEntry {
+        let entry = ReadingLogEntry(title: title, author: author?.isEmpty == true ? nil : author, finishedAt: finishedAt,
+                                    rating: rating.map { min(5, max(1, $0)) }, hours: hours)
+        readingLog.append(entry)
+        Logger.library.info("[library] logged past book \(title, privacy: .public)")
+        scheduleSave()
+        return entry
+    }
+
+    func updateReadingLogEntry(_ entry: ReadingLogEntry) {
+        guard let index = readingLog.firstIndex(where: { $0.id == entry.id }) else { return }
+        readingLog[index] = entry
+        scheduleSave()
+    }
+
+    func removeReadingLogEntry(_ id: String) {
+        readingLog.removeAll { $0.id == id }
+        scheduleSave()
+    }
+
+    /// Aggregated history for the Stats tab: finished library books plus hand-logged past books.
+    var readingStats: ReadingStats {
+        var items: [ReadingStatsBuilder.Item] = []
+        for book in visibleBooks {
+            guard let entry = progress[book.id], entry.isFinished else { continue }
+            let when = entry.finishedAt ?? entry.lastPlayedAt ?? book.addedAt
+            items.append(.init(finishedAt: when, hours: book.totalDuration / 3600, rating: entry.rating, author: book.author))
+        }
+        for entry in readingLog {
+            items.append(.init(finishedAt: entry.finishedAt, hours: entry.hours ?? 0, rating: entry.rating, author: entry.author))
+        }
+        return ReadingStatsBuilder.build(items)
     }
 
     func resetProgress(_ bookID: String) {
@@ -575,7 +632,7 @@ final class LibraryModel {
     private func persist(pushCloud: Bool) {
         saveTask?.cancel()
         saveTask = nil
-        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, metadataOverrides: metadataOverrides, bookmarks: bookmarks)
+        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
         let store = self.store
         Task.detached(priority: .utility) {
             do {

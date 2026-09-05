@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
-    enum AppTab: Hashable { case library, folders, settings }
+    enum AppTab: Hashable { case library, stats, folders, settings }
 
     @Environment(PlayerEngine.self) private var player
     @State private var selectedTab: AppTab = .library
@@ -26,6 +26,9 @@ struct RootView: View {
         TabView(selection: $selectedTab) {
             Tab("Library", systemImage: "books.vertical.fill", value: .library) {
                 LibraryView(openPlayer: { showPlayer = true })
+            }
+            Tab("Stats", systemImage: "chart.bar.fill", value: .stats) {
+                StatsView()
             }
             Tab("Folders", systemImage: "folder.fill", value: .folders) {
                 FoldersView()
