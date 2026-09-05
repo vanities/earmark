@@ -273,6 +273,45 @@ def cmd_status(asc: Store) -> None:
                 print(f"    screenshots {shot_set['attributes']['screenshotDisplayType']}: {len(shots)} ({', '.join(sorted(set(states)))})")
 
 
+def cmd_submit(asc: Store, dry_run: bool) -> None:
+    """Submit the editable version via reviewSubmissions: find/create → add item → submitted=true."""
+    app = asc.app() or sys.exit("no app record")
+    version = editable_version(asc, app["id"], create=False) or sys.exit("no editable version")
+    attached = (asc.get(f"/v1/appStoreVersions/{version['id']}", {"fields[appStoreVersions]": "versionString", "include": "build", "fields[builds]": "version"}).get("included") or [{}])[0].get("attributes", {}).get("version")
+    print(f"version {version['attributes']['versionString']} build {attached or 'NONE'}")
+    if not attached:
+        sys.exit("no build attached; run attach-build first")
+    if dry_run:
+        print("dry run: not submitting"); return
+    existing = asc.get(f"/v1/apps/{app['id']}/reviewSubmissions", {"filter[platform]": "IOS", "filter[state]": "READY_FOR_REVIEW"})["data"]
+    if existing:
+        submission = existing[0]
+        print(f"  reusing submission {submission['id']}")
+    else:
+        submission = asc.post("/v1/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"}, "relationships": {"app": {"data": {"type": "apps", "id": app["id"]}}}}})["data"]
+        print(f"  ✓ created submission {submission['id']}")
+    items = asc.get(f"/v1/reviewSubmissions/{submission['id']}/items", {"limit": 10}).get("data", [])
+    if not items:
+        asc.post("/v1/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
+            "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": submission["id"]}},
+            "appStoreVersion": {"data": {"type": "appStoreVersions", "id": version["id"]}},
+        }}})
+        print(f"  ✓ added version {version['attributes']['versionString']} to the submission")
+    result = asc.patch_ok(f"/v1/reviewSubmissions/{submission['id']}", {"data": {"type": "reviewSubmissions", "id": submission["id"], "attributes": {"submitted": True}}})
+    report("submitted for review", result)
+
+
+def cmd_submission_status(asc: Store) -> None:
+    app = asc.app() or sys.exit("no app record")
+    for submission in asc.get(f"/v1/apps/{app['id']}/reviewSubmissions", {"filter[platform]": "IOS", "fields[reviewSubmissions]": "state,submittedDate", "limit": 5})["data"]:
+        a = submission["attributes"]
+        print(f"  submission {submission['id'][:8]}… state={a['state']} submitted={str(a.get('submittedDate'))[:19]}")
+        for item in asc.get(f"/v1/reviewSubmissions/{submission['id']}/items", {"fields[reviewSubmissionItems]": "state", "limit": 10}).get("data", []):
+            print(f"    item state={item['attributes']['state']}")
+    for version in asc.get(f"/v1/apps/{app['id']}/appStoreVersions", {"filter[platform]": "IOS", "limit": 3, "fields[appStoreVersions]": "versionString,appVersionState"})["data"]:
+        print(f"  version {version['attributes']['versionString']}: {version['attributes'].get('appVersionState')}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -281,6 +320,8 @@ def main() -> None:
     shots = sub.add_parser("screenshots"); shots.add_argument("directory")
     attach = sub.add_parser("attach-build"); attach.add_argument("build", nargs="?")
     sub.add_parser("status")
+    submit = sub.add_parser("submit"); submit.add_argument("--dry-run", action="store_true")
+    sub.add_parser("submission-status")
     args = parser.parse_args()
     asc = Store(tf.load_env())
     match args.command:
@@ -292,6 +333,8 @@ def main() -> None:
         case "screenshots": cmd_screenshots(asc, Path(args.directory))
         case "attach-build": cmd_attach_build(asc, args.build)
         case "status": cmd_status(asc)
+        case "submit": cmd_submit(asc, args.dry_run)
+        case "submission-status": cmd_submission_status(asc)
 
 
 if __name__ == "__main__":
