@@ -74,6 +74,12 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Version", value: Self.version)
                     LabeledContent("License", value: "GPL-3.0")
+                    Link(destination: URL(string: "https://am2.biz/earmark/support")!) {
+                        Label("Help & Support", systemImage: "questionmark.circle")
+                    }
+                    Link(destination: URL(string: "https://am2.biz/earmark/privacy")!) {
+                        Label("Privacy Policy", systemImage: "hand.raised")
+                    }
                     Link(destination: URL(string: "https://github.com/vanities/earmark")!) {
                         Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
                     }

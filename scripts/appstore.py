@@ -65,20 +65,34 @@ Supported formats: MP3, M4A, M4B, AAC, WAV, AIFF, CAF, FLAC.""",
 }
 
 AGE_RATING = {
+    # Content descriptors: NONE / INFREQUENT_OR_MILD / FREQUENT_OR_INTENSE
     "alcoholTobaccoOrDrugUseOrReferences": "NONE",
     "contests": "NONE",
-    "gambling": False,
     "gamblingSimulated": "NONE",
+    "gunsOrOtherWeapons": "NONE",
+    "healthOrWellnessTopics": "NONE",
     "horrorOrFearThemes": "NONE",
     "matureOrSuggestiveThemes": "NONE",
     "medicalOrTreatmentInformation": "NONE",
     "profanityOrCrudeHumor": "NONE",
     "sexualContentGraphicAndNudity": "NONE",
     "sexualContentOrNudity": "NONE",
-    "unrestrictedWebAccess": False,
     "violenceCartoonOrFantasy": "NONE",
     "violenceRealistic": "NONE",
     "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+    # Capabilities: booleans
+    "advertising": False,
+    "gambling": False,
+    "lootBox": False,
+    "messagingAndChat": False,
+    "parentalControls": False,
+    "socialMedia": False,
+    "socialMediaAgeRestricted": False,
+    "unrestrictedWebAccess": False,
+    "userGeneratedContent": False,
+    "ageAssurance": False,
+    "ageRatingOverride": "NONE",
+    "koreaAgeRatingOverride": "NONE",
 }
 
 REVIEW_NOTES = """Earmark is a local audiobook player. It has no accounts.
@@ -127,7 +141,16 @@ def version_localization(asc: Store, version_id: str) -> dict:
     return asc.post("/v1/appStoreVersionLocalizations", {"data": {"type": "appStoreVersionLocalizations", "attributes": {"locale": LOCALE}, "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": version_id}}}}})["data"]
 
 
-def cmd_setup(asc: Store) -> None:
+def set_review_details(asc: Store, version_id: str, phone: str) -> None:
+    detail = asc.get(f"/v1/appStoreVersions/{version_id}/appStoreReviewDetail").get("data")
+    review_attrs = {"contactFirstName": "Adam", "contactLastName": "Mischke", "contactEmail": "mischke@proton.me", "contactPhone": phone, "demoAccountRequired": False, "notes": REVIEW_NOTES}
+    if detail:
+        report("review contact + notes", asc.patch_ok(f"/v1/appStoreReviewDetails/{detail['id']}", {"data": {"type": "appStoreReviewDetails", "id": detail["id"], "attributes": review_attrs}}))
+    else:
+        report("review contact + notes", asc.post_ok("/v1/appStoreReviewDetails", {"data": {"type": "appStoreReviewDetails", "attributes": review_attrs, "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": version_id}}}}}))
+
+
+def cmd_setup(asc: Store, phone: str | None) -> None:
     app = asc.app() or sys.exit("no app record")
     app_id = app["id"]
     print(f"{app['attributes']['name']} ({app_id})")
@@ -152,16 +175,23 @@ def cmd_setup(asc: Store) -> None:
     if version:
         loc = version_localization(asc, version["id"])
         attrs = {k: COPY[k] for k in ("description", "keywords", "promotionalText", "whatsNew", "supportUrl", "marketingUrl")}
-        report(f"version {version['attributes']['versionString']} copy (description, keywords, URLs)", asc.patch_ok(f"/v1/appStoreVersionLocalizations/{loc['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"], "attributes": attrs}}))
+        result = asc.patch_ok(f"/v1/appStoreVersionLocalizations/{loc['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"], "attributes": attrs}})
+        if "_status" in result and "whatsNew" in result["_text"]:
+            attrs.pop("whatsNew")  # not editable on an app's first version
+            result = asc.patch_ok(f"/v1/appStoreVersionLocalizations/{loc['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"], "attributes": attrs}})
+        report(f"version {version['attributes']['versionString']} copy (description, keywords, URLs)", result)
+        if version["attributes"]["versionString"] != VERSION or version["attributes"].get("releaseType") != "MANUAL":
+            report(f"version string {VERSION}, manual release", asc.patch_ok(f"/v1/appStoreVersions/{version['id']}", {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": VERSION, "releaseType": "MANUAL"}}}))
 
-        detail = asc.get(f"/v1/appStoreVersions/{version['id']}/appStoreReviewDetail").get("data")
-        review_attrs = {"contactFirstName": "Adam", "contactLastName": "Mischke", "contactEmail": "mischke@proton.me", "demoAccountRequired": False, "notes": REVIEW_NOTES}
-        if detail:
-            report("review contact + notes", asc.patch_ok(f"/v1/appStoreReviewDetails/{detail['id']}", {"data": {"type": "appStoreReviewDetails", "id": detail["id"], "attributes": review_attrs}}))
+        if phone:
+            set_review_details(asc, version["id"], phone)
         else:
-            report("review contact + notes", asc.post_ok("/v1/appStoreReviewDetails", {"data": {"type": "appStoreReviewDetails", "attributes": review_attrs, "relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": version["id"]}}}}}))
+            print("  - review contact skipped: pass --phone '+1 555 555 5555' (App Review requires a phone number)")
 
     # Price: free, USA as base territory.
+    if asc.get(f"/v1/apps/{app_id}/appPriceSchedule").get("data"):
+        print("  = price schedule already set")
+        return
     points = asc.get(f"/v1/apps/{app_id}/appPricePoints", {"filter[territory]": "USA", "fields[appPricePoints]": "customerPrice,proceeds", "limit": 200})["data"]
     free = next((p for p in points if float(p["attributes"]["customerPrice"]) == 0.0), None)
     if free:
@@ -221,15 +251,19 @@ def cmd_attach_build(asc: Store, build_number: str | None) -> None:
 def cmd_status(asc: Store) -> None:
     app = asc.app() or sys.exit("no app record")
     print(f"{app['attributes']['name']} ({app['attributes']['bundleId']}) rights={app['attributes'].get('contentRightsDeclaration')}")
-    for info in asc.get(f"/v1/apps/{app['id']}/appInfos", {"fields[appInfos]": "state,appStoreState", "include": "primaryCategory,secondaryCategory"})["data"]:
+    for info in asc.get(f"/v1/apps/{app['id']}/appInfos", {"fields[appInfos]": "state,appStoreState,primaryCategory,secondaryCategory", "include": "primaryCategory,secondaryCategory"})["data"]:
         rel = info.get("relationships", {})
-        print(f"  appInfo state={info['attributes'].get('state') or info['attributes'].get('appStoreState')} primary={rel.get('primaryCategory', {}).get('data', {}) and rel['primaryCategory']['data'].get('id')} secondary={rel.get('secondaryCategory', {}).get('data', {}) and rel['secondaryCategory']['data'].get('id')}")
+        primary = (rel.get("primaryCategory", {}).get("data") or {}).get("id")
+        secondary = (rel.get("secondaryCategory", {}).get("data") or {}).get("id")
+        print(f"  appInfo state={info['attributes'].get('state') or info['attributes'].get('appStoreState')} categories={primary}/{secondary}")
         for loc in asc.get(f"/v1/appInfos/{info['id']}/appInfoLocalizations", {"fields[appInfoLocalizations]": "locale,name,subtitle,privacyPolicyUrl"})["data"]:
             a = loc["attributes"]; print(f"    {a['locale']}: name={a.get('name')!r} subtitle={a.get('subtitle')!r} privacy={a.get('privacyPolicyUrl')}")
-    for version in asc.get(f"/v1/apps/{app['id']}/appStoreVersions", {"filter[platform]": "IOS", "limit": 5, "fields[appStoreVersions]": "versionString,appVersionState,releaseType", "include": "build"})["data"]:
+    for version in asc.get(f"/v1/apps/{app['id']}/appStoreVersions", {"filter[platform]": "IOS", "limit": 5, "fields[appStoreVersions]": "versionString,appVersionState,releaseType,build", "include": "build", "fields[builds]": "version"})["data"]:
         a = version["attributes"]
-        build = (version.get("relationships", {}).get("build", {}).get("data") or {}).get("id")
-        print(f"  version {a['versionString']} state={a.get('appVersionState')} release={a.get('releaseType')} build={'attached' if build else 'none'}")
+        build_id = (version.get("relationships", {}).get("build", {}).get("data") or {}).get("id")
+        build = asc.get(f"/v1/builds/{build_id}", {"fields[builds]": "version"})["data"]["attributes"]["version"] if build_id else None
+        detail = asc.get(f"/v1/appStoreVersions/{version['id']}/appStoreReviewDetail", {"fields[appStoreReviewDetails]": "contactPhone"}).get("data")
+        print(f"  version {a['versionString']} state={a.get('appVersionState')} release={a.get('releaseType')} build={build or 'none'} reviewContact={'set' if detail and detail['attributes'].get('contactPhone') else 'missing phone'}")
         for loc in asc.get(f"/v1/appStoreVersions/{version['id']}/appStoreVersionLocalizations", {"fields[appStoreVersionLocalizations]": "locale,keywords,supportUrl,marketingUrl"})["data"]:
             a = loc["attributes"]; print(f"    {a['locale']}: keywords={a.get('keywords')!r} support={a.get('supportUrl')} marketing={a.get('marketingUrl')}")
             sets = asc.get(f"/v1/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets", {"fields[appScreenshotSets]": "screenshotDisplayType"})["data"]
@@ -242,14 +276,19 @@ def cmd_status(asc: Store) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("setup")
+    setup = sub.add_parser("setup"); setup.add_argument("--phone", help="App Review contact phone, e.g. '+1 555 555 5555'")
+    review = sub.add_parser("review"); review.add_argument("--phone", required=True)
     shots = sub.add_parser("screenshots"); shots.add_argument("directory")
     attach = sub.add_parser("attach-build"); attach.add_argument("build", nargs="?")
     sub.add_parser("status")
     args = parser.parse_args()
     asc = Store(tf.load_env())
     match args.command:
-        case "setup": cmd_setup(asc)
+        case "setup": cmd_setup(asc, args.phone)
+        case "review":
+            app = asc.app() or sys.exit("no app record")
+            version = editable_version(asc, app["id"], create=False) or sys.exit("no editable version")
+            set_review_details(asc, version["id"], args.phone)
         case "screenshots": cmd_screenshots(asc, Path(args.directory))
         case "attach-build": cmd_attach_build(asc, args.build)
         case "status": cmd_status(asc)

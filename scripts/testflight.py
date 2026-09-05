@@ -187,6 +187,48 @@ def cmd_add_tester(asc: ASC, email: str, group_name: str) -> None:
     print(f"added {email} to '{group_name}'")
 
 
+def _ci_runs(asc: ASC, limit: int = 5) -> list[dict]:
+    app = asc.app() or sys.exit("no app record yet")
+    product = asc.get(f"/v1/apps/{app['id']}/ciProduct").get("data") or sys.exit("no Xcode Cloud product yet (create the workflow in Xcode first)")
+    runs: list[dict] = []
+    for workflow in asc.get(f"/v1/ciProducts/{product['id']}/workflows", {"fields[ciWorkflows]": "name"})["data"]:
+        for run in asc.get(f"/v1/ciWorkflows/{workflow['id']}/buildRuns", {"fields[ciBuildRuns]": "number,startedDate,finishedDate,executionProgress,completionStatus,startReason", "limit": limit, "sort": "-number"})["data"]:
+            run["workflowName"] = workflow["attributes"]["name"]
+            runs.append(run)
+    return sorted(runs, key=lambda r: -r["attributes"]["number"])
+
+
+def _ci_issues(asc: ASC, run: dict) -> list[str]:
+    lines: list[str] = []
+    for action in asc.get(f"/v1/ciBuildRuns/{run['id']}/actions", {"fields[ciBuildActions]": "name,actionType,executionProgress,completionStatus"})["data"]:
+        a = action["attributes"]
+        lines.append(f"    action {a['name']} ({a['actionType']}): {a['executionProgress']} {a.get('completionStatus') or ''}")
+        for issue in asc.get(f"/v1/ciBuildActions/{action['id']}/issues", {"fields[ciIssues]": "issueType,message,fileSource,category", "limit": 20})["data"]:
+            i = issue["attributes"]
+            where = (i.get("fileSource") or {}).get("path", "")
+            lines.append(f"      [{i['issueType']}] {i.get('category') or ''} {i['message'][:300]} {where}")
+    return lines
+
+
+def cmd_ci(asc: ASC, wait_minutes: int) -> None:
+    """Show Xcode Cloud runs; with --wait, block until the newest run finishes and print its issues."""
+    deadline = time.time() + wait_minutes * 60
+    while True:
+        runs = _ci_runs(asc)
+        if not runs:
+            print("no build runs yet"); return
+        newest = runs[0]; a = newest["attributes"]
+        if wait_minutes and a["executionProgress"] != "COMPLETE" and time.time() < deadline:
+            print(f"run #{a['number']} {a['executionProgress']}…", flush=True); time.sleep(30); continue
+        break
+    for run in runs:
+        a = run["attributes"]
+        print(f"  run #{a['number']} [{run['workflowName']}] {a['executionProgress']} {a.get('completionStatus') or ''} started={str(a.get('startedDate'))[:19]} reason={a.get('startReason')}")
+    newest = runs[0]
+    if newest["attributes"].get("completionStatus") not in (None, "SUCCEEDED"):
+        print("\n".join(_ci_issues(asc, newest)))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -200,6 +242,8 @@ def main() -> None:
     notes.add_argument("text")
     notes.add_argument("--build")
     sub.add_parser("users")
+    ci = sub.add_parser("ci")
+    ci.add_argument("--wait", type=int, default=0, help="minutes to wait for the newest run to complete")
     add = sub.add_parser("add-tester")
     add.add_argument("--email", required=True)
     add.add_argument("--group", default="Internal Testers")
@@ -213,6 +257,7 @@ def main() -> None:
         case "wait": cmd_wait(asc, args.minutes)
         case "notes": cmd_notes(asc, args.text, args.build)
         case "users": cmd_users(asc)
+        case "ci": cmd_ci(asc, args.wait)
         case "add-tester": cmd_add_tester(asc, args.email, args.group)
 
 
