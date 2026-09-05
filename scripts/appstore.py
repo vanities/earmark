@@ -59,6 +59,7 @@ No accounts, no analytics, no ads, no donation screens. Earmark is free and open
 Supported formats: MP3, M4A, M4B, AAC, WAV, AIFF, CAF, FLAC.""",
     "keywords": "audiobook,audiobooks,player,mp3,m4b,nas,smb,carplay,chapters,folders,offline,library,speed",
     "whatsNew": "First release.",
+    "copyright": "2026 AM2 LLC",
     "supportUrl": f"{SITE}/support",
     "marketingUrl": SITE,
     "privacyPolicyUrl": f"{SITE}/privacy",
@@ -180,8 +181,7 @@ def cmd_setup(asc: Store, phone: str | None) -> None:
             attrs.pop("whatsNew")  # not editable on an app's first version
             result = asc.patch_ok(f"/v1/appStoreVersionLocalizations/{loc['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"], "attributes": attrs}})
         report(f"version {version['attributes']['versionString']} copy (description, keywords, URLs)", result)
-        if version["attributes"]["versionString"] != VERSION or version["attributes"].get("releaseType") != "MANUAL":
-            report(f"version string {VERSION}, manual release", asc.patch_ok(f"/v1/appStoreVersions/{version['id']}", {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": VERSION, "releaseType": "MANUAL"}}}))
+        report(f"version {VERSION}: manual release, copyright", asc.patch_ok(f"/v1/appStoreVersions/{version['id']}", {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": VERSION, "releaseType": "MANUAL", "copyright": COPY["copyright"]}}}))
 
         if phone:
             set_review_details(asc, version["id"], phone)
