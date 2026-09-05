@@ -2,13 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Device builds. Add these after the matching capability is enabled for com.vanities.earmark,
-	     otherwise automatic signing refuses to build:
-	       • com.apple.developer.carplay-audio  — after Apple approves the CarPlay audio request.
-	       • com.apple.developer.ubiquity-kvstore-identifier ($(TeamIdentifierPrefix)$(CFBundleIdentifier))
-	         — after enabling iCloud (Key-value storage) on the App ID in the developer portal.
-	     Now Playing controls and on-device playback work regardless; progress sync stays off until then.
-	       • com.apple.security.application-groups (group.com.vanities.earmark)
-	         — after enabling App Groups on the App ID; until then the widget shows its empty state. -->
+	<!-- CarPlay stays out until Apple approves com.apple.developer.carplay-audio for this App ID.
+	     Now Playing controls in the car work regardless. -->
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.vanities.earmark</string>
+	</array>
 </dict>
 </plist>
