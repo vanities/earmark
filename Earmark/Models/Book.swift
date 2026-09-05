@@ -35,6 +35,10 @@ struct Book: Identifiable, Codable, Hashable, Sendable {
 
     // MARK: Derived
 
+    /// Device-independent identity for cross-device sync. Unlike `id`, it omits the per-install
+    /// source UUID, so the same book on another phone (same file layout) resolves to the same key.
+    var syncKey: String { relativePath.lowercased() }
+
     var totalDuration: TimeInterval { tracks.reduce(0) { $0 + $1.duration } }
 
     var displayAuthor: String { author ?? "Unknown Author" }

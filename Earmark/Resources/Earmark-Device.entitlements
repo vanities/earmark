@@ -2,8 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Device builds. Add com.apple.developer.carplay-audio here after Apple approves
-	     the CarPlay audio entitlement for com.vanities.earmark; until then automatic
-	     signing would refuse to build. Now Playing controls in the car work regardless. -->
+	<!-- Device builds. Add these after the matching capability is enabled for com.vanities.earmark,
+	     otherwise automatic signing refuses to build:
+	       • com.apple.developer.carplay-audio  — after Apple approves the CarPlay audio request.
+	       • com.apple.developer.ubiquity-kvstore-identifier ($(TeamIdentifierPrefix)$(CFBundleIdentifier))
+	         — after enabling iCloud (Key-value storage) on the App ID in the developer portal.
+	     Now Playing controls and on-device playback work regardless; progress sync stays off until then. -->
 </dict>
 </plist>

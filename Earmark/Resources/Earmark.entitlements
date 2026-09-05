@@ -5,5 +5,9 @@
 	<!-- Simulator + (once Apple grants it for the App ID) device. -->
 	<key>com.apple.developer.carplay-audio</key>
 	<true/>
+	<!-- iCloud key-value storage for cross-device listening progress. Works in the simulator now;
+	     enable iCloud on the App ID in the developer portal to add it to device builds too. -->
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 </dict>
 </plist>

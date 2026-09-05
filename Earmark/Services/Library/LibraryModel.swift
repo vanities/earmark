@@ -48,6 +48,7 @@ final class LibraryModel {
     private(set) var customArtwork: [String: String] = [:]
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
+    @ObservationIgnored private let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
 
@@ -90,6 +91,9 @@ final class LibraryModel {
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
         ensureAppDocumentsSource()
+        cloudSync.onExternalChange = { [weak self] in self?.mergeCloudProgress() }
+        cloudSync.start()
+        mergeCloudProgress()
         for source in sources {
             resolveRoot(for: source)
         }
@@ -360,6 +364,7 @@ final class LibraryModel {
         }
         unsupportedFiles[sourceID] = result.unsupportedFiles
         scanStatus[sourceID] = .idle
+        mergeCloudProgress()
         Logger.library.notice("[library] applied scan source=\(self.sourceName(for: sourceID), privacy: .public) books=\(updated.count) files=\(result.fileCount) added=\(added) removed=\(removed)")
         for book in updated.sorted(by: { $0.title.naturallyPrecedes($1.title) }) {
             let series = book.series.map { $0 + (book.seriesIndex.map { " #\(BookDetailView.format($0))" } ?? "") } ?? "-"
@@ -565,7 +570,9 @@ final class LibraryModel {
 
     // MARK: - Persistence
 
-    func save() {
+    func save() { persist(pushCloud: true) }
+
+    private func persist(pushCloud: Bool) {
         saveTask?.cancel()
         saveTask = nil
         let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, metadataOverrides: metadataOverrides, bookmarks: bookmarks)
@@ -577,6 +584,20 @@ final class LibraryModel {
                 Logger.store.error("[store] save failed: \(error.localizedDescription, privacy: .public)")
             }
         }
+        if pushCloud {
+            let snapshot = ProgressSync.cloudSnapshot(local: progress, books: books, existingCloud: cloudSync.load())
+            cloudSync.save(snapshot)
+        }
+    }
+
+    /// Folds any newer progress from other devices into the local library.
+    private func mergeCloudProgress() {
+        let merged = ProgressSync.merged(local: progress, books: books, cloud: cloudSync.load())
+        guard merged != progress else { return }
+        progress = merged
+        Logger.library.info("[library] merged progress from iCloud")
+        persist(pushCloud: false)   // write locally; don't echo the merge straight back
+        onBooksChanged?()
     }
 
     private func scheduleSave() {
