@@ -8,6 +8,7 @@ import os
 final class CloudProgressSync {
     private let store = NSUbiquitousKeyValueStore.default
     private static let key = "progress.v1"
+    private static let logKey = "readinglog.v1"
     private static let maxBytes = 900_000  // KVS caps a value near 1 MB; stay under it.
     private var observer: (any NSObjectProtocol)?
     /// Called when another device changes the store.
@@ -27,6 +28,19 @@ final class CloudProgressSync {
         guard let data = store.data(forKey: Self.key) else { return [:] }
         let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
         return (try? decoder.decode([String: PlaybackProgress].self, from: data)) ?? [:]
+    }
+
+    func loadReadingLog() -> [ReadingLogEntry] {
+        guard let data = store.data(forKey: Self.logKey) else { return [] }
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([ReadingLogEntry].self, from: data)) ?? []
+    }
+
+    func saveReadingLog(_ entries: [ReadingLogEntry]) {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(entries), data.count <= Self.maxBytes else { return }
+        store.set(data, forKey: Self.logKey)
+        store.synchronize()
     }
 
     func save(_ snapshot: [String: PlaybackProgress]) {

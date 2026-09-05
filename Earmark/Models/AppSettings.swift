@@ -52,6 +52,8 @@ final class AppSettings {
     var volumeBoost: Float { didSet { defaults.set(volumeBoost, forKey: Key.volumeBoost) } }
     /// Speeds through silent gaps in real time (Smart Speed).
     var skipSilence: Bool { didSet { defaults.set(skipSilence, forKey: Key.skipSilence) } }
+    /// Books-per-year target shown on the Stats ring. 0 = no goal.
+    var yearlyBookGoal: Int { didSet { defaults.set(yearlyBookGoal, forKey: Key.yearlyGoal) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -68,6 +70,7 @@ final class AppSettings {
         showFinishedBooks = defaults.object(forKey: Key.showFinished) as? Bool ?? true
         volumeBoost = defaults.object(forKey: Key.volumeBoost) as? Float ?? 1.0
         skipSilence = defaults.object(forKey: Key.skipSilence) as? Bool ?? false
+        yearlyBookGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 12
     }
 
     private enum Key {
@@ -84,5 +87,6 @@ final class AppSettings {
         static let showFinished = "library.showFinished"
         static let volumeBoost = "playback.volumeBoost"
         static let skipSilence = "playback.skipSilence"
+        static let yearlyGoal = "stats.yearlyBookGoal"
     }
 }

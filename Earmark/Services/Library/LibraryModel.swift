@@ -644,15 +644,26 @@ final class LibraryModel {
         if pushCloud {
             let snapshot = ProgressSync.cloudSnapshot(local: progress, books: books, existingCloud: cloudSync.load())
             cloudSync.save(snapshot)
+            cloudSync.saveReadingLog(mergedReadingLog(with: cloudSync.loadReadingLog()))
         }
+    }
+
+    /// Union of local and cloud reading-log entries by id (local wins on conflict).
+    private func mergedReadingLog(with cloud: [ReadingLogEntry]) -> [ReadingLogEntry] {
+        var byID = Dictionary(readingLog.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for entry in cloud where byID[entry.id] == nil { byID[entry.id] = entry }
+        return byID.values.sorted { $0.finishedAt > $1.finishedAt }
     }
 
     /// Folds any newer progress from other devices into the local library.
     private func mergeCloudProgress() {
         let merged = ProgressSync.merged(local: progress, books: books, cloud: cloudSync.load())
-        guard merged != progress else { return }
+        let mergedLog = mergedReadingLog(with: cloudSync.loadReadingLog())
+        let logChanged = mergedLog.count != readingLog.count
+        guard merged != progress || logChanged else { return }
         progress = merged
-        Logger.library.info("[library] merged progress from iCloud")
+        if logChanged { readingLog = mergedLog }
+        Logger.library.info("[library] merged progress/reading log from iCloud")
         persist(pushCloud: false)   // write locally; don't echo the merge straight back
         onBooksChanged?()
     }
@@ -860,6 +871,51 @@ final class LibraryModel {
         bookmarks[book.id] = list.isEmpty ? nil : list
         save()
         onBooksChanged?()
+    }
+
+    // MARK: - Import reading history
+
+    private struct HistoryItem: Decodable {
+        var title: String
+        var author: String?
+        var year: Int
+        var month: Int?
+        var rating: Int?
+        var hours: Double?
+    }
+
+    private static func normTitle(_ t: String) -> String {
+        String(t.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
+    }
+
+    /// Imports a reading history (e.g. parsed from a blog): backdates matching library books as
+    /// finished with their rating, and logs the rest as past books. Skips anything already recorded.
+    /// Returns (books backdated, past books logged).
+    @discardableResult
+    func importReadingHistory(_ data: Data) -> (matched: Int, logged: Int) {
+        guard let items = try? JSONDecoder().decode([HistoryItem].self, from: data) else { return (0, 0) }
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = .current
+        let libraryByTitle = Dictionary(books.map { (Self.normTitle($0.title), $0) }, uniquingKeysWith: { a, _ in a })
+        var loggedTitles = Set(readingLog.map { Self.normTitle($0.title) })
+        var matched = 0, logged = 0
+        for item in items {
+            let key = Self.normTitle(item.title)
+            guard !key.isEmpty else { continue }
+            let date = calendar.date(from: DateComponents(year: item.year, month: item.month ?? 6, day: 15)) ?? .now
+            if let book = libraryByTitle[key] ?? books.first(where: { let n = Self.normTitle($0.title); return !n.isEmpty && (n.hasPrefix(key) || key.hasPrefix(n)) }) {
+                if progress[book.id]?.isFinished != true {
+                    markFinished(book.id, on: date)
+                    matched += 1
+                }
+                if let rating = item.rating, progress[book.id]?.rating == nil { setRating(book.id, rating) }
+            } else if !loggedTitles.contains(key) {
+                addReadingLogEntry(title: item.title, author: item.author, finishedAt: date, rating: item.rating, hours: item.hours)
+                loggedTitles.insert(key)
+                logged += 1
+            }
+        }
+        Logger.library.info("[library] imported reading history: matched=\(matched) logged=\(logged)")
+        return (matched, logged)
     }
 
     // MARK: - Files app
