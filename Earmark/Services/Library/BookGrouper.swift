@@ -177,7 +177,13 @@ enum BookGrouper {
     /// Removes a trailing parenthetical an audiobook tag sometimes appends to the author — a series
     /// or "world" name, "(Unabridged)", "(Booktrack)" — that otherwise splits one author into several.
     static func cleanAuthor(_ author: String) -> String {
-        let stripped = author.replacingOccurrences(of: #"\s*\([^)]*\)\s*$"#, with: "", options: .regularExpression)
+        var text = author
+        // "Bobiverse, Book 4 by Dennis E. Taylor" → keep the person after the last " by ".
+        if let byRange = text.range(of: " by ", options: [.caseInsensitive, .backwards]) {
+            let tail = String(text[byRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if NameParser.looksLikePersonName(tail) { text = tail }
+        }
+        let stripped = text.replacingOccurrences(of: #"\s*\([^)]*\)\s*$"#, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return stripped.isEmpty ? author : stripped
     }

@@ -195,8 +195,10 @@ enum NameParser {
         if let g = groups(twoParts, 2) {
             let (a, b) = (g[0], g[1])
             if let knownAuthor {
-                if BookGrouper.namesMatch(a, knownAuthor) { parsed.author = normalizePersonName(a); parsed.title = b; return parsed }
-                if BookGrouper.namesMatch(b, knownAuthor) { parsed.author = normalizePersonName(b); parsed.title = a; return parsed }
+                // Use the clean known author, not the matched segment — the segment may be padded
+                // with series/edition junk ("Bobiverse, Book 4 by Dennis E. Taylor").
+                if BookGrouper.namesMatch(a, knownAuthor) { parsed.author = normalizePersonName(knownAuthor); parsed.title = b; return parsed }
+                if BookGrouper.namesMatch(b, knownAuthor) { parsed.author = normalizePersonName(knownAuthor); parsed.title = a; return parsed }
             }
             let aName = looksLikePersonName(a), bName = looksLikePersonName(b)
             if aName && !bName {

@@ -431,3 +431,23 @@ extension BookGrouperTests {
     }
 }
 
+
+extension BookGrouperTests {
+    // Regression: "Title - Series, Book N by Author" must not make the whole tail the author.
+    func testByAuthorInFilenameResolvesCleanAuthor() {
+        let books = group([
+            file("Bobiverse/Heaven's River - Bobiverse, Book 4 by Dennis E. Taylor.m4b",
+                 title: "Heaven's River", artist: "Dennis E. Taylor", album: "Heaven's River: Bobiverse, Book 4"),
+        ])
+        XCTAssertEqual(books.count, 1)
+        XCTAssertEqual(books[0].author, "Dennis E. Taylor")
+        XCTAssertEqual(books[0].title, "Heaven's River")
+        XCTAssertEqual(books[0].series, "Bobiverse")
+    }
+
+    func testCleanAuthorExtractsNameAfterBy() {
+        XCTAssertEqual(BookGrouper.cleanAuthor("Bobiverse, Book 4 by Dennis E. Taylor"), "Dennis E. Taylor")
+        XCTAssertEqual(BookGrouper.cleanAuthor("Joe Abercrombie (First Law World)"), "Joe Abercrombie")
+        XCTAssertEqual(BookGrouper.cleanAuthor("Neil Gaiman"), "Neil Gaiman")
+    }
+}
