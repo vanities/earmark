@@ -1,5 +1,6 @@
 import Foundation
 import MediaPlayer
+import WidgetKit
 import UIKit
 import os
 
@@ -125,6 +126,9 @@ final class NowPlayingController {
             center.nowPlayingInfo = nil
             artworkImage = nil
             artworkBookID = nil
+            SharedNowPlaying.write(nil)
+            SharedNowPlaying.writeCover(nil)
+            WidgetCenter.shared.reloadAllTimelines()
             return
         }
 
@@ -177,6 +181,32 @@ final class NowPlayingController {
         commands.skipForwardCommand.preferredIntervals = [NSNumber(value: settings.skipForwardInterval)]
         commands.skipBackwardCommand.preferredIntervals = [NSNumber(value: settings.skipBackInterval)]
 
+        publishWidgetSnapshot(book: book)
+
         Logger.nowPlaying.debug("[nowplaying] \(chapter?.title ?? book.title, privacy: .public) elapsed=\(elapsed, format: .fixed(precision: 0)) dur=\(duration, format: .fixed(precision: 0)) playing=\(self.player.isPlaying)")
+    }
+
+    private var lastWidgetSnapshot: NowPlayingSnapshot?
+
+    /// Shares the minimal state the Continue Listening widget draws, and refreshes it — but only when
+    /// something it shows actually changed, so we don't reload the widget on every playback tick.
+    private func publishWidgetSnapshot(book: Book) {
+        let snapshot = NowPlayingSnapshot(
+            bookID: book.id,
+            title: book.title,
+            author: book.displayAuthor,
+            fraction: player.bookFraction,
+            remaining: player.bookRemaining.shortDurationString + " left",
+            isPlaying: player.isPlaying,
+            updatedAt: .now
+        )
+        let coarse: (NowPlayingSnapshot) -> [AnyHashable] = { [$0.bookID, $0.title, $0.isPlaying, Int($0.fraction * 100)] }
+        guard lastWidgetSnapshot.map(coarse) != coarse(snapshot) else { return }
+        lastWidgetSnapshot = snapshot
+        SharedNowPlaying.write(snapshot)
+        if let image = artworkImage, let jpeg = image.jpegData(compressionQuality: 0.8) {
+            SharedNowPlaying.writeCover(jpeg)
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

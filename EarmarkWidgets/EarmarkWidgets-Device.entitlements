@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Add the App Group here after enabling App Groups on both App IDs in the developer portal:
+	       <key>com.apple.security.application-groups</key>
+	       <array><string>group.com.vanities.earmark</string></array>
+	     Until then the widget shows its empty state on device (the app can't share into the group). -->
+</dict>
+</plist>

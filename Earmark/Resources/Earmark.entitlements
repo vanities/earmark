@@ -9,5 +9,10 @@
 	     enable iCloud on the App ID in the developer portal to add it to device builds too. -->
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+	<!-- Shares now-playing state with the widget. Simulator now; enable App Groups on the App ID for device. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.vanities.earmark</string>
+	</array>
 </dict>
 </plist>

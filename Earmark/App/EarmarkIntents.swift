@@ -49,15 +49,7 @@ struct ResumeListeningIntent: AudioPlaybackIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        let env = AppEnvironment.shared
-        if let book = env.player.book {
-            _ = book
-            env.player.play()
-        } else if let id = env.library.lastBookID, let book = env.library.book(id: id) {
-            env.player.load(book, autoplay: true)
-        } else if let book = env.library.inProgressBooks.first ?? env.library.visibleBooks.first {
-            env.player.load(book, autoplay: true)
-        }
+        AppEnvironment.shared.resumePlayback()
         return .result()
     }
 }

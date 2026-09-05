@@ -32,4 +32,21 @@ final class AppEnvironment {
         }
         Logger.library.info("[app] environment ready in \(sw.ms, format: .fixed(precision: 1))ms")
     }
+
+    /// Resume the current book, or the most recent one, or the first available — shared by the
+    /// Resume Siri intent and the widget's deep link.
+    func resumePlayback() {
+        if player.book != nil {
+            player.play()
+        } else if let id = library.lastBookID, let book = library.book(id: id) {
+            player.load(book, autoplay: true)
+        } else if let book = library.inProgressBooks.first ?? library.visibleBooks.first {
+            player.load(book, autoplay: true)
+        }
+    }
+
+    func playBook(id: String) {
+        guard let book = library.book(id: id) else { return }
+        player.load(book, autoplay: true)
+    }
 }

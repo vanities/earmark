@@ -14,6 +14,15 @@ struct EarmarkApp: App {
                 .environment(environment.settings)
                 .environment(environment.downloads)
                 .onOpenURL { url in
+                    if url.scheme == "earmark" {
+                        Logger.library.info("[app] deep link \(url.absoluteString, privacy: .public)")
+                        switch url.host {
+                        case "resume": environment.resumePlayback()
+                        case "book": if let id = url.pathComponents.last { environment.playBook(id: id) }
+                        default: break
+                        }
+                        return
+                    }
                     Logger.library.info("[app] open url \(url.lastPathComponent, privacy: .public)")
                     environment.library.addOpenedFile(url)
                 }
