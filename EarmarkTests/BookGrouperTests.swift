@@ -379,3 +379,55 @@ final class BookGrouperTests: XCTestCase {
         XCTAssertNil(BookGrouper.parseSeriesIndex(from: "2001: A Space Odyssey").0)
     }
 }
+
+extension BookGrouperTests {
+    // Regression: a folder of many numbered .m4b parts is ONE book, not one per file.
+    func testManyM4BPartsInAFolderAreOneBook() {
+        let dir = "Joe Abercrombie The First Law trilogy/Joe Abercrombie - Best Served Cold (Unabridged)"
+        let files = (1...63).map { n in
+            file("\(dir)/\(String(format: "%03d", n)) - Best Served Cold (Unabridged).m4b",
+                 albumArtist: "Joe Abercrombie", album: "Best Served Cold", track: n)
+        }
+        let books = group(files)
+        XCTAssertEqual(books.count, 1, "63 parts should collapse to one book, got \(books.count)")
+        XCTAssertEqual(books[0].title, "Best Served Cold")
+        XCTAssertEqual(books[0].tracks.count, 63)
+    }
+
+    // Regression: loose numbered .m4b parts of one book, sitting beside other books, group by title.
+    func testLooseNumberedM4BPartsGroupByTitle() {
+        let dir = "Joe Abercrombie The First Law trilogy"
+        let books = group([
+            file("\(dir)/The Blade Itself  1.m4b", albumArtist: "Joe Abercrombie", album: "The Blade Itself"),
+            file("\(dir)/The Blade Itself  2.m4b", albumArtist: "Joe Abercrombie", album: "The Blade Itself"),
+            file("\(dir)/The Blade Itself  3.m4b", albumArtist: "Joe Abercrombie", album: "The Blade Itself"),
+            file("\(dir)/A Little Hatred.m4b", albumArtist: "Joe Abercrombie", album: "A Little Hatred"),
+        ])
+        let titles = Set(books.map(\.title))
+        XCTAssertTrue(titles.contains("The Blade Itself"), "titles=\(titles)")
+        XCTAssertTrue(titles.contains("A Little Hatred"))
+        XCTAssertEqual(books.first { $0.title == "The Blade Itself" }?.tracks.count, 3)
+        XCTAssertEqual(books.count, 2, "one 3-part book + one standalone")
+    }
+
+    // Distinct standalone .m4b files in one folder stay separate books.
+    func testDistinctStandaloneM4BsStaySeparate() {
+        let books = group([
+            file("Joe Abercrombie/The Devils.m4b", albumArtist: "Joe Abercrombie", album: "The Devils"),
+            file("Joe Abercrombie/Red Country.m4b", albumArtist: "Joe Abercrombie", album: "Red Country"),
+        ])
+        XCTAssertEqual(books.count, 2)
+    }
+
+    // Regression: a "(First Law World)" tag suffix collapses into the plain author name.
+    func testAuthorParentheticalSuffixCanonicalizes() {
+        let books = group([
+            file("Abercrombie/A Little Hatred.m4b", albumArtist: "Joe Abercrombie", album: "A Little Hatred"),
+            file("Abercrombie/The Heroes.m4b", albumArtist: "Joe Abercrombie (First Law World)", album: "The Heroes"),
+            file("Abercrombie/Red Country.m4b", albumArtist: "Joe Abercrombie (First Law World: Booktrack)", album: "Red Country"),
+        ])
+        let authors = Set(books.compactMap(\.author))
+        XCTAssertEqual(authors, ["Joe Abercrombie"], "authors=\(authors)")
+    }
+}
+

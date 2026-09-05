@@ -81,8 +81,17 @@ enum BookGrouper {
         for (root, files) in filesByRoot.sorted(by: { $0.key.naturallyPrecedes($1.key) }) {
             let m4bs = files.filter { $0.ext == "m4b" }
             let rest = files.filter { $0.ext != "m4b" }
-            for file in m4bs {
-                drafts.append(makeSingleFileBook(file, root: root, siblingCount: files.count, groupKey: file.fileName, input: input))
+            // An .m4b is usually one standalone book — but a folder can hold a multi-part m4b book
+            // (dozens of "NNN - Title.m4b", or "Title 1/2/3.m4b"). Parts that share a book key are one
+            // book; files with distinct keys stay separate books.
+            var m4bByKey: [String: [ScannedFile]] = [:]
+            for file in m4bs { m4bByKey[bookPartKey(file.stem), default: []].append(file) }
+            for (key, groupFiles) in m4bByKey.sorted(by: { $0.key.naturallyPrecedes($1.key) }) {
+                if groupFiles.count == 1 {
+                    drafts.append(makeSingleFileBook(groupFiles[0], root: root, siblingCount: files.count, groupKey: groupFiles[0].fileName, input: input))
+                } else {
+                    drafts.append(makeFolderBook(groupFiles, root: root, groupKey: key, titleOverride: nonGeneric(groupFiles[0].metadata?.album), discByFile: discByFile, input: input))
+                }
             }
             guard !rest.isEmpty else { continue }
             if rest.count == 1 {
@@ -116,6 +125,18 @@ enum BookGrouper {
         canonicalizeAuthors(&books)
         for index in drafts.indices { drafts[index].book = books[index] }
         return drafts.sorted { $0.book.title.naturallyPrecedes($1.book.title) }
+    }
+
+    /// A key equal for numbered parts of the same book ("021 - Best Served Cold",
+    /// "The Blade Itself 1/2/3") and different for distinct titles. Only used to decide whether
+    /// several .m4b files in one folder are one multi-part book or separate books.
+    static func bookPartKey(_ stem: String) -> String {
+        var s = stem
+        s = s.replacingOccurrences(of: #"^\s*\d{1,4}\s*[-._)\]]\s*"#, with: "", options: .regularExpression)          // leading track no.
+        s = s.replacingOccurrences(of: #"(?i)[\s\-_]+(?:part|pt|disc|cd|vol|volume|book|bk|section|sec)?\.?\s*\d{1,4}\s*$"#, with: "", options: .regularExpression) // trailing part no.
+        s = s.replacingOccurrences(of: #"(?i)\s*\((?:un)?abridged\)|\s*\(booktrack\)"#, with: "", options: .regularExpression) // decorations
+        let key = s.normalizedForMatching
+        return key.isEmpty ? stem.normalizedForMatching : key
     }
 
     /// Groups files whose album tags mean the same book: "The E-Myth Revisited (Disc 3)",
@@ -153,7 +174,19 @@ enum BookGrouper {
     }
 
     /// "Robin hobb" and "Robin Hobb" are one person; use the most common spelling everywhere.
+    /// Removes a trailing parenthetical an audiobook tag sometimes appends to the author — a series
+    /// or "world" name, "(Unabridged)", "(Booktrack)" — that otherwise splits one author into several.
+    static func cleanAuthor(_ author: String) -> String {
+        let stripped = author.replacingOccurrences(of: #"\s*\([^)]*\)\s*$"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return stripped.isEmpty ? author : stripped
+    }
+
     static func canonicalizeAuthors(_ books: inout [Book]) {
+        // Strip tag cruft like "Joe Abercrombie (First Law World)" so variants collapse to one author.
+        for index in books.indices {
+            if let author = books[index].author { books[index].author = cleanAuthor(author) }
+        }
         var spellings: [String: [String: Int]] = [:]
         for book in books {
             guard let author = book.author else { continue }
