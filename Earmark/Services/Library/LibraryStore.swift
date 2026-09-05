@@ -23,7 +23,52 @@ struct LibraryStore: Sendable {
     // MARK: Library
 
     func loadLibrary() -> LibraryState {
-        loadJSON(LibraryState.self, named: Self.libraryFile) ?? LibraryState()
+        var current = loadJSON(LibraryState.self, named: Self.libraryFile) ?? LibraryState()
+        // An older build may have moved the library aside as ".corrupt-*" because it couldn't decode
+        // a newer field (that is what cost a test library its NAS server). Merge any such file's user
+        // state back in — current always wins — and rename it so it is only ever considered once.
+        let salvaged = salvageMovedAsideLibraries()
+        guard !salvaged.isEmpty else { return current }
+        let before = (current.sources.count, current.nasServers.count, current.progress.count, current.customArtwork.count)
+        for old in salvaged { current.merge(restoring: old) }
+        let after = (current.sources.count, current.nasServers.count, current.progress.count, current.customArtwork.count)
+        if before != after {
+            Logger.store.warning("[store] restored moved-aside data: sources \(before.0)→\(after.0), nas \(before.1)→\(after.1), progress \(before.2)→\(after.2), covers \(before.3)→\(after.3)")
+            try? saveLibrary(current)
+        }
+        return current
+    }
+
+    /// Decodes every `library.json.corrupt-*` this build can read (newest first) and renames each one
+    /// away from the `.corrupt-` prefix so a later launch never reconsiders it: `.recovered-` when it
+    /// decoded, `.unreadable-` when it did not.
+    private func salvageMovedAsideLibraries() -> [LibraryState] {
+        let prefix = "\(Self.libraryFile).corrupt-"
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? [])
+            .filter { $0.hasPrefix(prefix) }
+            .sorted(by: >)
+        guard !names.isEmpty else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        var salvaged: [LibraryState] = []
+        for name in names {
+            let url = directory.appending(path: name)
+            do {
+                let state = try decoder.decode(LibraryState.self, from: Data(contentsOf: url))
+                Logger.store.warning("[store] salvaged \(name, privacy: .public): sources=\(state.sources.count) nas=\(state.nasServers.count) progress=\(state.progress.count)")
+                if state.hasUserData { salvaged.append(state) }
+                rename(url, name: name, replacing: ".corrupt-", with: ".recovered-")
+            } catch {
+                Logger.store.error("[store] \(name, privacy: .public) still unreadable: \(error.localizedDescription, privacy: .public)")
+                rename(url, name: name, replacing: ".corrupt-", with: ".unreadable-")
+            }
+        }
+        return salvaged
+    }
+
+    private func rename(_ url: URL, name: String, replacing old: String, with new: String) {
+        let dest = directory.appending(path: name.replacingOccurrences(of: old, with: new))
+        try? FileManager.default.moveItem(at: url, to: dest)
     }
 
     func saveLibrary(_ state: LibraryState) throws {

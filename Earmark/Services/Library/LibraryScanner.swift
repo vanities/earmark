@@ -179,29 +179,48 @@ struct LibraryScanner: Sendable {
         return ScanResult(books: books, unsupportedFiles: walk.unsupported, fileCount: total, elapsed: sw.seconds)
     }
 
+    /// Extensions worth sniffing from the header because they are routinely misapplied to MP3 data.
+    /// A file named .mp3/.flac/.wav/.ogg is taken at its word.
+    private static let sniffableExtensions: Set<String> = ["m4b", "m4a", "mp4", "m4v", "aac", "mov"]
+
     private func enqueueRemote(_ file: ScannedFile, index: Int, sourceID: UUID, client: NASClient, into group: inout ThrowingTaskGroup<(Int, AudioMetadata?, Bool, String?), any Error>) {
         let key = "\(sourceID.uuidString)|\(file.relativePath)"
         let cache = cache
         let reader = reader
         group.addTask {
             try Task.checkCancellation()
-            if let cached = await cache.metadata(forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt) {
-                return (index, cached, true, nil)
+            let cached = await cache.entry(forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt)
+            // A full cache hit (tags *and* a container hint) needs no network at all.
+            if let cached, let hint = cached.containerHint {
+                return (index, cached.metadata, true, hint)
             }
-            // Sniff the real container from the header: misnamed files are common ("x.m4b" that is MP3).
+            // Only container extensions get misnamed in practice (an .m4b that is really MP3); a file
+            // called .mp3/.flac/.wav can be trusted, so a hintless cache entry for one is a full hit —
+            // record its extension as the hint and move on without touching the network.
+            if let cached, !Self.sniffableExtensions.contains(file.ext) {
+                await cache.store(cached.metadata, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt, containerHint: file.ext)
+                return (index, cached.metadata, true, file.ext)
+            }
+            // Otherwise read the header and sniff the real container. AVFoundation needs the true type
+            // to stream, and this is the one cheap read that makes a big misnamed .m4b playable.
             let head = (try? await client.readAll(file.relativePath, maxBytes: Int64(QuickTagReader.initialWindow))) ?? Data()
             let container = QuickTagReader.container(of: head) ?? file.ext
+            // Legacy entry with good tags but no hint: keep the tags, backfill the sniffed hint.
+            if let cached {
+                await cache.store(cached.metadata, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt, containerHint: container)
+                return (index, cached.metadata, true, container)
+            }
             var file = file
             file.containerHint = container
             if container == "mp3", let quick = await Self.quickRemoteMP3(file, head: head, client: client) {
-                await cache.store(quick, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt)
+                await cache.store(quick, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt, containerHint: container)
                 return (index, quick, false, container)
             }
             let (asset, loader) = client.makeAsset(relativePath: file.relativePath, size: file.fileSize, containerHint: container)
             defer { _ = loader }
             do {
                 let metadata = try await reader.read(asset: asset, name: file.fileName)
-                await cache.store(metadata, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt)
+                await cache.store(metadata, forKey: key, fileSize: file.fileSize, modifiedAt: file.modifiedAt, containerHint: container)
                 return (index, metadata, false, container)
             } catch {
                 Logger.scan.error("[scan] remote tags failed for \(file.relativePath, privacy: .public) (\(container, privacy: .public)): \(error.localizedDescription, privacy: .public)")

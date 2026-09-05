@@ -72,6 +72,10 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - Logging: `os.Logger` via `Logger.<category>` (`Logger+Earmark.swift`), `[scope]`-prefixed
   messages, timings via `Stopwatch`. Log boundaries, decisions, and every error with its
   inputs. Never log secrets or PII (paths and titles are fine for this personal app).
+- Persisted types (`LibraryState` and everything inside it) must keep decoding files written by
+  older builds: give new fields a default *and* decode them with `decodeIfPresent` (see
+  `LibraryState.init(from:)`), then add a case to `LibraryStateCompatTests`. `LibraryStore` moves an
+  undecodable library aside and restores it once a build can read it again.
 - Heuristics live in `BookGrouper` and are unit-tested. When changing grouping rules, add a
   case to `BookGrouperTests` first.
 - UI is native iOS 26 (Liquid Glass): `tabViewBottomAccessory` mini player,

@@ -12,6 +12,7 @@ from the repo root, or the same names from the environment.
   uv run --script scripts/testflight.py ensure-group      # create an internal group that gets every build
   uv run --script scripts/testflight.py wait [--minutes 20]   # block until the newest build finishes processing
   uv run --script scripts/testflight.py notes "What to test…" [--build 12]
+  uv run --script scripts/testflight.py expire 16 17       # expire builds so testers can't install them
 """
 from __future__ import annotations
 
@@ -170,6 +171,25 @@ def cmd_notes(asc: ASC, text: str, build_number: str | None) -> None:
     print(f"set test notes on build {target['attributes']['version']}")
 
 
+def cmd_expire(asc: ASC, build_numbers: list[str]) -> None:
+    app = asc.app()
+    if not app:
+        sys.exit("no app record")
+    wanted = set(build_numbers)
+    for build in asc.builds(app["id"], limit=50):
+        a = build["attributes"]
+        if a["version"] not in wanted:
+            continue
+        wanted.discard(a["version"])
+        if a.get("expired"):
+            print(f"  build {a['version']} already expired")
+            continue
+        asc.patch(f"/v1/builds/{build['id']}", {"data": {"type": "builds", "id": build["id"], "attributes": {"expired": True}}})
+        print(f"  build {a['version']} expired")
+    for missing in sorted(wanted):
+        print(f"  build {missing} not found")
+
+
 def cmd_users(asc: ASC) -> None:
     for user in asc.get("/v1/users", {"fields[users]": "username,firstName,lastName,roles", "limit": 50})["data"]:
         u = user["attributes"]
@@ -242,6 +262,8 @@ def main() -> None:
     notes.add_argument("text")
     notes.add_argument("--build")
     sub.add_parser("users")
+    expire = sub.add_parser("expire")
+    expire.add_argument("builds", nargs="+", help="build numbers to expire")
     ci = sub.add_parser("ci")
     ci.add_argument("--wait", type=int, default=0, help="minutes to wait for the newest run to complete")
     add = sub.add_parser("add-tester")
@@ -257,6 +279,7 @@ def main() -> None:
         case "wait": cmd_wait(asc, args.minutes)
         case "notes": cmd_notes(asc, args.text, args.build)
         case "users": cmd_users(asc)
+        case "expire": cmd_expire(asc, args.builds)
         case "ci": cmd_ci(asc, args.wait)
         case "add-tester": cmd_add_tester(asc, args.email, args.group)
 
