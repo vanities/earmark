@@ -9,6 +9,7 @@ final class CloudProgressSync {
     private let store = NSUbiquitousKeyValueStore.default
     private static let key = "progress.v1"
     private static let logKey = "readinglog.v1"
+    private static let coverKey = "covers.v1"
     private static let maxBytes = 900_000  // KVS caps a value near 1 MB; stay under it.
     private var observer: (any NSObjectProtocol)?
     /// Called when another device changes the store.
@@ -40,6 +41,17 @@ final class CloudProgressSync {
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(entries), data.count <= Self.maxBytes else { return }
         store.set(data, forKey: Self.logKey)
+        store.synchronize()
+    }
+
+    func loadCoverURLs() -> [String: String] {
+        guard let data = store.data(forKey: Self.coverKey) else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
+
+    func saveCoverURLs(_ map: [String: String]) {
+        guard let data = try? JSONEncoder().encode(map), data.count <= Self.maxBytes else { return }
+        store.set(data, forKey: Self.coverKey)
         store.synchronize()
     }
 

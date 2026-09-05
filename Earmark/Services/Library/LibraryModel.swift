@@ -46,6 +46,8 @@ final class LibraryModel {
     private(set) var nasServers: [NASServer] = []
     private(set) var nasStatus: [UUID: NASStatus] = [:]
     private(set) var customArtwork: [String: String] = [:]
+    private(set) var customCoverURLs: [String: String] = [:]
+    @ObservationIgnored private var coverFetchAttempted: Set<String> = []
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
     private(set) var readingLog: [ReadingLogEntry] = []
@@ -89,6 +91,7 @@ final class LibraryModel {
         lastBookID = state.lastBookID
         nasServers = state.nasServers
         customArtwork = state.customArtwork
+        customCoverURLs = state.customCoverURLs
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
         readingLog = state.readingLog
@@ -632,7 +635,7 @@ final class LibraryModel {
     private func persist(pushCloud: Bool) {
         saveTask?.cancel()
         saveTask = nil
-        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
+        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, customCoverURLs: customCoverURLs, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
         let store = self.store
         Task.detached(priority: .utility) {
             do {
@@ -645,7 +648,15 @@ final class LibraryModel {
             let snapshot = ProgressSync.cloudSnapshot(local: progress, books: books, existingCloud: cloudSync.load())
             cloudSync.save(snapshot)
             cloudSync.saveReadingLog(mergedReadingLog(with: cloudSync.loadReadingLog()))
+            cloudSync.saveCoverURLs(mergedCoverURLs(with: cloudSync.loadCoverURLs()))
         }
+    }
+
+    /// Union of local and cloud custom-cover URLs by book syncKey (local wins on conflict).
+    private func mergedCoverURLs(with cloud: [String: String]) -> [String: String] {
+        var merged = customCoverURLs
+        for (key, value) in cloud where merged[key] == nil { merged[key] = value }
+        return merged
     }
 
     /// Union of local and cloud reading-log entries by id (local wins on conflict).
@@ -659,13 +670,35 @@ final class LibraryModel {
     private func mergeCloudProgress() {
         let merged = ProgressSync.merged(local: progress, books: books, cloud: cloudSync.load())
         let mergedLog = mergedReadingLog(with: cloudSync.loadReadingLog())
+        let mergedCovers = mergedCoverURLs(with: cloudSync.loadCoverURLs())
         let logChanged = mergedLog.count != readingLog.count
-        guard merged != progress || logChanged else { return }
+        let coversChanged = mergedCovers.count != customCoverURLs.count
+        guard merged != progress || logChanged || coversChanged else { return }
         progress = merged
         if logChanged { readingLog = mergedLog }
-        Logger.library.info("[library] merged progress/reading log from iCloud")
+        if coversChanged { customCoverURLs = mergedCovers }
+        Logger.library.info("[library] merged progress/reading log/covers from iCloud")
         persist(pushCloud: false)   // write locally; don't echo the merge straight back
         onBooksChanged?()
+        if coversChanged { fetchSyncedCovers() }
+    }
+
+    /// Downloads any custom cover chosen on another device (synced by URL) that isn't on this one yet.
+    private func fetchSyncedCovers() {
+        for book in books {
+            guard let urlString = customCoverURLs[book.syncKey], let url = URL(string: urlString) else { continue }
+            let haveLocal = customArtwork[book.id].map { ArtworkStore.shared.hasImage(id: $0) } ?? false
+            guard !haveLocal, !coverFetchAttempted.contains(book.syncKey) else { continue }
+            coverFetchAttempted.insert(book.syncKey)
+            let bookID = book.id
+            Task { [weak self] in
+                guard let data = try? await CoverSearch.download(url) else { return }
+                await MainActor.run { [weak self] in
+                    guard let self, let current = self.book(id: bookID) else { return }
+                    _ = self.setCustomArtwork(data, sourceURL: url, for: current)
+                }
+            }
+        }
     }
 
     private func scheduleSave() {
@@ -778,10 +811,11 @@ final class LibraryModel {
 
     /// Saves user-chosen cover art for a book: into the art cache (kept across rescans) and, for
     /// books on this phone, as cover.jpg next to the audio so other apps see it too.
-    func setCustomArtwork(_ data: Data, for book: Book) -> Bool {
+    func setCustomArtwork(_ data: Data, sourceURL: URL? = nil, for book: Book) -> Bool {
         let id = ArtworkStore.shared.id(for: book.id + "|custom")
         guard ArtworkStore.shared.store(imageData: data, id: id) else { return false }
         customArtwork[book.id] = id
+        if let sourceURL { customCoverURLs[book.syncKey] = sourceURL.absoluteString }
         if let index = books.firstIndex(where: { $0.id == book.id }) {
             books[index].artworkID = id
         }

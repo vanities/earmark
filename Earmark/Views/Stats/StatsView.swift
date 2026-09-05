@@ -187,9 +187,12 @@ struct StatsView: View {
             let maxC = max(1, dist.map(\.count).max() ?? 1)
             ForEach(dist.reversed()) { b in
                 HStack(spacing: 8) {
-                    HStack(spacing: 1) {
-                        ForEach(0..<b.stars, id: \.self) { _ in Image(systemName: "star.fill") }
-                    }.font(.caption2).foregroundStyle(.yellow).frame(width: 66, alignment: .leading)
+                    HStack(spacing: 2) {
+                        ForEach(1...5, id: \.self) { i in
+                            Image(systemName: i <= b.stars ? "star.fill" : "star")
+                                .foregroundStyle(i <= b.stars ? .yellow : .secondary.opacity(0.3))
+                        }
+                    }.font(.caption2).frame(width: 86, alignment: .leading)
                     GeometryReader { geo in
                         Capsule().fill(.yellow.opacity(0.8))
                             .frame(width: max(b.count == 0 ? 0 : 8, geo.size.width * CGFloat(animate ? b.count : 0) / CGFloat(maxC)))

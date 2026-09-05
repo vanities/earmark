@@ -89,7 +89,7 @@ struct CoverPickerView: View {
             defer { applying = nil }
             do {
                 let data = try await CoverSearch.download(candidate.fullURL)
-                if library.setCustomArtwork(data, for: book) {
+                if library.setCustomArtwork(data, sourceURL: candidate.fullURL, for: book) {
                     dismiss()
                 } else {
                     errorMessage = "That image couldn't be read."
