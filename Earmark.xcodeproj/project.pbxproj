@@ -47,6 +47,7 @@
 		881955DEEF2FEC0A29D615EA /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 094547DBE76AACD1E58D4ED3 /* RootView.swift */; };
 		893846D33F8A2F70318829D0 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B535F6B51ECA35675979B7 /* AppEnvironment.swift */; };
 		89C8384597C8D3CE0D5A588C /* PlaybackProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004868C0050F08507DC20E10 /* PlaybackProgress.swift */; };
+		8E31C3ACA692E43E26997B8A /* EarmarkIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8AB46399D4EB8BF119A21C /* EarmarkIntents.swift */; };
 		96452920141A5BF5A62DB5E3 /* NameParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF7BE34D0DAEF7BF4976DD4 /* NameParser.swift */; };
 		974A9AF22EAB95E8A846C0E2 /* EditBookDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF5B4DC8D23973CFE456A9AA /* EditBookDetailsView.swift */; };
 		992591671542F4EE7F99A70D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E039F76BC4094453B23E6C1E /* Assets.xcassets */; };
@@ -141,6 +142,7 @@
 		48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackAudioProcessor.swift; sourceTree = "<group>"; };
 		4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
 		4C32B20761401506F2E5104B /* BookmarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkStore.swift; sourceTree = "<group>"; };
+		4C8AB46399D4EB8BF119A21C /* EarmarkIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarmarkIntents.swift; sourceTree = "<group>"; };
 		4EA9C1B59012131A51DF6716 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
 		50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinderTests.swift; sourceTree = "<group>"; };
 		55737A1219DD9B7F7846B451 /* CoverPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPickerView.swift; sourceTree = "<group>"; };
@@ -343,6 +345,7 @@
 			children = (
 				26B535F6B51ECA35675979B7 /* AppEnvironment.swift */,
 				A64354FEC8BAE495A5FABA85 /* EarmarkApp.swift */,
+				4C8AB46399D4EB8BF119A21C /* EarmarkIntents.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -621,6 +624,7 @@
 				53406C677A959DAEC0FA9D63 /* DuplicateFinder.swift in Sources */,
 				43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */,
 				736C0E1F111EAA5C052D24F0 /* EarmarkApp.swift in Sources */,
+				8E31C3ACA692E43E26997B8A /* EarmarkIntents.swift in Sources */,
 				974A9AF22EAB95E8A846C0E2 /* EditBookDetailsView.swift in Sources */,
 				8517AD7736CAB8F19231B70F /* FoldersView.swift in Sources */,
 				9DD0D41C4F266ECFE170B009 /* KeychainStore.swift in Sources */,
