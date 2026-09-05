@@ -9,6 +9,7 @@ struct FoldersView: View {
     @State private var showNASSetup = false
     @State private var sourceToRemove: LibrarySource?
     @State private var syncSource: LibrarySource?
+    @State private var moveSource: LibrarySource?
 
     var body: some View {
         NavigationStack {
@@ -24,6 +25,12 @@ struct FoldersView: View {
                             }
                             Button("Rescan", systemImage: "arrow.clockwise") { library.rescan(source.id) }
                                 .tint(.blue)
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            if source.kind == .folder {
+                                Button("Move In", systemImage: "arrow.right.doc.on.clipboard") { moveSource = source }
+                                    .tint(.green)
+                            }
                         }
                     }
                 } header: {
@@ -69,7 +76,11 @@ struct FoldersView: View {
                             Button("Clear Finished") { downloads.clearFinished() }
                         }
                     } header: {
-                        Text("Downloads")
+                        Text("Transfers")
+                    } footer: {
+                        if downloads.isSyncing {
+                            Text("One at a time. The screen stays awake while transferring. Transfers keep going while Earmark is open or a book is playing; if iOS suspends the app they pause and resume from where they stopped when you return, and iOS may also grant time while the phone is idle.")
+                        }
                     }
                 }
 
@@ -113,6 +124,7 @@ struct FoldersView: View {
                 NASSetupView()
             }
             .syncConfirmation(source: $syncSource)
+            .moveConfirmation(source: $moveSource)
             .confirmationDialog(
                 "Remove \(sourceToRemove?.displayName ?? "folder")?",
                 isPresented: Binding(get: { sourceToRemove != nil }, set: { if !$0 { sourceToRemove = nil } }),
@@ -247,6 +259,10 @@ struct SourceDetailView: View {
                     SyncFromNASButton(source: source)
                         .padding(.horizontal)
                 }
+                if source.kind == .folder {
+                    MoveIntoEarmarkButton(source: source)
+                        .padding(.horizontal)
+                }
                 if !unsupported.isEmpty {
                     DisclosureGroup {
                         ForEach(unsupported, id: \.self) { path in
@@ -317,7 +333,7 @@ struct DownloadJobRow: View {
                 Spacer()
                 switch job.state {
                 case .queued: Text("Queued").font(.caption).foregroundStyle(.secondary)
-                case .running: Text("\(Int(job.fraction * 100))%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                case .running: Text("\(job.kind == .move ? "Moving" : "Downloading") \(Int(job.fraction * 100))%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                 case .cancelled: Text("Cancelled").font(.caption).foregroundStyle(.secondary)
@@ -405,6 +421,68 @@ private struct SyncConfirmationModifier: ViewModifier {
             Button("Cancel", role: .cancel) { source = nil }
         } message: {
             Text("Copies go to On My iPhone › Earmark with the same folder layout. Keep Earmark open, or keep listening, while it downloads; files you already have are skipped.")
+        }
+    }
+}
+
+
+/// "Move All into Earmark": consolidate a picked folder (BookPlayer, Downloads…) into On My iPhone › Earmark.
+struct MoveIntoEarmarkButton: View {
+    @Environment(DownloadManager.self) private var downloads
+    let source: LibrarySource
+    @State private var confirming: LibrarySource?
+
+    var body: some View {
+        let books = downloads.movable(in: source)
+        let bytes = books.reduce(Int64(0)) { $0 + $1.totalBytes }
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                confirming = source
+            } label: {
+                Label(books.isEmpty ? "Nothing Left to Move" : "Move All into Earmark", systemImage: "arrow.right.doc.on.clipboard")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(books.isEmpty)
+            if !books.isEmpty {
+                Text("\(books.count) book\(books.count == 1 ? "" : "s") · \(bytes.byteCountString). Copies into On My iPhone › Earmark, then removes the originals from this folder. Books already in Earmark are skipped and their copies here removed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .moveConfirmation(source: $confirming)
+    }
+}
+
+extension View {
+    func moveConfirmation(source: Binding<LibrarySource?>) -> some View {
+        modifier(MoveConfirmationModifier(source: source))
+    }
+}
+
+private struct MoveConfirmationModifier: ViewModifier {
+    @Environment(DownloadManager.self) private var downloads
+    @Binding var source: LibrarySource?
+
+    func body(content: Content) -> some View {
+        let books = source.map { downloads.movable(in: $0) } ?? []
+        let bytes = books.reduce(Int64(0)) { $0 + $1.totalBytes }
+        content.confirmationDialog(
+            "Move \(books.count) book\(books.count == 1 ? "" : "s") (\(bytes.byteCountString)) into Earmark?",
+            isPresented: Binding(get: { source != nil }, set: { if !$0 { source = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button(books.isEmpty ? "Nothing to Move" : "Move All") {
+                if let source { _ = downloads.moveAll(from: source) }
+                source = nil
+            }
+            .disabled(books.isEmpty)
+            Button("Cancel", role: .cancel) { source = nil }
+        } message: {
+            Text("Each book is copied into On My iPhone › Earmark and verified before its original is deleted from \(source?.displayName ?? "the folder"). Listening progress carries over. Keep Earmark open while it runs.")
         }
     }
 }

@@ -31,6 +31,11 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.vanities.earmark.transfers</string>
 	</array>
 
 	<!-- Expose Documents as "On My iPhone › Earmark" in the Files app, and let other apps

@@ -487,6 +487,22 @@ final class LibraryModel {
         scheduleSave()
     }
 
+    /// The always-present "On My iPhone › Earmark" source.
+    var appDocumentsSource: LibrarySource? {
+        sources.first { $0.kind == .appDocuments }
+    }
+
+    /// Carry listening position from a book that was moved/downloaded to its new local identity.
+    func adoptProgress(from oldBookID: String, to newBookID: String) {
+        guard let entry = progress[oldBookID] else { return }
+        if progress[newBookID] == nil {
+            progress[newBookID] = entry
+            if lastBookID == oldBookID { lastBookID = newBookID }
+            Logger.library.info("[library] adopted progress → \(newBookID, privacy: .public)")
+            scheduleSave()
+        }
+    }
+
     func setCurrentBook(_ bookID: String) {
         lastBookID = bookID
         scheduleSave()

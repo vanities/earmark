@@ -56,6 +56,9 @@ struct BookDetailView: View {
                 if library.isRemote(book) {
                     DownloadButton(book: book)
                         .padding(.horizontal, 24)
+                } else if library.source(for: book)?.kind == .folder {
+                    MoveButton(book: book)
+                        .padding(.horizontal, 24)
                 }
 
                 Button {
@@ -249,6 +252,47 @@ struct DownloadButton: View {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
                 Text("Keeps a copy in On My iPhone › Earmark (\(book.totalBytes.byteCountString)) so it plays without the NAS.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+}
+
+
+struct MoveButton: View {
+    @Environment(DownloadManager.self) private var downloads
+    @Environment(LibraryModel.self) private var library
+    let book: Book
+
+    var body: some View {
+        let job = downloads.job(for: book.id)
+        VStack(spacing: 8) {
+            if let job, job.isActive {
+                ProgressView(value: job.fraction) {
+                    HStack {
+                        Text(job.state == .queued ? "Waiting to move…" : "Moving into Earmark…")
+                        Spacer()
+                        Text("\(Int(job.fraction * 100))%").monospacedDigit()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            } else {
+                Button {
+                    downloads.move(book)
+                } label: {
+                    Label(job?.state == .failed ? "Retry Move" : "Move into Earmark", systemImage: "arrow.right.doc.on.clipboard")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                if let error = job?.error {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+                Text("Moves the files from \(library.sourceName(for: book.sourceID)) into On My iPhone › Earmark (\(book.totalBytes.byteCountString)); progress carries over.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)

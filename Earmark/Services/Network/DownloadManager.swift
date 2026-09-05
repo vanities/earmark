@@ -1,3 +1,4 @@
+import BackgroundTasks
 import Foundation
 import Observation
 import UIKit
@@ -7,11 +8,13 @@ import os
 /// relative folder layout so the local copy groups exactly like the remote one did.
 @MainActor @Observable
 final class DownloadManager {
-    struct Job: Identifiable, Equatable {
-        enum State: Equatable { case queued, running, done, failed, cancelled }
+    struct Job: Identifiable, Equatable, Codable {
+        enum State: String, Equatable, Codable { case queued, running, done, failed, cancelled }
+        enum Kind: String, Equatable, Codable { case download, move }
         let id: UUID
         let bookID: String
         let title: String
+        var kind: Kind = .download
         var totalBytes: Int64
         var doneBytes: Int64 = 0
         var state: State = .queued
@@ -21,14 +24,133 @@ final class DownloadManager {
         var isActive: Bool { state == .queued || state == .running }
     }
 
-    private(set) var jobs: [Job] = []
+    static let backgroundTaskIdentifier = "com.vanities.earmark.transfers"
 
+    /// Persisted to Application Support so a queue survives iOS terminating the suspended app.
+    private(set) var jobs: [Job] = [] {
+        didSet { persistQueue() }
+    }
+
+    @ObservationIgnored private let store = LibraryStore()
+    @ObservationIgnored private var restoring = false
     @ObservationIgnored private let library: LibraryModel
     @ObservationIgnored private var runner: Task<Void, Never>?
     @ObservationIgnored private let cancelled = OSAllocatedUnfairLock(initialState: Set<UUID>())
+    @ObservationIgnored private var attempts: [String: Int] = [:]
+    @ObservationIgnored private var observers: [any NSObjectProtocol] = []
+    @ObservationIgnored private var backgroundTask: BGProcessingTask?
 
     init(library: LibraryModel) {
         self.library = library
+        restoreQueue()
+        registerBackgroundTask()
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.resumeInterrupted(reason: "foreground") }
+        })
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scheduleBackgroundProcessingIfNeeded() }
+        })
+    }
+
+    // MARK: Persistence
+
+    private static let queueFile = "transfers.json"
+
+    private func persistQueue() {
+        guard !restoring else { return }
+        let snapshot = jobs
+        let store = self.store
+        Task.detached(priority: .utility) {
+            try? store.saveJSON(snapshot, named: DownloadManager.queueFile)
+        }
+    }
+
+    /// Jobs that were queued or running when the app died come back as queued; finished ones stay listed.
+    private func restoreQueue() {
+        restoring = true
+        defer { restoring = false }
+        guard var saved = store.loadJSON([Job].self, named: Self.queueFile), !saved.isEmpty else { return }
+        var pending = 0
+        for index in saved.indices where saved[index].state == .running || saved[index].state == .queued {
+            saved[index].state = .queued
+            saved[index].error = nil
+            pending += 1
+        }
+        jobs = saved
+        Logger.downloads.info("[downloads] restored \(saved.count) job(s), \(pending) pending")
+        if pending > 0 {
+            Task { @MainActor [weak self] in self?.runNext() }
+        }
+    }
+
+    // MARK: Keeping transfers alive
+
+    /// Interrupted jobs (iOS suspended us mid-transfer, network blip) go back in the queue, up to 3 tries.
+    private func resumeInterrupted(reason: String) {
+        var requeued = 0
+        for index in jobs.indices where jobs[index].state == .failed {
+            let key = jobs[index].bookID
+            guard (attempts[key] ?? 0) < 3 else { continue }
+            attempts[key, default: 0] += 1
+            jobs[index].state = .queued
+            jobs[index].error = nil
+            requeued += 1
+        }
+        if requeued > 0 {
+            Logger.downloads.info("[downloads] requeued \(requeued) interrupted job(s) on \(reason, privacy: .public)")
+            runNext()
+        }
+    }
+
+    private func updateIdleTimer() {
+        UIApplication.shared.isIdleTimerDisabled = isSyncing
+    }
+
+    private func registerBackgroundTask() {
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.backgroundTaskIdentifier, using: nil) { [weak self] task in
+            guard let task = task as? BGProcessingTask else { return }
+            Task { @MainActor [weak self] in self?.runInBackground(task) }
+        }
+        Logger.downloads.info("[downloads] background task registered=\(registered)")
+    }
+
+    /// Ask iOS for processing time later (typically when idle/charging) if work is pending.
+    private func scheduleBackgroundProcessingIfNeeded() {
+        guard jobs.contains(where: \.isActive) else { return }
+        let request = BGProcessingTaskRequest(identifier: Self.backgroundTaskIdentifier)
+        request.requiresNetworkConnectivity = true
+        request.requiresExternalPower = false
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            Logger.downloads.info("[downloads] background processing scheduled")
+        } catch {
+            Logger.downloads.error("[downloads] background scheduling failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func runInBackground(_ task: BGProcessingTask) {
+        Logger.downloads.info("[downloads] background processing started")
+        backgroundTask = task
+        task.expirationHandler = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                Logger.downloads.info("[downloads] background time expiring — pausing")
+                // Stop the current job between chunks; it resumes from its partial file later.
+                if let running = self.jobs.first(where: { $0.state == .running }) { self.cancel(running.id) }
+                self.scheduleBackgroundProcessingIfNeeded()
+                task.setTaskCompleted(success: false)
+                self.backgroundTask = nil
+            }
+        }
+        resumeInterrupted(reason: "background task")
+        for index in jobs.indices where jobs[index].state == .cancelled && (attempts[jobs[index].bookID] ?? 0) < 3 {
+            jobs[index].state = .queued
+        }
+        runNext()
+        if !jobs.contains(where: \.isActive) {
+            task.setTaskCompleted(success: true)
+            backgroundTask = nil
+        }
     }
 
     func job(for bookID: String) -> Job? {
@@ -68,6 +190,30 @@ final class DownloadManager {
         for job in jobs where job.isActive { cancel(job.id) }
     }
 
+    // MARK: Moving local books into "On My iPhone › Earmark"
+
+    /// Books in a picked folder (BookPlayer, Downloads…) that can be moved into Earmark's own folder.
+    func movable(in source: LibrarySource) -> [Book] {
+        guard source.kind == .folder else { return [] }
+        return library.books(inSource: source.id).filter { !(job(for: $0.id)?.isActive ?? false) }
+    }
+
+    func move(_ book: Book) {
+        guard library.source(for: book)?.kind == .folder else { return }
+        if let existing = job(for: book.id), existing.isActive { return }
+        jobs.removeAll { $0.bookID == book.id && !$0.isActive }
+        jobs.append(Job(id: UUID(), bookID: book.id, title: book.title, kind: .move, totalBytes: max(book.totalBytes, 1)))
+        Logger.downloads.info("[downloads] queued move \(book.title, privacy: .public) bytes=\(book.totalBytes)")
+        runNext()
+    }
+
+    /// "Move All into Earmark": every book in the folder, one at a time.
+    func moveAll(from source: LibrarySource) -> Int {
+        let books = movable(in: source)
+        for book in library.sorted(books, by: .author) { move(book) }
+        return books.count
+    }
+
     func cancel(_ jobID: UUID) {
         cancelled.withLock { _ = $0.insert(jobID) }
         if let index = jobs.firstIndex(where: { $0.id == jobID }), jobs[index].state == .queued {
@@ -80,7 +226,15 @@ final class DownloadManager {
     }
 
     private func runNext() {
-        guard runner == nil, let index = jobs.firstIndex(where: { $0.state == .queued }) else { return }
+        defer { updateIdleTimer() }
+        guard runner == nil, let index = jobs.firstIndex(where: { $0.state == .queued }) else {
+            if runner == nil, let task = backgroundTask, !jobs.contains(where: \.isActive) {
+                task.setTaskCompleted(success: true)
+                backgroundTask = nil
+                Logger.downloads.info("[downloads] background processing finished")
+            }
+            return
+        }
         jobs[index].state = .running
         let job = jobs[index]
         runner = Task { [weak self] in
@@ -95,7 +249,92 @@ final class DownloadManager {
         change(&jobs[index])
     }
 
+    /// Copy → verify sizes → delete originals. Files already present in Earmark's folder with the
+    /// same size are skipped (and their originals removed), which is how duplicates collapse.
+    private func performMove(_ job: Job) async {
+        guard let book = library.book(id: job.bookID), let root = library.rootURL(for: book.sourceID), let local = library.appDocumentsSource else {
+            update(job.id) { $0.state = .failed; $0.error = "This book's folder isn't available." }
+            return
+        }
+        let background = UIApplication.shared.beginBackgroundTask(withName: "earmark.move")
+        defer { UIApplication.shared.endBackgroundTask(background) }
+        let sw = Stopwatch()
+        let fileManager = FileManager.default
+        let documents = LibraryModel.documentsURL
+
+        // Audio files plus any images sitting in the book's folder(s).
+        var relatives = book.tracks.map(\.relativePath)
+        let folders = Set(book.tracks.map { ($0.relativePath as NSString).deletingLastPathComponent })
+        for folder in folders {
+            let folderURL = root.appending(path: folder)
+            if let names = try? fileManager.contentsOfDirectory(atPath: folderURL.path) {
+                for name in names where AudioFileTypes.images.contains((name as NSString).pathExtension.lowercased()) {
+                    relatives.append(folder.isEmpty ? name : folder + "/" + name)
+                }
+            }
+        }
+        let files: [(src: URL, dest: URL, size: Int64)] = relatives.map { rel in
+            let src = root.appending(path: rel)
+            let size = Int64((try? src.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            return (src, documents.appending(path: rel), size)
+        }
+        update(job.id) { $0.totalBytes = max(1, files.reduce(0) { $0 + $1.size }) }
+
+        var done: Int64 = 0
+        for file in files {
+            if cancelled.withLock({ $0.contains(job.id) }) {
+                update(job.id) { $0.state = .cancelled }
+                return
+            }
+            let existing = Int64((try? file.dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1)
+            if existing != file.size {
+                do {
+                    try fileManager.createDirectory(at: file.dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try? fileManager.removeItem(at: file.dest)
+                    try fileManager.copyItem(at: file.src, to: file.dest)
+                } catch {
+                    try? fileManager.removeItem(at: file.dest)
+                    Logger.downloads.error("[downloads] move copy failed \(file.src.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                    update(job.id) { $0.state = .failed; $0.error = "Couldn't copy \(file.src.lastPathComponent): \(error.localizedDescription)" }
+                    return
+                }
+            }
+            done += file.size
+            update(job.id) { $0.doneBytes = done }
+        }
+
+        // Everything is in Earmark's folder now; remove the originals (verify size first).
+        var leftBehind = 0
+        for file in files {
+            let copied = Int64((try? file.dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1)
+            guard copied == file.size else { leftBehind += 1; continue }
+            do { try fileManager.removeItem(at: file.src) } catch { leftBehind += 1 }
+        }
+        for folder in folders.sorted(by: { $0.count > $1.count }) where !folder.isEmpty {
+            let folderURL = root.appending(path: folder)
+            if let names = try? fileManager.contentsOfDirectory(atPath: folderURL.path), names.allSatisfy({ $0.hasPrefix(".") }) {
+                try? fileManager.removeItem(at: folderURL)
+            }
+        }
+        // New identity in the local source; keep the listening position.
+        let groupKey = book.id.split(separator: "|", omittingEmptySubsequences: false).last.map(String.init) ?? ""
+        library.adoptProgress(from: book.id, to: Book.makeID(sourceID: local.id, relativePath: book.relativePath, groupKey: groupKey))
+
+        update(job.id) {
+            $0.state = .done
+            $0.doneBytes = $0.totalBytes
+            if leftBehind > 0 { $0.error = "Copied, but \(leftBehind) original file\(leftBehind == 1 ? "" : "s") couldn't be removed." }
+        }
+        Logger.downloads.info("[downloads] moved \(book.title, privacy: .public) files=\(files.count) leftBehind=\(leftBehind) in \(sw.seconds, format: .fixed(precision: 1))s")
+        library.rescan(local.id)
+        library.rescan(book.sourceID)
+    }
+
     private func perform(_ job: Job) async {
+        if job.kind == .move {
+            await performMove(job)
+            return
+        }
         guard let book = library.book(id: job.bookID), let client = library.client(for: book) else {
             update(job.id) { $0.state = .failed; $0.error = "This book's NAS isn't available." }
             return

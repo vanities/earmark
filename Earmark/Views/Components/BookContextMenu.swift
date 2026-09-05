@@ -4,6 +4,7 @@ import SwiftUI
 struct BookContextMenu: View {
     @Environment(LibraryModel.self) private var library
     @Environment(PlayerEngine.self) private var player
+    @Environment(DownloadManager.self) private var downloads
     let book: Book
 
     var body: some View {
@@ -31,6 +32,11 @@ struct BookContextMenu: View {
             }
         }
         Divider()
+        if library.isRemote(book) {
+            Button("Download to iPhone", systemImage: "arrow.down.circle") { downloads.download(book) }
+        } else if library.source(for: book)?.kind == .folder {
+            Button("Move into Earmark", systemImage: "arrow.right.doc.on.clipboard") { downloads.move(book) }
+        }
         if !library.isRemote(book) {
             Button("Show in Files", systemImage: "folder") {
                 library.revealInFiles(book)
