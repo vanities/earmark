@@ -26,7 +26,6 @@
 		3EEBE763303B22E8E1DF4574 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 865231380D0FAD86ADF60709 /* PrivacyInfo.xcprivacy */; };
 		43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD632FF90D5B26691454004 /* DuplicatesView.swift */; };
 		460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */; };
-		47BC3EFE4FBAA62C0E751B02 /* NowPlayingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8099B37BF7CE43AB8CBEA21 /* NowPlayingSnapshot.swift */; };
 		4CD220CD3B9FE33F451B8FAD /* NowPlayingSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CDA2E1FA42BCA371320D1BD /* NowPlayingSnapshotTests.swift */; };
 		52B95B9DFF6E6BEAC1EFC712 /* PlaybackAudioProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */; };
 		53406C677A959DAEC0FA9D63 /* DuplicateFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */; };
@@ -37,7 +36,6 @@
 		5D0244837C62F5C0525249F8 /* PlayerSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE056FF40D4D5AE2F9BDC5B6 /* PlayerSheets.swift */; };
 		5DEB6B9E1B8DCCBDDBB6B28F /* SilenceGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ED8B718298C42A17D2AA118 /* SilenceGateTests.swift */; };
 		667D28B426ECD4C26731841A /* BookGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4318C49E54FDB7B284984534 /* BookGrouper.swift */; };
-		67AF8363E35C4258A2B4FB4C /* EarmarkWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADA1B2535F3AD13F219B8B7 /* EarmarkWidgetBundle.swift */; };
 		6F8D6EBFB6792D7B83659D92 /* AuthorShelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3457D77DB1151DAFB56F79 /* AuthorShelfView.swift */; };
 		7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7A3575E89FE9701132A68 /* Chapter.swift */; };
 		736C0E1F111EAA5C052D24F0 /* EarmarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64354FEC8BAE495A5FABA85 /* EarmarkApp.swift */; };
@@ -62,7 +60,6 @@
 		A78F5BEAF59C065D7CA8E0D6 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C57B260908E128DE2B07322 /* ProgressBar.swift */; };
 		AB6F08EFFEA0C2C4B16D6C7B /* DuplicateFinderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */; };
 		ACA01A55A610A0839A8F4561 /* LibraryScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2830512E63C478A2F7832BA2 /* LibraryScannerTests.swift */; };
-		B0A7C49BFE9F6253AB819976 /* ContinueListeningWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 674F8D5E4C4B3AF55D400BAB /* ContinueListeningWidget.swift */; };
 		B165416742A5D292ECC8C1FF /* ScrubberView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14AEFB377E556BBE0D2D645 /* ScrubberView.swift */; };
 		B37CF39744F87BA1C59E8779 /* LibraryQueries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7990E564C463C8EE7985A33A /* LibraryQueries.swift */; };
 		B4292618A2466AB51B857F84 /* ArtworkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2DBB1B328833BAC30AD5BC6 /* ArtworkView.swift */; };
@@ -70,7 +67,6 @@
 		B6A1DC3B4A7C7BCBBCD33244 /* AMSMB2 in Frameworks */ = {isa = PBXBuildFile; productRef = F56A508B36B9A9CBCA46A207 /* AMSMB2 */; };
 		B6CBFF04A05D4520855BA824 /* BookMetadataOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64E59C7852D5E60D668A957 /* BookMetadataOverride.swift */; };
 		B8CFFEDA9D238934A4A6AE95 /* Bookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = B55B4E3AF3EE0F9EE6FCB7A6 /* Bookmark.swift */; };
-		B98C06E2C4B97117810FB39C /* EarmarkWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 55976C976612A2E49688DF2E /* EarmarkWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BC7DACEF8F6E6F0BEC8CD474 /* NameParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733FE2BA19BAE04E429DD74D /* NameParserTests.swift */; };
 		C06D1B9DEA6935CEBD606DF7 /* NowPlayingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8099B37BF7CE43AB8CBEA21 /* NowPlayingSnapshot.swift */; };
 		C22F8BA6F00A09953C46DFA2 /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3643A3F6C6C35669E6BFFAC5 /* AudioSessionManager.swift */; };
@@ -103,13 +99,6 @@
 			remoteGlobalIDString = 4023B64D87FB9F7DCB8677CA;
 			remoteInfo = Earmark;
 		};
-		B34898A25DA58EC76FCF2528 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 2E0FED915C47DD28FDB943E8 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 1B22CCFC5AA5870D2A60BFE8;
-			remoteInfo = EarmarkWidgets;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -122,17 +111,6 @@
 				A607C6CF0359985629181990 /* AMSMB2 in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E3E06029A5F91E61356C4B94 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				B98C06E2C4B97117810FB39C /* EarmarkWidgets.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -156,7 +134,6 @@
 		2F42D2B3237B9F8EDB917B4C /* Earmark.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Earmark.entitlements; sourceTree = "<group>"; };
 		2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookMetadataOverrideTests.swift; sourceTree = "<group>"; };
 		2FF7BE34D0DAEF7BF4976DD4 /* NameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameParser.swift; sourceTree = "<group>"; };
-		33E7695EB1983AFE3A6C0968 /* EarmarkWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EarmarkWidgets.entitlements; sourceTree = "<group>"; };
 		3548D15C0779ABA8F894721B /* CarPlayInterface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayInterface.swift; sourceTree = "<group>"; };
 		3643A3F6C6C35669E6BFFAC5 /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
 		36D5C7A19E3B8F86CDA42C4F /* MetadataCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataCache.swift; sourceTree = "<group>"; };
@@ -171,7 +148,6 @@
 		4EA9C1B59012131A51DF6716 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
 		50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinderTests.swift; sourceTree = "<group>"; };
 		55737A1219DD9B7F7846B451 /* CoverPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPickerView.swift; sourceTree = "<group>"; };
-		55976C976612A2E49688DF2E /* EarmarkWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = EarmarkWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Queries.swift"; sourceTree = "<group>"; };
 		597D893ECB9BAFC906BA9061 /* Track.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track.swift; sourceTree = "<group>"; };
 		5C69D2873FA693457F574DB5 /* RoutePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePickerView.swift; sourceTree = "<group>"; };
@@ -179,10 +155,8 @@
 		5ED8B718298C42A17D2AA118 /* SilenceGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceGateTests.swift; sourceTree = "<group>"; };
 		622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingController.swift; sourceTree = "<group>"; };
 		63EF2B848B1A36EDA036BF9F /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStore.swift; sourceTree = "<group>"; };
-		674F8D5E4C4B3AF55D400BAB /* ContinueListeningWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinueListeningWidget.swift; sourceTree = "<group>"; };
 		692A485EFDE03BB1D9D10A80 /* BookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailView.swift; sourceTree = "<group>"; };
 		733FE2BA19BAE04E429DD74D /* NameParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameParserTests.swift; sourceTree = "<group>"; };
-		737CD7532933F770716B7DF7 /* EarmarkWidgets-Device.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "EarmarkWidgets-Device.entitlements"; sourceTree = "<group>"; };
 		791BCCC6B673ACBEB43D546C /* Earmark-Device.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Earmark-Device.entitlements"; sourceTree = "<group>"; };
 		7990E564C463C8EE7985A33A /* LibraryQueries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryQueries.swift; sourceTree = "<group>"; };
 		7E40164280CA9E44346EE942 /* ProgressSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressSyncTests.swift; sourceTree = "<group>"; };
@@ -193,7 +167,6 @@
 		8EB98C6335A7018E5235A76C /* TransportControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransportControls.swift; sourceTree = "<group>"; };
 		94D6CF1F3D54A0E4772BA746 /* BookCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookCardView.swift; sourceTree = "<group>"; };
 		9A93D89577F53EEDBAAAAA2E /* QuickTagReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTagReaderTests.swift; sourceTree = "<group>"; };
-		9ADA1B2535F3AD13F219B8B7 /* EarmarkWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarmarkWidgetBundle.swift; sourceTree = "<group>"; };
 		9BBDEE3EE28DD74DBB044B5D /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		9CDA2E1FA42BCA371320D1BD /* NowPlayingSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingSnapshotTests.swift; sourceTree = "<group>"; };
 		9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryModel.swift; sourceTree = "<group>"; };
@@ -274,7 +247,6 @@
 			children = (
 				1C7DE4A5CA938E53610AB05B /* Earmark.app */,
 				0A2BC799EA823DD553F3B79F /* EarmarkTests.xctest */,
-				55976C976612A2E49688DF2E /* EarmarkWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -285,7 +257,6 @@
 				AB011B9DE92351072B129384 /* Config */,
 				C307836167CE954A66D7E341 /* Earmark */,
 				E2A194C74F4E0DCF8DD23EEA /* EarmarkTests */,
-				78F5F12265B4E54A3DAB5F20 /* EarmarkWidgets */,
 				99B4700BF938E87E07E58FCB /* Shared */,
 				2ECD55EA0A8B041EED1CE472 /* Products */,
 			);
@@ -361,17 +332,6 @@
 				597D893ECB9BAFC906BA9061 /* Track.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		78F5F12265B4E54A3DAB5F20 /* EarmarkWidgets */ = {
-			isa = PBXGroup;
-			children = (
-				674F8D5E4C4B3AF55D400BAB /* ContinueListeningWidget.swift */,
-				9ADA1B2535F3AD13F219B8B7 /* EarmarkWidgetBundle.swift */,
-				737CD7532933F770716B7DF7 /* EarmarkWidgets-Device.entitlements */,
-				33E7695EB1983AFE3A6C0968 /* EarmarkWidgets.entitlements */,
-			);
-			path = EarmarkWidgets;
 			sourceTree = "<group>";
 		};
 		7D55529ED9BD4D071A7718D4 /* Playback */ = {
@@ -527,23 +487,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		1B22CCFC5AA5870D2A60BFE8 /* EarmarkWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = DC3680BAB4A3A2F6966B96F5 /* Build configuration list for PBXNativeTarget "EarmarkWidgets" */;
-			buildPhases = (
-				4BF9D934917CDC97CE746033 /* Sources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = EarmarkWidgets;
-			packageProductDependencies = (
-			);
-			productName = EarmarkWidgets;
-			productReference = 55976C976612A2E49688DF2E /* EarmarkWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		4023B64D87FB9F7DCB8677CA /* Earmark */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F170F9C61E155B2A2C906111 /* Build configuration list for PBXNativeTarget "Earmark" */;
@@ -551,13 +494,11 @@
 				8621CC55D19C854DFE66AB94 /* Sources */,
 				E4A2C9EAE9B8BD65D1800DC2 /* Resources */,
 				99B6306A1360263DD3A883FB /* Frameworks */,
-				E3E06029A5F91E61356C4B94 /* Embed Foundation Extensions */,
 				73275C8F9CD9BA57AEA485F4 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				49F9A970CDCC08DDA5F3E50C /* PBXTargetDependency */,
 			);
 			name = Earmark;
 			packageProductDependencies = (
@@ -595,10 +536,6 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
-					1B22CCFC5AA5870D2A60BFE8 = {
-						DevelopmentTeam = 8Q3RG3ULSU;
-						ProvisioningStyle = Automatic;
-					};
 					4023B64D87FB9F7DCB8677CA = {
 						DevelopmentTeam = 8Q3RG3ULSU;
 						ProvisioningStyle = Automatic;
@@ -627,7 +564,6 @@
 			projectRoot = "";
 			targets = (
 				4023B64D87FB9F7DCB8677CA /* Earmark */,
-				1B22CCFC5AA5870D2A60BFE8 /* EarmarkWidgets */,
 				B95B6CE95F5EEC67991C6EDA /* EarmarkTests */,
 			);
 		};
@@ -671,16 +607,6 @@
 				1C21AD7FFD57A485A68FFE00 /* ProgressSyncTests.swift in Sources */,
 				CD57393E50706A383CCB9C61 /* QuickTagReaderTests.swift in Sources */,
 				5DEB6B9E1B8DCCBDDBB6B28F /* SilenceGateTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4BF9D934917CDC97CE746033 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B0A7C49BFE9F6253AB819976 /* ContinueListeningWidget.swift in Sources */,
-				67AF8363E35C4258A2B4FB4C /* EarmarkWidgetBundle.swift in Sources */,
-				47BC3EFE4FBAA62C0E751B02 /* NowPlayingSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -758,11 +684,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		49F9A970CDCC08DDA5F3E50C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 1B22CCFC5AA5870D2A60BFE8 /* EarmarkWidgets */;
-			targetProxy = B34898A25DA58EC76FCF2528 /* PBXContainerItemProxy */;
-		};
 		7D6EF9A91F50E3FEA161DAD7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 4023B64D87FB9F7DCB8677CA /* Earmark */;
@@ -884,24 +805,6 @@
 			};
 			name = Debug;
 		};
-		6FF763605A1B2D4BE8B5D4D4 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "EarmarkWidgets/EarmarkWidgets-Device.entitlements";
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = EarmarkWidgets/EarmarkWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = EarmarkWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Earmark;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark.widgets;
-				PRODUCT_NAME = EarmarkWidgets;
-				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
 		991EC36D3C0F8BACF5172059 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -991,24 +894,6 @@
 			};
 			name = Debug;
 		};
-		E78C9297D24242088D2B3909 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "EarmarkWidgets/EarmarkWidgets-Device.entitlements";
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = EarmarkWidgets/EarmarkWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = EarmarkWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Earmark;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark.widgets;
-				PRODUCT_NAME = EarmarkWidgets;
-				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
-		};
 		FB1A1E13822962BE60EE82D5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1043,15 +928,6 @@
 			buildConfigurations = (
 				354F9C2C64D928337C4CD6AE /* Debug */,
 				991EC36D3C0F8BACF5172059 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		DC3680BAB4A3A2F6966B96F5 /* Build configuration list for PBXNativeTarget "EarmarkWidgets" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				6FF763605A1B2D4BE8B5D4D4 /* Debug */,
-				E78C9297D24242088D2B3909 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

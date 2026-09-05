@@ -35,20 +35,6 @@
                ReferencedContainer = "container:Earmark.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "1B22CCFC5AA5870D2A60BFE8"
-               BuildableName = "EarmarkWidgets.appex"
-               BlueprintName = "EarmarkWidgets"
-               ReferencedContainer = "container:Earmark.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

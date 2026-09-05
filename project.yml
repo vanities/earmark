@@ -48,8 +48,6 @@ targets:
       # with "Library not loaded: @rpath/AMSMB2.framework/AMSMB2" (the simulator masks this).
       - package: AMSMB2
         embed: true
-      - target: EarmarkWidgets
-        embed: true
     settings:
       base:
         PRODUCT_NAME: Earmark
@@ -70,28 +68,6 @@ targets:
         ENABLE_PREVIEWS: YES
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
 
-  EarmarkWidgets:
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: EarmarkWidgets
-        excludes:
-          - "Info.plist"
-      - path: Shared
-    settings:
-      base:
-        PRODUCT_NAME: EarmarkWidgets
-        PRODUCT_BUNDLE_IDENTIFIER: com.vanities.earmark.widgets
-        GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: EarmarkWidgets/Info.plist
-        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": EarmarkWidgets/EarmarkWidgets.entitlements
-        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": EarmarkWidgets/EarmarkWidgets-Device.entitlements
-        TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_KEY_CFBundleDisplayName: Earmark
-        MARKETING_VERSION: 0.1.0
-        CURRENT_PROJECT_VERSION: 1
-        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
-
   EarmarkTests:
     type: bundle.unit-test
     platform: iOS
@@ -111,7 +87,6 @@ schemes:
     build:
       targets:
         Earmark: all
-        EarmarkWidgets: all
         EarmarkTests: [test]
     run:
       config: Debug

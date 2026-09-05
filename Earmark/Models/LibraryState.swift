@@ -70,7 +70,7 @@ struct LibraryState: Codable, Sendable {
         case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, metadataOverrides, bookmarks
     }
 
-    init(from decoder: Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         sources = try c.decodeIfPresent([LibrarySource].self, forKey: .sources) ?? []
