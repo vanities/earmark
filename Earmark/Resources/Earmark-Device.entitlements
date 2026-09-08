@@ -2,8 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- CarPlay stays out until Apple approves com.apple.developer.carplay-audio for this App ID.
-	     Now Playing controls in the car work regardless. -->
+	<!-- CarPlay audio: granted to the account by Apple (Sep 2026), so it ships on device now. -->
+	<key>com.apple.developer.carplay-audio</key>
+	<true/>
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 	<key>com.apple.security.application-groups</key>
