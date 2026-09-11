@@ -48,6 +48,8 @@ struct SettingsView: View {
                 Section {
                     Toggle("Skip Silence", isOn: $settings.skipSilence)
                         .onChange(of: settings.skipSilence) { player.applyPlaybackEffects() }
+                    Toggle("Boost Quiet Voices", isOn: $settings.boostQuietVoices)
+                        .onChange(of: settings.boostQuietVoices) { player.applyPlaybackEffects() }
                     Picker("Volume Boost", selection: $settings.volumeBoost) {
                         ForEach(AppSettings.boostChoices, id: \.self) { boost in
                             Text(boost == 1 ? "Off" : TransportControls.speedLabel(boost)).tag(boost)
@@ -57,7 +59,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Audio")
                 } footer: {
-                    Text("Skip Silence races through quiet gaps so a book finishes sooner. Volume Boost lifts quiet narration, with a limiter so it never clips. Both work on downloaded and streamed books.")
+                    Text("Skip Silence races through quiet gaps so a book finishes sooner. Boost Quiet Voices evens out loud and soft passages so you can hear it in the car without blasting the loud parts. Volume Boost lifts the whole track. All work on downloaded and streamed books.")
                 }
 
                 Section {

@@ -49,7 +49,9 @@ final class PlaybackAudioProcessor {
         var gain: Float = 1
         var skipSilence = false
         var baseRate: Float = 1
+        var boostQuiet = false          // upward compression: lift quiet narration, tame spikes
         var silenceRate: Float { min(max(baseRate, 1) * 3, 4.0) }
+        var needsTap: Bool { gain != 1 || skipSilence || boostQuiet }
     }
 
     /// Called on the main actor when the rate should change (fast during silence, back to base after).
@@ -58,10 +60,10 @@ final class PlaybackAudioProcessor {
     private let config = OSAllocatedUnfairLock(initialState: Config())
     private weak var activeContext: TapContext?
 
-    func update(gain: Float, skipSilence: Bool, baseRate: Float) {
+    func update(gain: Float, skipSilence: Bool, baseRate: Float, boostQuiet: Bool) {
         let wasSkipping = config.withLock { c -> Bool in
             let was = c.skipSilence
-            c.gain = gain; c.skipSilence = skipSilence; c.baseRate = baseRate
+            c.gain = gain; c.skipSilence = skipSilence; c.baseRate = baseRate; c.boostQuiet = boostQuiet
             return was
         }
         activeContext?.setConfig(currentConfig())
@@ -106,6 +108,7 @@ final class TapContext {
     var isFloat = false
     // silence state (touched only on the audio thread)
     private var gate = SilenceGate()
+    var compEnv: Float = 0          // smoothed envelope for upward compression
 
     init(config: PlaybackAudioProcessor.Config, onRateChange: (@MainActor (Float) -> Void)?) {
         self.config = OSAllocatedUnfairLock(initialState: config)
@@ -132,6 +135,29 @@ final class TapContext {
         case .endedSilence: dispatchRate(cfg.baseRate)
         case nil: break
         }
+    }
+
+    /// Upward compressor: boosts samples below a threshold so quiet narration is audible, with a
+    /// slow release to avoid pumping, then soft-limits so nothing clips. Runs on the audio thread.
+    func compress(_ ptr: UnsafeMutablePointer<Float>, count n: Int) {
+        let sr = Float(sampleRate)
+        let attack = 1 - exp(-1 / (0.003 * sr))   // ~3 ms
+        let release = 1 - exp(-1 / (0.180 * sr))  // ~180 ms
+        let threshold: Float = 0.12               // ~ -18 dBFS
+        let maxGain: Float = 3.2                  // up to ~ +10 dB on the quietest parts
+        var env = compEnv
+        for i in 0..<n {
+            let x = ptr[i]
+            let ax = abs(x)
+            env += (ax > env ? attack : release) * (ax - env)
+            let e = max(env, 1e-4)
+            var g: Float = 1
+            if e < threshold { g = min(maxGain, sqrt(threshold / e)) }   // ratio ~2:1 upward
+            var y = x * g
+            if y > 0.98 { y = 0.98 } else if y < -0.98 { y = -0.98 }
+            ptr[i] = y
+        }
+        compEnv = env
     }
 
     private func dispatchRate(_ rate: Float) {
@@ -180,6 +206,10 @@ private let tapProcess: MTAudioProcessingTapProcessCallback = { tap, numberFrame
         if cfg.gain != 1 {
             var g = cfg.gain
             vDSP_vsmul(ptr, 1, &g, ptr, 1, vDSP_Length(n))
+        }
+        if cfg.boostQuiet, ctx.sampleRate > 0 {
+            ctx.compress(ptr, count: n)   // upward compression + soft limit
+        } else if cfg.gain != 1 {
             var lo: Float = -0.98, hi: Float = 0.98   // limiter — boosted peaks never clip harshly
             vDSP_vclip(ptr, 1, &lo, &hi, ptr, 1, vDSP_Length(n))
         }

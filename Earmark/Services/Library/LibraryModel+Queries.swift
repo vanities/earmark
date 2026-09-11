@@ -31,6 +31,22 @@ extension LibraryModel {
         return books.first { isRemote($0) && $0.relativePath == book.relativePath }
     }
 
+    /// The next unfinished book in the same series (by series index), for the end-of-book "Up Next"
+    /// offer. Returns nil when the book isn't in a series or nothing follows it.
+    func nextInSeries(after book: Book) -> Book? {
+        guard let series = book.series?.normalizedForMatching, !series.isEmpty else { return nil }
+        let author = book.author?.normalizedForMatching
+        let currentIndex = book.seriesIndex ?? -.greatestFiniteMagnitude
+        let candidates = visibleBooks.filter { other in
+            other.id != book.id
+                && other.series?.normalizedForMatching == series
+                && (author == nil || other.author?.normalizedForMatching == author)
+                && !(progress[other.id]?.isFinished ?? false)
+                && (other.seriesIndex ?? -.greatestFiniteMagnitude) > currentIndex
+        }
+        return candidates.min { ($0.seriesIndex ?? .greatestFiniteMagnitude) < ($1.seriesIndex ?? .greatestFiniteMagnitude) }
+    }
+
     func book(id: String) -> Book? {
         books.first { $0.id == id }
     }

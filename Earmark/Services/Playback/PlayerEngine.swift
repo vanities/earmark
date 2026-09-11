@@ -24,6 +24,8 @@ enum SleepTimerMode: Hashable, Sendable {
 @MainActor @Observable
 final class PlayerEngine {
     private(set) var book: Book?
+    /// Set when a book finishes and the next in its series is available — drives the Up Next offer.
+    private(set) var upNext: Book?
     private(set) var trackIndex = 0
     private(set) var currentTime: TimeInterval = 0
     private(set) var trackDuration: TimeInterval = 0
@@ -109,6 +111,7 @@ final class PlayerEngine {
         persistPosition()
         cancelSleepTimer(notify: false)
         book = newBook
+        upNext = nil
         errorMessage = nil
         didFinishCurrentBook = false
         pausedAt = nil
@@ -146,6 +149,7 @@ final class PlayerEngine {
         isRemote = false
         remoteServerName = nil
         book = nil
+        upNext = nil
         isPlaying = false
         isLoading = false
         currentTime = 0
@@ -153,6 +157,15 @@ final class PlayerEngine {
         cancelSleepTimer(notify: false)
         notify()
     }
+
+    /// Accept the Up Next offer: play the next book in the series.
+    func playUpNext() {
+        guard let next = upNext else { return }
+        upNext = nil
+        load(next, autoplay: true)
+    }
+
+    func dismissUpNext() { upNext = nil }
 
     private func loadTrack(index: Int, startAt time: TimeInterval, autoplay: Bool) {
         guard let book, book.tracks.indices.contains(index) else { return }
@@ -408,9 +421,9 @@ final class PlayerEngine {
     /// Routes the current item through the volume-boost / skip-silence tap. No-op on failure, so a
     /// book always plays even if the effect can't attach.
     private func attachAudioProcessor(to item: AVPlayerItem, asset: AVAsset, generation: Int) {
-        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed)
+        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed, boostQuiet: settings.boostQuietVoices)
         // Only build the (CPU-touching) tap when an effect is actually on.
-        guard settings.volumeBoost != 1 || settings.skipSilence else { return }
+        guard settings.volumeBoost != 1 || settings.skipSilence || settings.boostQuietVoices else { return }
         Task { [weak self] in
             guard let track = try? await asset.loadTracks(withMediaType: .audio).first else { return }
             await MainActor.run {
@@ -425,8 +438,8 @@ final class PlayerEngine {
     /// Pushes the latest boost / skip-silence settings to the live tap (called when the user changes
     /// them in Settings). If the current item has no tap yet and an effect just turned on, reattach.
     func applyPlaybackEffects() {
-        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed)
-        if let item = player.currentItem, item.audioMix == nil, (settings.volumeBoost != 1 || settings.skipSilence) {
+        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed, boostQuiet: settings.boostQuietVoices)
+        if let item = player.currentItem, item.audioMix == nil, (settings.volumeBoost != 1 || settings.skipSilence || settings.boostQuietVoices) {
             attachAudioProcessor(to: item, asset: item.asset, generation: itemGeneration)
         }
         notify()
@@ -438,7 +451,7 @@ final class PlayerEngine {
         speed = clamped
         player.defaultRate = clamped
         if isPlaying { player.rate = clamped }
-        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: clamped)
+        audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: clamped, boostQuiet: settings.boostQuietVoices)
         if let book, settings.rememberSpeedPerBook {
             library.setSpeed(clamped, for: book.id)
         }
@@ -530,6 +543,8 @@ final class PlayerEngine {
             currentTime = trackDuration
             didFinishCurrentBook = true
             library.markFinished(book.id)
+            upNext = library.nextInSeries(after: book)
+            if upNext != nil { Logger.player.info("[player] up next: \(self.upNext?.title ?? "-", privacy: .public)") }
             cancelSleepTimer(notify: false)
             AudioSessionManager.deactivate()
             Logger.player.info("[player] finished \(book.title, privacy: .public)")

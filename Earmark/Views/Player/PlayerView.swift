@@ -119,6 +119,17 @@ struct PlayerView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 8)
         }
+        .overlay(alignment: .bottom) {
+            if let next = player.upNext {
+                UpNextCard(book: next,
+                           onPlay: { withAnimation(.snappy) { player.playUpNext() } },
+                           onDismiss: { withAnimation(.snappy) { player.dismissUpNext() } })
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 14)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.45, bounce: 0.2), value: player.upNext?.id)
         .background { PlayerBackdrop(artworkID: book.artworkID) }
     }
 
@@ -136,26 +147,64 @@ struct PlayerView: View {
 }
 
 /// Softly blurred cover art behind the player.
+/// A living backdrop for the player: a 3×3 mesh gradient sampled from the book's cover, its interior
+/// points drifting slowly so the colors breathe. Falls back to the amber theme when there's no art.
 struct PlayerBackdrop: View {
     let artworkID: String?
-    @State private var image: UIImage?
+    @State private var colors: [Color] = PlayerBackdrop.fallback
+
+    static let fallback: [Color] = [
+        Color(.sRGB, red: 1.00, green: 0.80, blue: 0.42), Color(.sRGB, red: 0.97, green: 0.66, blue: 0.28), Color(.sRGB, red: 0.90, green: 0.50, blue: 0.18),
+        Color(.sRGB, red: 0.95, green: 0.58, blue: 0.20), Color(.sRGB, red: 0.86, green: 0.44, blue: 0.14), Color(.sRGB, red: 0.72, green: 0.34, blue: 0.10),
+        Color(.sRGB, red: 0.80, green: 0.40, blue: 0.12), Color(.sRGB, red: 0.62, green: 0.30, blue: 0.09), Color(.sRGB, red: 0.45, green: 0.22, blue: 0.07),
+    ]
 
     var body: some View {
-        ZStack {
-            Color(.systemBackground)
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .blur(radius: 80)
-                    .saturation(1.3)
-                    .opacity(0.45)
-                    .overlay(Color(.systemBackground).opacity(0.25))
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            MeshGradient(width: 3, height: 3, points: Self.points(at: t), colors: colors)
+                .overlay(Color(.systemBackground).opacity(0.34))
+                .ignoresSafeArea()
+        }
+        .task(id: artworkID) {
+            if let image = await ArtworkStore.shared.loadImage(for: artworkID),
+               let sampled = Self.gridColors(from: image), sampled.count == 9 {
+                withAnimation(.easeInOut(duration: 0.9)) { colors = sampled }
+            } else {
+                withAnimation(.easeInOut(duration: 0.9)) { colors = Self.fallback }
             }
         }
-        .ignoresSafeArea()
-        .task(id: artworkID) {
-            image = await ArtworkStore.shared.loadImage(for: artworkID)
+    }
+
+    /// 3×3 control points with the interior (and mid-edges) drifting on slow sines.
+    static func points(at t: TimeInterval) -> [SIMD2<Float>] {
+        let dx = Float(sin(t * 0.22)) * 0.07, dy = Float(cos(t * 0.17)) * 0.07
+        let ex = Float(cos(t * 0.13)) * 0.04
+        return [
+            [0, 0], [0.5 + ex, 0], [1, 0],
+            [0, 0.5 - ex], [0.5 + dx, 0.5 + dy], [1, 0.5 + ex],
+            [0, 1], [0.5 - ex, 1], [1, 1],
+        ]
+    }
+
+    /// Samples a cover into a 3×3 grid of colors, nudged toward vibrancy.
+    static func gridColors(from image: UIImage) -> [Color]? {
+        guard let cg = image.cgImage else { return nil }
+        let n = 3
+        var data = [UInt8](repeating: 0, count: n * n * 4)
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: &data, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n * 4,
+                                  space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: n, height: n))
+        var colors: [Color] = []
+        for i in 0..<(n * n) {
+            var r = Double(data[i * 4]) / 255, g = Double(data[i * 4 + 1]) / 255, b = Double(data[i * 4 + 2]) / 255
+            // gentle saturation/vibrancy lift so muddy covers still read as color
+            let mean = (r + g + b) / 3
+            r = min(1, mean + (r - mean) * 1.35); g = min(1, mean + (g - mean) * 1.35); b = min(1, mean + (b - mean) * 1.35)
+            colors.append(Color(.sRGB, red: r, green: g, blue: b))
         }
+        return colors
     }
 }
