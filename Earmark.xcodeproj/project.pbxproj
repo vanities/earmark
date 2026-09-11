@@ -94,6 +94,7 @@
 		DF0D880DF6FEFC7C288C1EE2 /* LogPastBookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484BF16F202F4CA32414EB12 /* LogPastBookView.swift */; };
 		E519E323BDCBEA02D6554D16 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52A4E75C03AC08D157F6290 /* MiniPlayerView.swift */; };
 		F146BF7B88B4586BEFF29FB6 /* LibrarySource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 009737EB74631A870EB84AA1 /* LibrarySource.swift */; };
+		F4A43E8B629893B20EAB80E1 /* MetadataAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A26B712F61D780EBF9E01F7 /* MetadataAI.swift */; };
 		F9537F231B624DE83E4BEA1E /* raven.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 5DFF0FA0AB57CFA5C1612B67 /* raven.mp3 */; };
 		FA05D4D03FD659F719EAD0D5 /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12BAAFAF14A3482B36D846E6 /* LibraryScanner.swift */; };
 		FC11B7C45BAC120419E782EC /* ProgressSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC544E097532D4DDACF9FADF /* ProgressSync.swift */; };
@@ -149,6 +150,7 @@
 		009737EB74631A870EB84AA1 /* LibrarySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySource.swift; sourceTree = "<group>"; };
 		0313295AD219C8A882927C8D /* TimeInterval+Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TimeInterval+Format.swift"; sourceTree = "<group>"; };
 		094547DBE76AACD1E58D4ED3 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		0A26B712F61D780EBF9E01F7 /* MetadataAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataAI.swift; sourceTree = "<group>"; };
 		0A2BC799EA823DD553F3B79F /* EarmarkTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EarmarkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C6A588CA99CD56CAB8F90A9 /* FormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingTests.swift; sourceTree = "<group>"; };
 		12BAAFAF14A3482B36D846E6 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
@@ -502,6 +504,7 @@
 				5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */,
 				12BAAFAF14A3482B36D846E6 /* LibraryScanner.swift */,
 				63EF2B848B1A36EDA036BF9F /* LibraryStore.swift */,
+				0A26B712F61D780EBF9E01F7 /* MetadataAI.swift */,
 				36D5C7A19E3B8F86CDA42C4F /* MetadataCache.swift */,
 				CD89F1372BCDEC869661AF28 /* MetadataReader.swift */,
 				2FF7BE34D0DAEF7BF4976DD4 /* NameParser.swift */,
@@ -758,6 +761,7 @@
 				DF0D880DF6FEFC7C288C1EE2 /* LogPastBookView.swift in Sources */,
 				3D71630BC6D33F673ECDEF77 /* Logger+Earmark.swift in Sources */,
 				BC0A1AFE6C42A56BC7DAC77E /* MarkFinishedSheet.swift in Sources */,
+				F4A43E8B629893B20EAB80E1 /* MetadataAI.swift in Sources */,
 				FE389CC9C8D9B2B44576B2F7 /* MetadataCache.swift in Sources */,
 				DC573F9124C7D83A64021012 /* MetadataReader.swift in Sources */,
 				E519E323BDCBEA02D6554D16 /* MiniPlayerView.swift in Sources */,

@@ -13,6 +13,7 @@ struct EditBookDetailsView: View {
     @State private var seriesIndex = ""
     @State private var narrator = ""
     @State private var year = ""
+    @State private var thinking = false
 
     /// Live copy so the form reflects any correction already in place.
     private var current: Book { library.book(id: book.id) ?? book }
@@ -21,6 +22,20 @@ struct EditBookDetailsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if MetadataAI.isAvailable {
+                    Section {
+                        Button { Task { await suggestWithAI() } } label: {
+                            HStack {
+                                Label("Suggest with AI", systemImage: "sparkles")
+                                Spacer()
+                                if thinking { ProgressView() }
+                            }
+                        }
+                        .disabled(thinking)
+                    } footer: {
+                        Text("Reads the file name and tags with Apple's on-device model to propose a cleaner title, author, series, and narrator. Private and offline — review before saving.")
+                    }
+                }
                 Section("Book") {
                     labeled("Title", text: $title, prompt: current.title)
                     labeled("Author", text: $author, prompt: "Unknown Author")
@@ -72,6 +87,20 @@ struct EditBookDetailsView: View {
         seriesIndex = b.seriesIndex.map { BookDetailView.format($0) } ?? ""
         narrator = b.narrator ?? ""
         year = b.year.map(String.init) ?? ""
+    }
+
+    private func suggestWithAI() async {
+        thinking = true
+        defer { thinking = false }
+        guard let s = await MetadataAI.suggest(for: current) else { return }
+        withAnimation(.snappy) {
+            if let t = s.title { title = t }
+            if let a = s.author { author = a }
+            if let se = s.series { series = se }
+            if let i = s.seriesIndex { seriesIndex = BookDetailView.format(i) }
+            if let n = s.narrator { narrator = n }
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     /// Builds an override of only the fields that differ from what's shown now.
