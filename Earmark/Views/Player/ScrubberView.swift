@@ -29,6 +29,8 @@ struct ScrubberView: View {
                 }
             }
             .disabled(player.isLoading)
+            .accessibilityLabel("Chapter position")
+            .accessibilityValue("\(shown.clockString), \(max(0, duration - shown).clockString) remaining")
             HStack {
                 Text(shown.clockString)
                 Spacer()

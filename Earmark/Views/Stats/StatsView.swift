@@ -316,6 +316,8 @@ struct StarsView: View {
                 Image(systemName: i <= rating ? "star.fill" : "star").foregroundStyle(i <= rating ? .yellow : .secondary)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(rating) out of 5 stars")
     }
 }
 

@@ -13,6 +13,7 @@ struct BookCardView: View {
                     if progress.hasStarted, !progress.isFinished {
                         CoverProgressBar(fraction: progress.fraction(of: book))
                             .padding(8)
+                            .accessibilityHidden(true)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -21,11 +22,13 @@ struct BookCardView: View {
                             .font(.title3)
                             .foregroundStyle(.white, .green)
                             .padding(8)
+                            .accessibilityHidden(true)
                     } else if player.book?.id == book.id, player.isPlaying {
                         Image(systemName: "speaker.wave.2.circle.fill")
                             .font(.title3)
                             .foregroundStyle(.white, Color.accentColor)
                             .padding(8)
+                            .accessibilityHidden(true)
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -55,7 +58,18 @@ struct BookCardView: View {
             }
         }
         .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.accessibilityLabel(for: book, progress: progress, remote: library.isRemote(book)))
+        .accessibilityAddTraits(.isButton)
         .contextMenu { BookContextMenu(book: book) }
+    }
+
+    static func accessibilityLabel(for book: Book, progress: PlaybackProgress, remote: Bool) -> String {
+        var parts = [book.title, "by \(book.displayAuthor)"]
+        if let series = book.series { parts.append(book.seriesIndex.map { "\(series) book \(BookDetailView.format($0))" } ?? series) }
+        parts.append(statusLine(for: book, progress: progress))
+        if remote { parts.append("on NAS") }
+        return parts.joined(separator: ", ")
     }
 
     static func statusLine(for book: Book, progress: PlaybackProgress) -> String {

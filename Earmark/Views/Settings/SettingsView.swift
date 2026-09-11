@@ -63,6 +63,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Ambient Cover Background", isOn: $settings.ambientPlayerBackground)
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("Colors the Now Playing screen from the current book's cover. Turn off for a plain background.")
+                }
+
+                Section {
                     Toggle("Smart Rewind", isOn: $settings.smartRewind)
                 } footer: {
                     Text("After a pause, back up a little so you catch the thread again: 3 seconds after a minute, up to 30 seconds after a couple of hours.")

@@ -5,25 +5,31 @@ struct ArtworkView: View {
     let artworkID: String?
     let title: String
     var cornerRadius: CGFloat = 12
+    /// `.fit` shows the whole cover at its real aspect (no cropping) — use it where the art is large
+    /// (player, detail). `.fill` keeps square thumbnails tidy in grids.
+    var contentMode: ContentMode = .fill
 
     @State private var image: UIImage?
 
     var body: some View {
-        Color.clear
-            .aspectRatio(1, contentMode: .fit)
-            .overlay {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
+        Group {
+            if let image {
+                if contentMode == .fit {
+                    Image(uiImage: image).resizable().scaledToFit()
                 } else {
-                    PlaceholderCover(title: title)
+                    Color.clear
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay { Image(uiImage: image).resizable().scaledToFill() }
+                        .clipped()
                 }
+            } else {
+                Color.clear.aspectRatio(1, contentMode: .fit).overlay { PlaceholderCover(title: title) }
             }
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .task(id: artworkID) {
-                image = await ArtworkStore.shared.loadImage(for: artworkID)
-            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .task(id: artworkID) {
+            image = await ArtworkStore.shared.loadImage(for: artworkID)
+        }
     }
 }
 

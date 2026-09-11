@@ -56,8 +56,8 @@ struct PlayerView: View {
     private func content(for book: Book) -> some View {
         VStack(spacing: 0) {
             Spacer(minLength: 8)
-            ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 22)
-                .frame(maxWidth: 340)
+            ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 22, contentMode: .fit)
+                .frame(maxWidth: 300, maxHeight: 340)
                 .padding(.horizontal, 36)
                 .shadow(color: .black.opacity(0.28), radius: 24, y: 14)
                 .scaleEffect(player.isPlaying ? 1 : 0.92)
@@ -151,6 +151,7 @@ struct PlayerView: View {
 /// points drifting slowly so the colors breathe. Falls back to the amber theme when there's no art.
 struct PlayerBackdrop: View {
     let artworkID: String?
+    @Environment(AppSettings.self) private var settings
     @State private var colors: [Color] = PlayerBackdrop.fallback
 
     static let fallback: [Color] = [
@@ -159,20 +160,35 @@ struct PlayerBackdrop: View {
         Color(.sRGB, red: 0.80, green: 0.40, blue: 0.12), Color(.sRGB, red: 0.62, green: 0.30, blue: 0.09), Color(.sRGB, red: 0.45, green: 0.22, blue: 0.07),
     ]
 
+    /// Heavier at the top (nav) and bottom (controls) so text stays legible over vibrant covers,
+    /// lighter through the middle where the artwork sits.
+    private var scrim: some View {
+        LinearGradient(stops: [
+            .init(color: Color(.systemBackground).opacity(0.58), location: 0.0),
+            .init(color: Color(.systemBackground).opacity(0.24), location: 0.42),
+            .init(color: Color(.systemBackground).opacity(0.38), location: 0.72),
+            .init(color: Color(.systemBackground).opacity(0.66), location: 1.0),
+        ], startPoint: .top, endPoint: .bottom)
+    }
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            MeshGradient(width: 3, height: 3, points: Self.points(at: t), colors: colors)
-                .overlay(Color(.systemBackground).opacity(0.34))
-                .ignoresSafeArea()
-        }
-        .task(id: artworkID) {
+        if !settings.ambientPlayerBackground {
+            Color(.systemBackground).ignoresSafeArea()
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                MeshGradient(width: 3, height: 3, points: Self.points(at: t), colors: colors)
+                    .overlay(scrim)
+                    .ignoresSafeArea()
+            }
+            .task(id: artworkID) {
             if let image = await ArtworkStore.shared.loadImage(for: artworkID),
                let sampled = Self.gridColors(from: image), sampled.count == 9 {
                 withAnimation(.easeInOut(duration: 0.9)) { colors = sampled }
             } else {
                 withAnimation(.easeInOut(duration: 0.9)) { colors = Self.fallback }
             }
+        }
         }
     }
 

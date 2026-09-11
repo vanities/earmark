@@ -23,8 +23,8 @@ struct BookDetailView: View {
         let progress = library.progress(for: book.id)
         ScrollView {
             VStack(spacing: 20) {
-                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 18)
-                    .frame(width: 220, height: 220)
+                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 18, contentMode: .fit)
+                    .frame(maxWidth: 240, maxHeight: 260)
                     .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
                     .padding(.top, 8)
                     .overlay(alignment: .bottomTrailing) {
