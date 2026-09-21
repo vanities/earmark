@@ -59,6 +59,9 @@ final class LibraryModel {
 
     /// Called after any scan changes `books` (the player refreshes its copy).
     @ObservationIgnored var onBooksChanged: (() -> Void)?
+    /// Called with the book IDs whose saved position changed from outside the player — iCloud brought a
+    /// newer one, or the book was reset — so a paused player can move there instead of saving over it.
+    @ObservationIgnored var onSavedPositionChanged: ((Set<String>) -> Void)?
 
     @ObservationIgnored private let store: LibraryStore
     @ObservationIgnored private let settings: AppSettings
@@ -501,9 +504,14 @@ final class LibraryModel {
 
     func recordPosition(bookID: String, trackIndex: Int, time: TimeInterval) {
         var entry = progress[bookID] ?? PlaybackProgress()
+        if entry.isUnchanged(trackIndex: trackIndex, time: time) {
+            lastBookID = bookID
+            return
+        }
         entry.trackIndex = trackIndex
         entry.time = time
         entry.lastPlayedAt = .now
+        entry.modifiedAt = .now
         if entry.startedAt == nil { entry.startedAt = .now }
         entry.isFinished = false
         progress[bookID] = entry
@@ -535,6 +543,7 @@ final class LibraryModel {
     func setSpeed(_ speed: Float, for bookID: String) {
         var entry = progress[bookID] ?? PlaybackProgress()
         entry.speed = speed
+        entry.modifiedAt = .now
         progress[bookID] = entry
         scheduleSave()
     }
@@ -544,6 +553,7 @@ final class LibraryModel {
         entry.isFinished = true
         entry.finishedAt = date ?? .now
         entry.lastPlayedAt = entry.lastPlayedAt ?? (date ?? .now)
+        entry.modifiedAt = .now
         if let book = book(id: bookID), let last = book.tracks.last {
             entry.trackIndex = book.tracks.count - 1
             entry.time = last.duration
@@ -558,6 +568,7 @@ final class LibraryModel {
         var entry = progress[bookID] ?? PlaybackProgress()
         entry.isFinished = true
         entry.finishedAt = date
+        entry.modifiedAt = .now
         progress[bookID] = entry
         scheduleSave()
     }
@@ -566,6 +577,7 @@ final class LibraryModel {
     func setRating(_ bookID: String, _ rating: Int?) {
         var entry = progress[bookID] ?? PlaybackProgress()
         entry.rating = rating.map { min(5, max(1, $0)) }
+        entry.modifiedAt = .now
         progress[bookID] = entry
         scheduleSave()
     }
@@ -608,10 +620,14 @@ final class LibraryModel {
     }
 
     func resetProgress(_ bookID: String) {
-        let speed = progress[bookID]?.speed
-        progress[bookID] = speed.map { var fresh = PlaybackProgress(); fresh.speed = $0; return fresh }
+        // Kept as a dated, not-started entry rather than removed: with nothing to compare, the next
+        // iCloud merge brought the old position straight back.
+        var fresh = PlaybackProgress(speed: progress[bookID]?.speed)
+        fresh.modifiedAt = .now
+        progress[bookID] = fresh
         Logger.library.info("[library] reset progress \(bookID, privacy: .public)")
         scheduleSave()
+        onSavedPositionChanged?([bookID])
     }
 
     func setHidden(_ hidden: Bool, bookID: String) {
@@ -673,12 +689,18 @@ final class LibraryModel {
         let coversChanged = mergedCovers != coverChoices
         let progressChanged = merged != progress
         guard progressChanged || logChanged || coversChanged else { return }
+        let moved = Set(merged.keys.filter { id in
+            guard let new = merged[id] else { return false }
+            guard let old = progress[id] else { return true }
+            return new.trackIndex != old.trackIndex || new.time != old.time
+        })
         progress = merged
         if logChanged { readingLog = mergedLog }
         if coversChanged { coverChoices = mergedCovers }
         Logger.library.info("[library] merged from iCloud progress=\(progressChanged) log=\(logChanged) covers=\(coversChanged)")
         persist(pushCloud: false)   // write locally; don't echo the merge straight back
         onBooksChanged?()
+        if !moved.isEmpty { onSavedPositionChanged?(moved) }
         if coversChanged { reconcileCovers() }
     }
 

@@ -147,6 +147,24 @@ final class PlayerEngine {
         }
     }
 
+    /// A saved position changed outside the player: iCloud brought a newer one from another device, or
+    /// the book was reset. Unless it's playing here, move there — otherwise this device's next save would
+    /// write its stale spot back over it. A device that's playing is where the listening is; it keeps its place.
+    func savedPositionChanged(for bookIDs: Set<String>) {
+        guard let book, bookIDs.contains(book.id), !isPlaying else { return }
+        let saved = library.progress(for: book.id)
+        guard !saved.isFinished, book.tracks.indices.contains(saved.trackIndex),
+              saved.trackIndex != trackIndex || abs(saved.time - currentTime) >= 1 else { return }
+        Logger.player.info("[player] following saved position track=\(saved.trackIndex) time=\(saved.time, format: .fixed(precision: 1)) (was track=\(self.trackIndex) time=\(self.currentTime, format: .fixed(precision: 1)))")
+        pausedAt = nil
+        if saved.trackIndex != trackIndex {
+            loadTrack(index: saved.trackIndex, startAt: saved.time, autoplay: playWhenReady)
+        } else {
+            performSeek(saved.time, thenPlay: false)
+            notify()
+        }
+    }
+
     func unload() {
         persistPosition()
         detachItemObservers()

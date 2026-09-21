@@ -14,6 +14,19 @@ struct PlaybackProgress: Codable, Hashable, Sendable {
     var rating: Int?
     /// Per-book speed override. `nil` → app default.
     var speed: Float?
+    /// When this entry last changed on any device — a new position, finishing, a rating, a speed, a
+    /// reset. Cross-device sync keeps the newest by this, falling back to `lastPlayedAt` for entries
+    /// written before it existed; without it a reset or a rating lost to any older copy.
+    var modifiedAt: Date?
+
+    /// What sync compares: when the entry last changed.
+    var syncStamp: Date { modifiedAt ?? lastPlayedAt ?? .distantPast }
+
+    /// True when saving this spot again changes nothing (a pause, the app going to the background), so
+    /// it mustn't be re-dated as new listening — that stamp would beat newer progress from another device.
+    func isUnchanged(trackIndex: Int, time: TimeInterval) -> Bool {
+        hasStarted && !isFinished && self.trackIndex == trackIndex && abs(self.time - time) < 1
+    }
 
     var hasStarted: Bool { lastPlayedAt != nil }
 

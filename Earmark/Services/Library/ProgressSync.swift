@@ -1,11 +1,11 @@
 import Foundation
 
 /// Pure merge logic for cross-device progress sync, kept separate from the iCloud transport so it
-/// can be unit-tested. Conflicts resolve last-writer-wins by `lastPlayedAt`.
+/// can be unit-tested. Conflicts resolve last-writer-wins by `PlaybackProgress.syncStamp`.
 enum ProgressSync {
     private static func isNewer(_ a: PlaybackProgress, than b: PlaybackProgress?) -> Bool {
         guard let b else { return true }
-        return (a.lastPlayedAt ?? .distantPast) > (b.lastPlayedAt ?? .distantPast)
+        return a.syncStamp > b.syncStamp
     }
 
     /// Local progress with any newer cloud entries folded in. Cloud is keyed by `Book.syncKey`;

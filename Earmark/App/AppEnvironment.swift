@@ -23,6 +23,9 @@ final class AppEnvironment {
         library.onBooksChanged = { [weak player] in
             player?.refreshBookFromLibrary()
         }
+        library.onSavedPositionChanged = { [weak player] ids in
+            player?.savedPositionChanged(for: ids)
+        }
         nowPlaying.activate()
         library.bootstrap()
 
