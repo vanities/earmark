@@ -112,7 +112,7 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertTrue(state.hasUserData)
 
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-        let written = String(decoding: try encoder.encode(state), as: UTF8.self)
+        let written = try XCTUnwrap(String(bytes: encoder.encode(state), encoding: .utf8))
         XCTAssertFalse(written.contains("customCoverURLs"), written)
     }
 

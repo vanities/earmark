@@ -50,6 +50,7 @@
 		77ADF8C366265AFAA1738EEB /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */; };
 		792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9286881105751BAB5361070 /* CoverSyncTests.swift */; };
 		7D104AE357D798ADF398A74B /* CoverSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E324682D9AA6260811DB36 /* CoverSync.swift */; };
+		80B01F391CBFCD77A2027599 /* LibraryModel+Covers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AE9F138750432E3DA4E7FF /* LibraryModel+Covers.swift */; };
 		8517AD7736CAB8F19231B70F /* FoldersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815C177E8C621E8444326E8A /* FoldersView.swift */; };
 		87AF4C2B6C9C0D019E45DC6E /* QuickTagReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB9C9B02A68EA1886195C96 /* QuickTagReader.swift */; };
 		880D77B866EB135454DA72C2 /* BookMetadataOverrideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */; };
@@ -179,6 +180,7 @@
 		3C57B260908E128DE2B07322 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
 		4318C49E54FDB7B284984534 /* BookGrouper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookGrouper.swift; sourceTree = "<group>"; };
 		45A581851B7063C9FA6A72FB /* String+Natural.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Natural.swift"; sourceTree = "<group>"; };
+		47AE9F138750432E3DA4E7FF /* LibraryModel+Covers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Covers.swift"; sourceTree = "<group>"; };
 		484BF16F202F4CA32414EB12 /* LogPastBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPastBookView.swift; sourceTree = "<group>"; };
 		48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackAudioProcessor.swift; sourceTree = "<group>"; };
 		4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
@@ -511,6 +513,7 @@
 				22E324682D9AA6260811DB36 /* CoverSync.swift */,
 				B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */,
 				9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */,
+				47AE9F138750432E3DA4E7FF /* LibraryModel+Covers.swift */,
 				5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */,
 				12BAAFAF14A3482B36D846E6 /* LibraryScanner.swift */,
 				63EF2B848B1A36EDA036BF9F /* LibraryStore.swift */,
@@ -766,6 +769,7 @@
 				974A9AF22EAB95E8A846C0E2 /* EditBookDetailsView.swift in Sources */,
 				8517AD7736CAB8F19231B70F /* FoldersView.swift in Sources */,
 				9DD0D41C4F266ECFE170B009 /* KeychainStore.swift in Sources */,
+				80B01F391CBFCD77A2027599 /* LibraryModel+Covers.swift in Sources */,
 				182123A438B927D533FC274E /* LibraryModel+Queries.swift in Sources */,
 				77ADF8C366265AFAA1738EEB /* LibraryModel.swift in Sources */,
 				B37CF39744F87BA1C59E8779 /* LibraryQueries.swift in Sources */,
