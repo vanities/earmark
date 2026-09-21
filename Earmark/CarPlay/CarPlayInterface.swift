@@ -4,7 +4,7 @@ import UIKit
 import os
 
 /// Builds the CarPlay UI: a "Continue" tab of in-progress books, a "Library" tab grouped
-/// by author, and the shared Now Playing template with speed, sleep, and chapter buttons.
+/// by author, and the shared Now Playing template with speed and chapter buttons.
 @MainActor
 final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
     private let interfaceController: CPInterfaceController
@@ -106,32 +106,11 @@ final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
         template.upNextTitle = "Chapters"
         template.isAlbumArtistButtonEnabled = false
 
+        // No sleep timer here: nobody's going to sleep in the car. It stays on the phone's player.
         let rateButton = CPNowPlayingPlaybackRateButton { [weak self] _ in
             MainActor.assumeIsolated { self?.environment.player.cycleSpeed() }
         }
-        let sleepButton = CPNowPlayingImageButton(image: UIImage(systemName: "moon.zzz.fill") ?? UIImage()) { [weak self] _ in
-            MainActor.assumeIsolated { self?.toggleSleepTimer() }
-        }
-        template.updateNowPlayingButtons([rateButton, sleepButton])
-    }
-
-    private func toggleSleepTimer() {
-        let player = environment.player
-        if player.sleepTimer.isActive {
-            player.setSleepTimer(.off)
-        } else {
-            player.setSleepTimer(.endOfChapter)
-        }
-        let alert = CPAlertTemplate(
-            titleVariants: [player.sleepTimer.isActive ? "Sleep at end of chapter" : "Sleep timer off"],
-            actions: []
-        )
-        interfaceController.presentTemplate(alert, animated: true) { [weak self] _, _ in
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(1.5))
-                self?.interfaceController.dismissTemplate(animated: true, completion: nil)
-            }
-        }
+        template.updateNowPlayingButtons([rateButton])
     }
 
     nonisolated func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {

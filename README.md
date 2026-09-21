@@ -33,7 +33,7 @@ own sandbox, and interrupt you with donation screens. Earmark does none of that:
   Remote books show a **Remote** badge, stream while you're on the NAS's network, and can be
   downloaded to the phone with one tap; the local copy then takes over automatically.
 - **CarPlay.** A real CarPlay app with *Continue* and *Library* tabs plus Now Playing with
-  speed and sleep buttons — and even without the CarPlay entitlement, full control from the
+  speed and chapter buttons — and even without the CarPlay entitlement, full control from the
   car's Now Playing screen.
 - **No tip jar.** Free, open source, done.
 
