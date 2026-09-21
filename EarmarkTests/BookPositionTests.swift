@@ -57,6 +57,12 @@ final class BookPositionTests: XCTestCase {
         XCTAssertEqual(PlayerEngine.smartRewindAmount(pausedFor: 86400), 30)
     }
 
+    func testOnlyLongJumpsOfferUndo() {
+        XCTAssertFalse(PlayerEngine.isUndoableJump(from: 600, to: 629), "a small scrub isn't worth an undo")
+        XCTAssertTrue(PlayerEngine.isUndoableJump(from: 600, to: 1_800), "a chapter tap forward")
+        XCTAssertTrue(PlayerEngine.isUndoableJump(from: 1_800, to: 0), "a scrub back to the start")
+    }
+
     func testEndOfChapterFadeStartsSoThePauseLandsOnTheBoundary() {
         // The fade takes 2.5 s of wall time, which covers more of the chapter at higher speeds.
         XCTAssertFalse(PlayerEngine.shouldStartChapterFade(remaining: 3.0, speed: 1))

@@ -115,7 +115,23 @@ struct PlayerView: View {
                         .lineLimit(2)
                 }
                 Spacer()
+                if let origin = player.jumpOrigin {
+                    Button {
+                        player.undoJump()
+                    } label: {
+                        Label("Back to \(jumpLabel(origin, in: book))", systemImage: "arrow.uturn.backward")
+                            .font(.footnote.weight(.medium))
+                            .lineLimit(1)
+                            .padding(.vertical, 6)   // 44 pt tall: this is tapped in the car
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .accessibilityLabel("Undo jump")
+                    .accessibilityValue("Back to \(jumpLabel(origin, in: book))")
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
             }
+            .animation(.snappy, value: player.jumpOrigin)
             .padding(.horizontal, 24)
             .padding(.bottom, 8)
         }
@@ -131,6 +147,15 @@ struct PlayerView: View {
         }
         .animation(.spring(duration: 0.45, bounce: 0.2), value: player.upNext?.id)
         .background { PlayerBackdrop(artworkID: book.artworkID) }
+    }
+
+    /// "Ch. 3 · 4:12" — where Undo Jump goes back to (or the book time for a one-chapter book).
+    private func jumpLabel(_ origin: BookPosition, in book: Book) -> String {
+        if book.chapters.count > 1, let index = book.chapterIndex(trackIndex: origin.trackIndex, time: origin.time) {
+            let intoChapter = max(0, origin.time - book.chapters[index].start)
+            return "Ch. \(index + 1) · \(intoChapter.clockString)"
+        }
+        return book.absoluteOffset(trackIndex: origin.trackIndex, time: origin.time).clockString
     }
 
     private func bookLine(for book: Book) -> String {

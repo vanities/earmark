@@ -35,6 +35,9 @@ final class PlayerEngine {
     private(set) var speed: Float = 1.0
     private(set) var sleepTimer: SleepTimerMode = .off
     private(set) var sleepRemaining: TimeInterval?
+    /// Where the listener was before the last long jump — a chapter tap, a scrub, a bookmark, a position
+    /// from another device — so a mis-tap in the car is one tap to undo. Cleared once they listen on.
+    private(set) var jumpOrigin: BookPosition?
     /// True while the current track streams from a NAS instead of local storage.
     private(set) var isRemote = false
     private(set) var remoteServerName: String?
@@ -56,6 +59,8 @@ final class PlayerEngine {
     @ObservationIgnored private var pausedAt: Date?
     @ObservationIgnored private var wasPlayingBeforeInterruption = false
     @ObservationIgnored private var ticks = 0
+    /// Ticks of playback since the last long jump; the undo goes away after `jumpUndoWindow` of listening.
+    @ObservationIgnored private var ticksSinceJump = 0
     /// The chapter the lock screen / CarPlay last heard about, so a new chapter is announced right away.
     @ObservationIgnored private var notifiedChapterIndex: Int?
     @ObservationIgnored private var sleepTask: Task<Void, Never>?
@@ -99,12 +104,15 @@ final class PlayerEngine {
         if book?.id == newBook.id {
             if let startAt {
                 pausedAt = nil   // a chosen spot (a chapter tap): don't smart-rewind back out of it
-                if startAt.trackIndex != trackIndex {
-                    loadTrack(index: startAt.trackIndex, startAt: startAt.time, autoplay: autoplay || isPlaying)
-                } else {
-                    seek(toTrackTime: startAt.time)
-                    if autoplay { play() }
+                let crossesTrack = startAt.trackIndex != trackIndex
+                jumping {
+                    if crossesTrack {
+                        loadTrack(index: startAt.trackIndex, startAt: startAt.time, autoplay: autoplay || isPlaying)
+                    } else {
+                        seek(toTrackTime: startAt.time)
+                    }
                 }
+                if autoplay, !crossesTrack { play() }
             } else if autoplay {
                 play()
             }
@@ -118,6 +126,7 @@ final class PlayerEngine {
         errorMessage = nil
         didFinishCurrentBook = false
         pausedAt = nil
+        jumpOrigin = nil
 
         var saved = library.progress(for: newBook.id)
         if saved.isFinished {
@@ -157,16 +166,19 @@ final class PlayerEngine {
               saved.trackIndex != trackIndex || abs(saved.time - currentTime) >= 1 else { return }
         Logger.player.info("[player] following saved position track=\(saved.trackIndex) time=\(saved.time, format: .fixed(precision: 1)) (was track=\(self.trackIndex) time=\(self.currentTime, format: .fixed(precision: 1)))")
         pausedAt = nil
-        if saved.trackIndex != trackIndex {
-            loadTrack(index: saved.trackIndex, startAt: saved.time, autoplay: playWhenReady)
-        } else {
-            performSeek(saved.time, thenPlay: false)
-            notify()
+        jumping {
+            if saved.trackIndex != trackIndex {
+                loadTrack(index: saved.trackIndex, startAt: saved.time, autoplay: playWhenReady)
+            } else {
+                performSeek(saved.time, thenPlay: false)
+                notify()
+            }
         }
     }
 
     func unload() {
         persistPosition()
+        jumpOrigin = nil
         detachItemObservers()
         player.replaceCurrentItem(with: nil)
         currentLoader = nil
@@ -388,21 +400,25 @@ final class PlayerEngine {
     }
 
     func seek(toChapterTime time: TimeInterval) {
-        guard let chapter = currentChapter else {
-            seek(toTrackTime: time)
-            return
+        jumping {
+            guard let chapter = currentChapter else {
+                seek(toTrackTime: time)
+                return
+            }
+            seek(toTrackTime: chapter.start + time)
         }
-        seek(toTrackTime: chapter.start + time)
     }
 
     func seek(toBookOffset offset: TimeInterval) {
         guard let book else { return }
         pausedAt = nil
         let position = book.position(atAbsoluteOffset: offset)
-        if position.trackIndex != trackIndex {
-            loadTrack(index: position.trackIndex, startAt: position.time, autoplay: isPlaying)
-        } else {
-            seek(toTrackTime: position.time)
+        jumping {
+            if position.trackIndex != trackIndex {
+                loadTrack(index: position.trackIndex, startAt: position.time, autoplay: isPlaying)
+            } else {
+                seek(toTrackTime: position.time)
+            }
         }
     }
 
@@ -410,10 +426,50 @@ final class PlayerEngine {
         guard let book, book.tracks.indices.contains(chapter.trackIndex) else { return }
         pausedAt = nil
         Logger.player.info("[player] jump to chapter \(chapter.title, privacy: .public)")
-        if chapter.trackIndex != trackIndex {
-            loadTrack(index: chapter.trackIndex, startAt: chapter.start, autoplay: isPlaying)
+        jumping {
+            if chapter.trackIndex != trackIndex {
+                loadTrack(index: chapter.trackIndex, startAt: chapter.start, autoplay: isPlaying)
+            } else {
+                seek(toTrackTime: chapter.start)
+            }
+        }
+    }
+
+    // MARK: - Undo jump
+
+    /// A move this far (either way) is worth offering to undo; skips and small scrubs aren't.
+    nonisolated static let undoableJumpDistance: TimeInterval = 30
+    /// Listening this long after a jump means it was wanted, and the undo goes away.
+    nonisolated static let jumpUndoWindow: TimeInterval = 120
+
+    nonisolated static func isUndoableJump(from: TimeInterval, to: TimeInterval) -> Bool {
+        abs(to - from) >= undoableJumpDistance
+    }
+
+    /// Runs a navigation, remembering where it started when it went far.
+    private func jumping(_ move: () -> Void) {
+        guard let book else { return move() }
+        let origin = BookPosition(trackIndex: trackIndex, time: currentTime)
+        let from = book.absoluteOffset(trackIndex: trackIndex, time: currentTime)
+        move()
+        let to = book.absoluteOffset(trackIndex: trackIndex, time: currentTime)
+        guard Self.isUndoableJump(from: from, to: to) else { return }
+        jumpOrigin = origin
+        ticksSinceJump = 0
+        Logger.player.info("[player] jumped \(from, format: .fixed(precision: 0))s → \(to, format: .fixed(precision: 0))s; undo available")
+    }
+
+    /// Goes back to where the listener was before the last long jump.
+    func undoJump() {
+        guard let origin = jumpOrigin, let book, book.tracks.indices.contains(origin.trackIndex) else { return }
+        jumpOrigin = nil
+        pausedAt = nil
+        Logger.player.info("[player] undo jump → track=\(origin.trackIndex) time=\(origin.time, format: .fixed(precision: 1))")
+        if origin.trackIndex != trackIndex {
+            loadTrack(index: origin.trackIndex, startAt: origin.time, autoplay: isPlaying)
+            persistPosition()
         } else {
-            seek(toTrackTime: chapter.start)
+            seek(toTrackTime: origin.time)
         }
     }
 
@@ -637,6 +693,10 @@ final class PlayerEngine {
         ticks += 1
         if ticks % 10 == 0 { persistPosition() }
         if ticks % 30 == 0 || currentChapterIndex != notifiedChapterIndex { notify() }
+        if jumpOrigin != nil, isPlaying {
+            ticksSinceJump += 1
+            if Double(ticksSinceJump) / 2 >= Self.jumpUndoWindow { jumpOrigin = nil }
+        }
         if sleepTimer == .endOfChapter, let armed = sleepArmedChapterIndex, let now = currentChapterIndex {
             if now != armed {
                 // Skipped or scrubbed to another chapter: stop at the end of that one instead.
