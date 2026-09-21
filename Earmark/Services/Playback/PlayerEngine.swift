@@ -306,12 +306,19 @@ final class PlayerEngine {
 
     private func startPlayback() {
         AudioSessionManager.activate()
+        player.volume = 1
         player.defaultRate = speed
         player.playImmediately(atRate: speed)
         isPlaying = true
         pausedAt = nil
         didFinishCurrentBook = false
         Logger.player.debug("[player] playing at \(self.speed, format: .fixed(precision: 2))x")
+    }
+
+    /// End-of-chapter sleep starts fading when the chapter has one fade's worth of listening left, so the
+    /// pause lands on the boundary instead of a few seconds into the next chapter.
+    nonisolated static func shouldStartChapterFade(remaining: TimeInterval, speed: Float) -> Bool {
+        remaining <= sleepFadeDuration * Double(max(speed, 0.5))
     }
 
     nonisolated static func smartRewindAmount(pausedFor gap: TimeInterval) -> TimeInterval {
@@ -484,6 +491,11 @@ final class PlayerEngine {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(1))
                     guard !Task.isCancelled, let self, let endsAt = self.sleepEndsAt else { return }
+                    guard self.isPlaying else {
+                        // Paused: hold the countdown, so a pause mid-timer doesn't eat into it.
+                        self.sleepEndsAt = endsAt.addingTimeInterval(1)
+                        continue
+                    }
                     let remaining = endsAt.timeIntervalSinceNow
                     self.sleepRemaining = max(0, remaining)
                     if remaining <= 0 {
@@ -507,15 +519,23 @@ final class PlayerEngine {
         if shouldNotify { notify() }
     }
 
+    /// How long the sleep timer's fade takes, in wall-clock seconds.
+    nonisolated static let sleepFadeDuration: TimeInterval = 2.5
+
     private func fadeOutAndPause(reason: String) {
         Logger.player.info("[player] sleep timer fired (\(reason, privacy: .public))")
         cancelSleepTimer(notify: false)
         guard isPlaying else { return }
         Task { [weak self] in
             for step in stride(from: 9, through: 0, by: -1) {
-                guard let self, self.isPlaying else { return }
+                guard let self else { return }
+                guard self.isPlaying else {
+                    // Paused mid-fade: put the volume back, or the next play starts quiet.
+                    self.player.volume = 1
+                    return
+                }
                 self.player.volume = Float(step) / 10
-                try? await Task.sleep(for: .milliseconds(250))
+                try? await Task.sleep(for: .milliseconds(Int(Self.sleepFadeDuration * 100)))
             }
             guard let self else { return }
             self.pause()
@@ -590,8 +610,14 @@ final class PlayerEngine {
         ticks += 1
         if ticks % 10 == 0 { persistPosition() }
         if ticks % 30 == 0 { notify() }
-        if sleepTimer == .endOfChapter, let armed = sleepArmedChapterIndex, let now = currentChapterIndex, now != armed {
-            fadeOutAndPause(reason: "end of chapter")
+        if sleepTimer == .endOfChapter, let armed = sleepArmedChapterIndex, let now = currentChapterIndex {
+            if now != armed {
+                // Skipped or scrubbed to another chapter: stop at the end of that one instead.
+                sleepArmedChapterIndex = now
+                Logger.player.info("[player] sleep timer re-armed for chapter \(now + 1)")
+            } else if isPlaying, Self.shouldStartChapterFade(remaining: chapterDuration - chapterElapsed, speed: speed) {
+                fadeOutAndPause(reason: "end of chapter")
+            }
         }
     }
 

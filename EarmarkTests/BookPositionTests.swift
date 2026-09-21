@@ -56,4 +56,12 @@ final class BookPositionTests: XCTestCase {
         XCTAssertEqual(PlayerEngine.smartRewindAmount(pausedFor: 3600), 15)
         XCTAssertEqual(PlayerEngine.smartRewindAmount(pausedFor: 86400), 30)
     }
+
+    func testEndOfChapterFadeStartsSoThePauseLandsOnTheBoundary() {
+        // The fade takes 2.5 s of wall time, which covers more of the chapter at higher speeds.
+        XCTAssertFalse(PlayerEngine.shouldStartChapterFade(remaining: 3.0, speed: 1))
+        XCTAssertTrue(PlayerEngine.shouldStartChapterFade(remaining: 2.4, speed: 1))
+        XCTAssertTrue(PlayerEngine.shouldStartChapterFade(remaining: 4.9, speed: 2), "2x speed: 5 s of audio fades in 2.5 s")
+        XCTAssertFalse(PlayerEngine.shouldStartChapterFade(remaining: 5.1, speed: 2))
+    }
 }
