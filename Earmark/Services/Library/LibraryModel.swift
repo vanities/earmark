@@ -812,9 +812,11 @@ final class LibraryModel {
     /// Saves user-chosen cover art for a book: into the art cache (kept across rescans) and, for
     /// books on this phone, as cover.jpg next to the audio so other apps see it too.
     func setCustomArtwork(_ data: Data, sourceURL: URL? = nil, for book: Book) -> Bool {
-        let id = ArtworkStore.shared.id(for: book.id + "|custom")
+        let id = ArtworkStore.shared.customID(for: book.id, imageData: data)
         guard ArtworkStore.shared.store(imageData: data, id: id) else { return false }
+        let previous = customArtwork[book.id]
         customArtwork[book.id] = id
+        if let previous, previous != id { ArtworkStore.shared.remove(id: previous) }
         if let sourceURL { customCoverURLs[book.syncKey] = sourceURL.absoluteString }
         if let index = books.firstIndex(where: { $0.id == book.id }) {
             books[index].artworkID = id
@@ -831,7 +833,7 @@ final class LibraryModel {
                 }
             }
         }
-        Logger.artwork.info("[covers] custom cover set for \(book.title, privacy: .public)")
+        Logger.artwork.info("[covers] custom cover set for \(book.title, privacy: .public) id=\(id, privacy: .public) previous=\(previous ?? "-", privacy: .public)")
         save()
         onBooksChanged?()
         return true

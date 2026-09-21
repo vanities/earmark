@@ -12,6 +12,10 @@ final class NowPlayingController {
     private let settings: AppSettings
     private var artworkImage: UIImage?
     private var artworkBookID: String?
+    /// The cover `artworkImage` is for — a replaced cover changes it without changing the book.
+    private var artworkID: String?
+    /// The cover last written for the widget, so a new one is written even when nothing else changed.
+    private var widgetCoverID: String?
 
     init(player: PlayerEngine, settings: AppSettings) {
         self.player = player
@@ -126,19 +130,25 @@ final class NowPlayingController {
             center.nowPlayingInfo = nil
             artworkImage = nil
             artworkBookID = nil
+            artworkID = nil
+            widgetCoverID = nil
             SharedNowPlaying.write(nil)
             SharedNowPlaying.writeCover(nil)
             WidgetCenter.shared.reloadAllTimelines()
             return
         }
 
-        if artworkBookID != book.id {
+        if artworkBookID != book.id || artworkID != book.artworkID {
+            if artworkBookID == book.id {
+                Logger.nowPlaying.info("[nowplaying] cover changed for \(book.title, privacy: .public) — reloading artwork")
+            }
             artworkBookID = book.id
+            artworkID = book.artworkID
             artworkImage = nil
-            let artworkID = book.artworkID
+            let wanted = book.artworkID
             Task { [weak self] in
-                let image = await ArtworkStore.shared.loadImage(for: artworkID)
-                guard let self, self.artworkBookID == book.id else { return }
+                let image = await ArtworkStore.shared.loadImage(for: wanted)
+                guard let self, self.artworkBookID == book.id, self.artworkID == wanted else { return }
                 self.artworkImage = image
                 self.update()
             }
@@ -201,11 +211,15 @@ final class NowPlayingController {
             updatedAt: .now
         )
         let coarse: (NowPlayingSnapshot) -> [AnyHashable] = { [$0.bookID, $0.title, $0.isPlaying, Int($0.fraction * 100)] }
-        guard lastWidgetSnapshot.map(coarse) != coarse(snapshot) else { return }
+        // A cover that just loaded (or was replaced) counts as a change even when nothing else moved.
+        let coverID = artworkImage == nil ? nil : artworkID
+        let coverChanged = coverID != nil && coverID != widgetCoverID
+        guard coverChanged || lastWidgetSnapshot.map(coarse) != coarse(snapshot) else { return }
         lastWidgetSnapshot = snapshot
         SharedNowPlaying.write(snapshot)
         if let image = artworkImage, let jpeg = image.jpegData(compressionQuality: 0.8) {
             SharedNowPlaying.writeCover(jpeg)
+            widgetCoverID = coverID
         }
         WidgetCenter.shared.reloadAllTimelines()
     }

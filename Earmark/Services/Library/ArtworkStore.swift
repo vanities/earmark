@@ -25,8 +25,20 @@ final class ArtworkStore: @unchecked Sendable {
     }
 
     func id(for key: String) -> String {
-        let digest = SHA256.hash(data: Data(key.utf8))
-        return digest.prefix(16).map { String(format: "%02x", $0) }.joined()
+        Self.hex(SHA256.hash(data: Data(key.utf8)))
+    }
+
+    /// Id for a user-chosen cover. It changes with the image, so every view keyed on `Book.artworkID`
+    /// reloads when a cover is replaced — a fixed id kept the old cover on screen until the view was rebuilt.
+    func customID(for bookID: String, imageData: Data) -> String {
+        var sha = SHA256()
+        sha.update(data: Data("\(bookID)|custom|".utf8))
+        sha.update(data: imageData)
+        return Self.hex(sha.finalize())
+    }
+
+    private static func hex(_ digest: SHA256.Digest) -> String {
+        digest.prefix(16).map { String(format: "%02x", $0) }.joined()
     }
 
     private func fileURL(for id: String) -> URL {
@@ -82,6 +94,17 @@ final class ArtworkStore: @unchecked Sendable {
         return await Task.detached(priority: .utility) { [self] in
             self.image(for: id)
         }.value
+    }
+
+    /// Drops one thumbnail (e.g. a custom cover that was just replaced) from memory and disk.
+    func remove(id: String) {
+        memory.removeObject(forKey: id as NSString)
+        do {
+            try FileManager.default.removeItem(at: fileURL(for: id))
+            Logger.artwork.info("[artwork] removed id=\(id, privacy: .public)")
+        } catch {
+            Logger.artwork.notice("[artwork] remove failed id=\(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     func removeAll() {

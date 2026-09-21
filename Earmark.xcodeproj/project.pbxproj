@@ -11,6 +11,7 @@
 		0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3548D15C0779ABA8F894721B /* CarPlayInterface.swift */; };
 		0ED15F0F06D93E158524BE5E /* BookmarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C32B20761401506F2E5104B /* BookmarkStore.swift */; };
 		0FBA666FCAC00DC25CBCB9AE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8845D138187AA30B4D2D66FA /* SettingsView.swift */; };
+		1487A4C15D0A9869CD937D17 /* ArtworkStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22F43F134AAFB6721B29281D /* ArtworkStoreTests.swift */; };
 		15A0B790935B64EF8F34860F /* NASServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AE6570FAB96CBA9EFC8F2B3 /* NASServer.swift */; };
 		182123A438B927D533FC274E /* LibraryModel+Queries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */; };
 		193EC2C791350A0AC8D4C1E0 /* chapter1.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D4AB7E053E1EDBD08ABF661A /* chapter1.mp3 */; };
@@ -157,6 +158,7 @@
 		1AE6570FAB96CBA9EFC8F2B3 /* NASServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASServer.swift; sourceTree = "<group>"; };
 		1BD632FF90D5B26691454004 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		1C7DE4A5CA938E53610AB05B /* Earmark.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Earmark.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		22F43F134AAFB6721B29281D /* ArtworkStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStoreTests.swift; sourceTree = "<group>"; };
 		261DF5544E541EB03D960595 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		26B535F6B51ECA35675979B7 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		27B3D8FEA19546CFA173987A /* PlayerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerEngine.swift; sourceTree = "<group>"; };
@@ -538,6 +540,7 @@
 		E2A194C74F4E0DCF8DD23EEA /* EarmarkTests */ = {
 			isa = PBXGroup;
 			children = (
+				22F43F134AAFB6721B29281D /* ArtworkStoreTests.swift */,
 				C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */,
 				2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */,
 				862DC9C49B6D67781476C544 /* BookPositionTests.swift */,
@@ -691,6 +694,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1487A4C15D0A9869CD937D17 /* ArtworkStoreTests.swift in Sources */,
 				0112F693050CA4D6636F3F1D /* BookGrouperTests.swift in Sources */,
 				880D77B866EB135454DA72C2 /* BookMetadataOverrideTests.swift in Sources */,
 				C8EC46FF05F7D82EF6AB9FAB /* BookPositionTests.swift in Sources */,

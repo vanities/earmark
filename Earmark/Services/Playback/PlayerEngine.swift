@@ -134,7 +134,10 @@ final class PlayerEngine {
     func refreshBookFromLibrary() {
         guard let current = book else { return }
         if let fresh = library.book(id: current.id) {
-            if fresh != current { book = fresh }
+            if fresh != current {
+                book = fresh
+                notify()   // the lock screen picks up edits (e.g. a replaced cover) now, not on the next tick
+            }
         } else {
             Logger.player.notice("[player] current book disappeared from library — unloading")
             unload()
