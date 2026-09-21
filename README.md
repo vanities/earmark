@@ -4,6 +4,8 @@ An open-source iOS audiobook player for people with folders full of MP3s and M4B
 It plays your files **where they are**, keeps them organized, works great in the car, and
 never asks you for money.
 
+**[Join the TestFlight beta →](https://testflight.apple.com/join/E65Y3akv)**
+
 > Bundle ID `com.vanities.earmark`. GPL-3.0. Website: https://am2.biz/earmark · [Support](https://am2.biz/earmark/support) · [Privacy](https://am2.biz/earmark/privacy)
 
 ## Why
