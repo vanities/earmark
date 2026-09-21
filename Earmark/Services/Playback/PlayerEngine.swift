@@ -96,6 +96,7 @@ final class PlayerEngine {
     func load(_ newBook: Book, autoplay: Bool, startAt: BookPosition? = nil) {
         if book?.id == newBook.id {
             if let startAt {
+                pausedAt = nil   // a chosen spot (a chapter tap): don't smart-rewind back out of it
                 if startAt.trackIndex != trackIndex {
                     loadTrack(index: startAt.trackIndex, startAt: startAt.time, autoplay: autoplay || isPlaying)
                 } else {
@@ -338,6 +339,7 @@ final class PlayerEngine {
 
     func skip(by delta: TimeInterval) {
         guard let book else { return }
+        pausedAt = nil
         var target = currentTime + delta
         if target < 0 {
             if trackIndex > 0 {
@@ -356,7 +358,10 @@ final class PlayerEngine {
         seek(toTrackTime: target)
     }
 
+    /// A spot the listener chose (scrub, skip, chapter). Smart rewind is only for resuming where you
+    /// paused, so it's cleared — otherwise playing after a chapter tap rewound into the previous chapter.
     func seek(toTrackTime time: TimeInterval) {
+        pausedAt = nil
         performSeek(time, thenPlay: false)
         persistPosition()
         notify()
@@ -372,6 +377,7 @@ final class PlayerEngine {
 
     func seek(toBookOffset offset: TimeInterval) {
         guard let book else { return }
+        pausedAt = nil
         let position = book.position(atAbsoluteOffset: offset)
         if position.trackIndex != trackIndex {
             loadTrack(index: position.trackIndex, startAt: position.time, autoplay: isPlaying)
@@ -382,6 +388,7 @@ final class PlayerEngine {
 
     func jump(to chapter: Chapter) {
         guard let book, book.tracks.indices.contains(chapter.trackIndex) else { return }
+        pausedAt = nil
         Logger.player.info("[player] jump to chapter \(chapter.title, privacy: .public)")
         if chapter.trackIndex != trackIndex {
             loadTrack(index: chapter.trackIndex, startAt: chapter.start, autoplay: isPlaying)
