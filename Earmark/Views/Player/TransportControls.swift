@@ -38,6 +38,7 @@ struct TransportControls: View {
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)
             .accessibilityLabel("Playback speed")
+            .accessibilityValue(String(format: "%g times", player.speed))
             .frame(maxWidth: .infinity)
 
             Button {
@@ -96,8 +97,14 @@ struct TransportControls: View {
             .buttonBorderShape(.capsule)
             .tint(player.sleepTimer.isActive ? .accentColor : .secondary)
             .accessibilityLabel("Sleep timer")
+            .accessibilityValue(sleepAccessibilityValue)
             .frame(maxWidth: .infinity)
         }
+    }
+
+    private var sleepAccessibilityValue: String {
+        if let remaining = player.sleepRemaining { return "\(remaining.shortDurationString) left" }
+        return player.sleepTimer.isActive ? player.sleepTimer.title : "Off"
     }
 
     nonisolated static func speedLabel(_ speed: Float) -> String {

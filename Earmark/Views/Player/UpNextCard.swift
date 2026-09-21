@@ -19,15 +19,17 @@ struct UpNextCard: View {
             Spacer(minLength: 4)
             Button(action: onPlay) {
                 Image(systemName: "play.fill").font(.headline)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.circle)
             Button(action: onDismiss) {
                 Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
         }
         .padding(10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

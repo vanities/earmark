@@ -37,14 +37,14 @@ struct MiniPlayerView: View {
                 Spacer(minLength: 4)
                 if player.isLoading {
                     ProgressView()
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                 } else {
                     Button {
                         player.togglePlayPause()
                     } label: {
                         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                             .font(.title3)
-                            .frame(width: 40, height: 40)
+                            .frame(width: 44, height: 44)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.plain)
@@ -55,7 +55,7 @@ struct MiniPlayerView: View {
                     } label: {
                         SkipGlyph(seconds: settings.skipForwardInterval, forward: true)
                             .font(.title3)
-                            .frame(width: 40, height: 40)
+                            .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
                 }
