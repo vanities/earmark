@@ -592,6 +592,15 @@ final class PlayerEngine {
         notify()
     }
 
+    /// Adds time to a running countdown ("+5 min" at bedtime) without restarting it.
+    func extendSleepTimer(by seconds: TimeInterval) {
+        guard case .duration = sleepTimer, let endsAt = sleepEndsAt else { return }
+        sleepEndsAt = endsAt.addingTimeInterval(seconds)
+        sleepRemaining = max(0, endsAt.timeIntervalSinceNow) + seconds
+        Logger.player.info("[player] sleep timer +\(Int(seconds / 60)) min → \(self.sleepRemaining ?? 0, format: .fixed(precision: 0))s left")
+        notify()
+    }
+
     private func cancelSleepTimer(notify shouldNotify: Bool) {
         sleepTask?.cancel()
         sleepTask = nil

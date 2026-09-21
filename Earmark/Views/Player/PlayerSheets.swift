@@ -75,6 +75,18 @@ struct SleepTimerSheet: View {
                     Section {
                         Label("Pausing in \(remaining.clockString)", systemImage: "moon.zzz.fill")
                             .monospacedDigit()
+                        HStack(spacing: 12) {
+                            ForEach([5, 15], id: \.self) { minutes in
+                                Button {
+                                    player.extendSleepTimer(by: TimeInterval(minutes * 60))
+                                } label: {
+                                    Text("+\(minutes) min").frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.large)
+                                .accessibilityLabel("Add \(minutes) minutes")
+                            }
+                        }
                     }
                 } else if player.sleepTimer == .endOfChapter {
                     Section {
