@@ -14,7 +14,9 @@ final class NowPlayingController {
     private var artworkBookID: String?
     /// The cover `artworkImage` is for — a replaced cover changes it without changing the book.
     private var artworkID: String?
-    /// The cover last written for the widget, so a new one is written even when nothing else changed.
+    /// True until the current book's artwork has finished loading (it may turn out to have none).
+    private var artworkLoading = false
+    /// The cover last written for the widget ("" = none), so a change is written even when nothing else moved.
     private var widgetCoverID: String?
 
     init(player: PlayerEngine, settings: AppSettings) {
@@ -131,6 +133,7 @@ final class NowPlayingController {
             artworkImage = nil
             artworkBookID = nil
             artworkID = nil
+            artworkLoading = false
             widgetCoverID = nil
             SharedNowPlaying.write(nil)
             SharedNowPlaying.writeCover(nil)
@@ -145,11 +148,13 @@ final class NowPlayingController {
             artworkBookID = book.id
             artworkID = book.artworkID
             artworkImage = nil
+            artworkLoading = true
             let wanted = book.artworkID
             Task { [weak self] in
                 let image = await ArtworkStore.shared.loadImage(for: wanted)
                 guard let self, self.artworkBookID == book.id, self.artworkID == wanted else { return }
                 self.artworkImage = image
+                self.artworkLoading = false
                 self.update()
             }
         }
@@ -211,15 +216,17 @@ final class NowPlayingController {
             updatedAt: .now
         )
         let coarse: (NowPlayingSnapshot) -> [AnyHashable] = { [$0.bookID, $0.title, $0.isPlaying, Int($0.fraction * 100)] }
-        // A cover that just loaded (or was replaced) counts as a change even when nothing else moved.
-        let coverID = artworkImage == nil ? nil : artworkID
-        let coverChanged = coverID != nil && coverID != widgetCoverID
+        // Once the artwork has loaded, a new cover — or none, for a book without art — counts as a
+        // change even when nothing else moved; otherwise the widget kept the previous book's cover.
+        let cover: String? = artworkLoading ? nil : (artworkImage == nil ? "" : artworkID ?? "")
+        let coverChanged = cover != nil && cover != widgetCoverID
         guard coverChanged || lastWidgetSnapshot.map(coarse) != coarse(snapshot) else { return }
         lastWidgetSnapshot = snapshot
         SharedNowPlaying.write(snapshot)
-        if let image = artworkImage, let jpeg = image.jpegData(compressionQuality: 0.8) {
-            SharedNowPlaying.writeCover(jpeg)
-            widgetCoverID = coverID
+        if coverChanged, let cover {
+            SharedNowPlaying.writeCover(artworkImage?.jpegData(compressionQuality: 0.8))
+            widgetCoverID = cover
+            Logger.nowPlaying.debug("[nowplaying] widget cover → \(cover.isEmpty ? "none" : cover, privacy: .public)")
         }
         WidgetCenter.shared.reloadAllTimelines()
     }
