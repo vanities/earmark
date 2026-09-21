@@ -24,14 +24,14 @@ struct NASSetupView: View {
             Form {
                 Section {
                     TextField("Name (e.g. NAS)", text: $name)
-                    TextField("Host or IP (nas.local, 192.168.1.20)", text: $host)
+                    TextField("Host or IP (e.g. nas.local)", text: $host)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    TextField("Share (e.g. all)", text: $share)
+                    TextField("Share (e.g. media)", text: $share)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    TextField("Folder in share (e.g. downloads/books)", text: $path)
+                    TextField("Folder in share (e.g. audiobooks)", text: $path)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 } header: {
