@@ -96,6 +96,48 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertFalse(names.contains { $0.hasPrefix("library.json.corrupt-") })
     }
 
+    /// Builds before cover choices kept syncKey → URL. Those become online choices from the distant
+    /// past (so any newer pick beats them), and the old key is never written again.
+    func testCustomCoverURLsBecomeCoverChoices() throws {
+        let json = """
+        {"customArtwork":{"src|Austen/Pride|":"legacy-id"},
+         "customCoverURLs":{"austen/pride":"https://covers.example/a.jpg"}}
+        """
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let state = try decoder.decode(LibraryState.self, from: Data(json.utf8))
+        XCTAssertEqual(state.coverChoices["austen/pride"]?.kind, .online)
+        XCTAssertEqual(state.coverChoices["austen/pride"]?.url, "https://covers.example/a.jpg")
+        XCTAssertEqual(state.coverChoices["austen/pride"]?.chosenAt, .distantPast)
+        XCTAssertEqual(state.customArtwork["src|Austen/Pride|"], "legacy-id")
+        XCTAssertTrue(state.hasUserData)
+
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let written = String(decoding: try encoder.encode(state), as: UTF8.self)
+        XCTAssertFalse(written.contains("customCoverURLs"), written)
+    }
+
+    func testCoverChoicesAndWrittenCoversRoundTrip() throws {
+        var state = LibraryState()
+        state.coverChoices = ["austen/pride": CoverChoice(kind: .online, url: "https://covers.example/b.jpg"),
+                              "austen/emma": CoverChoice(kind: .original)]
+        state.writtenCovers = ["src|Austen/Pride|": "abc123"]
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(LibraryState.self, from: encoder.encode(state))
+        XCTAssertEqual(decoded.coverChoices, state.coverChoices)
+        XCTAssertEqual(decoded.writtenCovers, state.writtenCovers)
+    }
+
+    func testNewerChoiceBeatsALegacyURLInTheSameFile() throws {
+        // A file that has both (e.g. merged back from a moved-aside library): the real choice wins.
+        let json = """
+        {"coverChoices":{"austen/pride":{"kind":"original","chosenAt":"2026-09-21T12:00:00Z"}},
+         "customCoverURLs":{"austen/pride":"https://covers.example/a.jpg"}}
+        """
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let state = try decoder.decode(LibraryState.self, from: Data(json.utf8))
+        XCTAssertEqual(state.coverChoices["austen/pride"]?.kind, .original)
+    }
 }
 
 final class MetadataCacheHintTests: XCTestCase {

@@ -136,6 +136,9 @@ struct BookDetailView: View {
                     Button("Edit Details…", systemImage: "pencil") { showEditDetails = true }
                     Button("Finished Date & Rating…", systemImage: "checkmark.seal") { showMarkFinished = true }
                     Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { showCoverPicker = true }
+                    if library.hasCustomCover(book) {
+                        Button("Use Original Cover", systemImage: "arrow.uturn.backward") { library.useOriginalCover(for: book) }
+                    }
                     if !library.isRemote(book) {
                         Divider()
                         Button("Delete Files…", systemImage: "trash", role: .destructive) { confirmDelete = true }

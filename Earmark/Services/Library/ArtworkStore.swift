@@ -28,13 +28,26 @@ final class ArtworkStore: @unchecked Sendable {
         Self.hex(SHA256.hash(data: Data(key.utf8)))
     }
 
-    /// Id for a user-chosen cover. It changes with the image, so every view keyed on `Book.artworkID`
-    /// reloads when a cover is replaced — a fixed id kept the old cover on screen until the view was rebuilt.
-    func customID(for bookID: String, imageData: Data) -> String {
+    // A user-chosen cover needs a new id whenever it changes: views reload art only when
+    // `Book.artworkID` changes, so a fixed id kept the old cover on screen until the view was rebuilt.
+
+    /// Id for a cover found online. It depends only on the book and the URL, so every device can tell
+    /// whether it already holds the synced choice (see `CoverSync.plan`).
+    static func customID(for bookID: String, sourceURL: URL) -> String {
+        hex(SHA256.hash(data: Data("\(bookID)|custom|\(sourceURL.absoluteString)".utf8)))
+    }
+
+    /// Id for a cover picked from Photos or Files, which has no URL to name it by.
+    static func customID(for bookID: String, imageData: Data) -> String {
         var sha = SHA256()
         sha.update(data: Data("\(bookID)|custom|".utf8))
         sha.update(data: imageData)
-        return Self.hex(sha.finalize())
+        return hex(sha.finalize())
+    }
+
+    /// A short content hash, for telling whether an image file is still the one Earmark wrote.
+    static func fingerprint(of data: Data) -> String {
+        hex(SHA256.hash(data: data))
     }
 
     private static func hex(_ digest: SHA256.Digest) -> String {
@@ -53,20 +66,7 @@ final class ArtworkStore: @unchecked Sendable {
     @discardableResult
     func store(imageData: Data, id: String) -> Bool {
         let sw = Stopwatch()
-        guard let source = CGImageSourceCreateWithData(imageData as CFData, nil) else {
-            Logger.artwork.error("[artwork] undecodable image data bytes=\(imageData.count)")
-            return false
-        }
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: true,
-        ]
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-            Logger.artwork.error("[artwork] thumbnail creation failed")
-            return false
-        }
+        guard let cgImage = Self.downsampled(imageData, maxPixelSize: maxPixelSize) else { return false }
         let image = UIImage(cgImage: cgImage)
         guard let jpeg = image.jpegData(compressionQuality: 0.85) else { return false }
         do {
@@ -78,6 +78,30 @@ final class ArtworkStore: @unchecked Sendable {
             Logger.artwork.error("[artwork] write failed: \(error.localizedDescription, privacy: .public)")
             return false
         }
+    }
+
+    /// The image as a JPEG at most `maxPixelSize` on its long side — what Earmark writes next to the
+    /// audio, so a 12-megapixel HEIC from Photos doesn't become a 5 MB cover.jpg.
+    static func coverJPEG(from data: Data, maxPixelSize: Int = 1400) -> Data? {
+        downsampled(data, maxPixelSize: maxPixelSize).flatMap { UIImage(cgImage: $0).jpegData(compressionQuality: 0.9) }
+    }
+
+    private static func downsampled(_ data: Data, maxPixelSize: Int) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            Logger.artwork.error("[artwork] undecodable image data bytes=\(data.count)")
+            return nil
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            Logger.artwork.error("[artwork] thumbnail creation failed bytes=\(data.count)")
+            return nil
+        }
+        return image
     }
 
     func image(for id: String?) -> UIImage? {
@@ -99,11 +123,29 @@ final class ArtworkStore: @unchecked Sendable {
     /// Drops one thumbnail (e.g. a custom cover that was just replaced) from memory and disk.
     func remove(id: String) {
         memory.removeObject(forKey: id as NSString)
+        guard hasImage(id: id) else { return }
         do {
             try FileManager.default.removeItem(at: fileURL(for: id))
             Logger.artwork.info("[artwork] removed id=\(id, privacy: .public)")
         } catch {
             Logger.artwork.notice("[artwork] remove failed id=\(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Re-files a thumbnail under a new id (a custom cover from an older build, whose id scheme changed).
+    @discardableResult
+    func move(from oldID: String, to newID: String) -> Bool {
+        guard oldID != newID else { return true }
+        do {
+            try? FileManager.default.removeItem(at: fileURL(for: newID))
+            try FileManager.default.moveItem(at: fileURL(for: oldID), to: fileURL(for: newID))
+            if let image = memory.object(forKey: oldID as NSString) { memory.setObject(image, forKey: newID as NSString) }
+            memory.removeObject(forKey: oldID as NSString)
+            Logger.artwork.info("[artwork] moved id=\(oldID, privacy: .public) → \(newID, privacy: .public)")
+            return true
+        } catch {
+            Logger.artwork.error("[artwork] move failed id=\(oldID, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 

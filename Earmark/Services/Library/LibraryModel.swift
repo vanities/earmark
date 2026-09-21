@@ -46,8 +46,10 @@ final class LibraryModel {
     private(set) var nasServers: [NASServer] = []
     private(set) var nasStatus: [UUID: NASStatus] = [:]
     private(set) var customArtwork: [String: String] = [:]
-    private(set) var customCoverURLs: [String: String] = [:]
-    @ObservationIgnored private var coverFetchAttempted: Set<String> = []
+    private(set) var coverChoices: [String: CoverChoice] = [:]
+    @ObservationIgnored private var writtenCovers: [String: String] = [:]
+    /// "bookID|artworkID" cover downloads tried this launch, so a dead URL isn't retried on every scan.
+    @ObservationIgnored private var coverDownloadsAttempted: Set<String> = []
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
     private(set) var readingLog: [ReadingLogEntry] = []
@@ -91,7 +93,8 @@ final class LibraryModel {
         lastBookID = state.lastBookID
         nasServers = state.nasServers
         customArtwork = state.customArtwork
-        customCoverURLs = state.customCoverURLs
+        coverChoices = state.coverChoices
+        writtenCovers = state.writtenCovers
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
         readingLog = state.readingLog
@@ -377,6 +380,7 @@ final class LibraryModel {
         }
         save()
         onBooksChanged?()
+        reconcileCovers()   // new books, or custom covers lost with the art cache
     }
 
     private func scanRemote(_ source: LibrarySource) {
@@ -635,7 +639,7 @@ final class LibraryModel {
     private func persist(pushCloud: Bool) {
         saveTask?.cancel()
         saveTask = nil
-        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, customCoverURLs: customCoverURLs, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
+        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, coverChoices: coverChoices, writtenCovers: writtenCovers, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
         let store = self.store
         Task.detached(priority: .utility) {
             do {
@@ -648,15 +652,8 @@ final class LibraryModel {
             let snapshot = ProgressSync.cloudSnapshot(local: progress, books: books, existingCloud: cloudSync.load())
             cloudSync.save(snapshot)
             cloudSync.saveReadingLog(mergedReadingLog(with: cloudSync.loadReadingLog()))
-            cloudSync.saveCoverURLs(mergedCoverURLs(with: cloudSync.loadCoverURLs()))
+            cloudSync.saveCoverChoices(CoverSync.merged(local: coverChoices, cloud: cloudSync.loadCoverChoices()))
         }
-    }
-
-    /// Union of local and cloud custom-cover URLs by book syncKey (local wins on conflict).
-    private func mergedCoverURLs(with cloud: [String: String]) -> [String: String] {
-        var merged = customCoverURLs
-        for (key, value) in cloud where merged[key] == nil { merged[key] = value }
-        return merged
     }
 
     /// Union of local and cloud reading-log entries by id (local wins on conflict).
@@ -670,35 +667,19 @@ final class LibraryModel {
     private func mergeCloudProgress() {
         let merged = ProgressSync.merged(local: progress, books: books, cloud: cloudSync.load())
         let mergedLog = mergedReadingLog(with: cloudSync.loadReadingLog())
-        let mergedCovers = mergedCoverURLs(with: cloudSync.loadCoverURLs())
+        let mergedCovers = CoverSync.merged(local: coverChoices, cloud: cloudSync.loadCoverChoices())
         let logChanged = mergedLog.count != readingLog.count
-        let coversChanged = mergedCovers.count != customCoverURLs.count
-        guard merged != progress || logChanged || coversChanged else { return }
+        // Compare values, not counts: a replaced cover keeps its key and changes only the choice.
+        let coversChanged = mergedCovers != coverChoices
+        let progressChanged = merged != progress
+        guard progressChanged || logChanged || coversChanged else { return }
         progress = merged
         if logChanged { readingLog = mergedLog }
-        if coversChanged { customCoverURLs = mergedCovers }
-        Logger.library.info("[library] merged progress/reading log/covers from iCloud")
+        if coversChanged { coverChoices = mergedCovers }
+        Logger.library.info("[library] merged from iCloud progress=\(progressChanged) log=\(logChanged) covers=\(coversChanged)")
         persist(pushCloud: false)   // write locally; don't echo the merge straight back
         onBooksChanged?()
-        if coversChanged { fetchSyncedCovers() }
-    }
-
-    /// Downloads any custom cover chosen on another device (synced by URL) that isn't on this one yet.
-    private func fetchSyncedCovers() {
-        for book in books {
-            guard let urlString = customCoverURLs[book.syncKey], let url = URL(string: urlString) else { continue }
-            let haveLocal = customArtwork[book.id].map { ArtworkStore.shared.hasImage(id: $0) } ?? false
-            guard !haveLocal, !coverFetchAttempted.contains(book.syncKey) else { continue }
-            coverFetchAttempted.insert(book.syncKey)
-            let bookID = book.id
-            Task { [weak self] in
-                guard let data = try? await CoverSearch.download(url) else { return }
-                await MainActor.run { [weak self] in
-                    guard let self, let current = self.book(id: bookID) else { return }
-                    _ = self.setCustomArtwork(data, sourceURL: url, for: current)
-                }
-            }
-        }
+        if coversChanged { reconcileCovers() }
     }
 
     private func scheduleSave() {
@@ -809,34 +790,191 @@ final class LibraryModel {
 
     // MARK: - Cover art
 
-    /// Saves user-chosen cover art for a book: into the art cache (kept across rescans) and, for
-    /// books on this phone, as cover.jpg next to the audio so other apps see it too.
-    func setCustomArtwork(_ data: Data, sourceURL: URL? = nil, for book: Book) -> Bool {
-        let id = ArtworkStore.shared.customID(for: book.id, imageData: data)
-        guard ArtworkStore.shared.store(imageData: data, id: id) else { return false }
-        let previous = customArtwork[book.id]
-        customArtwork[book.id] = id
-        if let previous, previous != id { ArtworkStore.shared.remove(id: previous) }
-        if let sourceURL { customCoverURLs[book.syncKey] = sourceURL.absoluteString }
-        if let index = books.firstIndex(where: { $0.id == book.id }) {
-            books[index].artworkID = id
-        }
-        if !isRemote(book), let bookURL = url(forBook: book) {
-            let folder = book.kind == .folder ? bookURL : bookURL.deletingLastPathComponent()
-            let target = folder.appending(path: "cover.jpg")
-            if !FileManager.default.fileExists(atPath: target.path) {
-                do {
-                    try data.write(to: target, options: .atomic)
-                    Logger.artwork.info("[covers] wrote cover.jpg for \(book.title, privacy: .public)")
-                } catch {
-                    Logger.artwork.notice("[covers] couldn't write cover.jpg: \(error.localizedDescription, privacy: .public)")
-                }
+    /// Where a cover the user picked came from.
+    enum CoverOrigin: Sendable {
+        /// A Find Cover result. Synced by URL, so every device shows it.
+        case online(URL)
+        /// Photos or Files. Nothing to download elsewhere, so it stays on this device.
+        case device
+    }
+
+    /// Whether the user picked a cover for this book (so there's an original to go back to).
+    func hasCustomCover(_ book: Book) -> Bool { customArtwork[book.id] != nil }
+
+    /// Applies a cover the user picked to a book and its downloaded twin, remembers the choice so it
+    /// syncs, and — for books on this phone — saves it next to the audio so other apps see it too.
+    func setCustomArtwork(_ data: Data, origin: CoverOrigin, for book: Book) -> Bool {
+        let sw = Stopwatch()
+        let artwork = ArtworkStore.shared
+        let group = books.filter { $0.syncKey == book.syncKey }
+        var applied = 0
+        for member in group.isEmpty ? [book] : group {
+            let id = switch origin {
+            case .online(let url): ArtworkStore.customID(for: member.id, sourceURL: url)
+            case .device: ArtworkStore.customID(for: member.id, imageData: data)
             }
+            guard artwork.store(imageData: data, id: id) else { continue }
+            installCustomCover(id, for: member)
+            writeCoverFile(data, for: member)
+            applied += 1
         }
-        Logger.artwork.info("[covers] custom cover set for \(book.title, privacy: .public) id=\(id, privacy: .public) previous=\(previous ?? "-", privacy: .public)")
+        guard applied > 0 else {
+            Logger.artwork.error("[covers] picked image unusable for \(book.title, privacy: .public) bytes=\(data.count)")
+            return false
+        }
+        coverChoices[book.syncKey] = switch origin {
+        case .online(let url): CoverChoice(kind: .online, url: url.absoluteString)
+        case .device: CoverChoice(kind: .deviceOnly)
+        }
+        Logger.artwork.info("[covers] picked cover for \(book.title, privacy: .public) books=\(applied) origin=\(String(describing: origin), privacy: .public) in \(sw.ms, format: .fixed(precision: 0))ms")
         save()
         onBooksChanged?()
         return true
+    }
+
+    /// Drops the user's cover for a book — on every device — and goes back to the art its files provide.
+    func useOriginalCover(for book: Book) {
+        var rescans: Set<UUID> = []
+        for member in books where member.syncKey == book.syncKey {
+            if restoreOriginalCover(member) { rescans.insert(member.sourceID) }
+        }
+        coverChoices[book.syncKey] = CoverChoice(kind: .original)
+        Logger.artwork.info("[covers] back to the original cover for \(book.title, privacy: .public) rescans=\(rescans.count)")
+        save()
+        onBooksChanged?()
+        for id in rescans { rescan(id) }
+    }
+
+    /// Points a book at a custom cover already in the art cache, deleting the one it replaces.
+    private func installCustomCover(_ id: String, for book: Book) {
+        let previous = customArtwork[book.id]
+        customArtwork[book.id] = id
+        if let previous, previous != id { ArtworkStore.shared.remove(id: previous) }
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index].artworkID = id
+        }
+        Logger.artwork.debug("[covers] \(book.title, privacy: .public) → id=\(id, privacy: .public) previous=\(previous ?? "-", privacy: .public)")
+    }
+
+    /// Drops a book's custom cover on this device. Returns true when its source needs a rescan to
+    /// rebuild the book's own art, because the image Earmark had written next to the audio is gone.
+    private func restoreOriginalCover(_ book: Book) -> Bool {
+        let artwork = ArtworkStore.shared
+        if let id = customArtwork.removeValue(forKey: book.id) { artwork.remove(id: id) }
+        let scanID = artwork.id(for: book.id)
+        let removedFile = removeCoverFile(for: book)
+        // The scan's thumbnail may have been made from the image just removed; the rescan rebuilds it.
+        if removedFile { artwork.remove(id: scanID) }
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index].artworkID = artwork.hasImage(id: scanID) ? scanID : nil
+        }
+        return removedFile
+    }
+
+    /// Brings every cover on this device in line with the synced choices: fetches covers picked on
+    /// another device (or lost with the art cache) and drops ones the user went back from.
+    private func reconcileCovers() {
+        let artwork = ArtworkStore.shared
+        let actions = CoverSync.plan(books: books, choices: coverChoices, customArtwork: customArtwork, hasImage: artwork.hasImage(id:))
+        guard !actions.isEmpty else { return }
+        Logger.artwork.info("[covers] reconcile actions=\(actions.count)")
+        var changed = false
+        var rescans: Set<UUID> = []
+        for (bookID, action) in actions {
+            guard let book = book(id: bookID) else { continue }
+            switch action {
+            case .adopt(let old, let new):
+                if artwork.move(from: old, to: new) {
+                    installCustomCover(new, for: book)
+                    changed = true
+                }
+            case .removeCustom:
+                if restoreOriginalCover(book) { rescans.insert(book.sourceID) }
+                changed = true
+            case .download(let url, let id):
+                let attempt = "\(bookID)|\(id)"
+                guard coverDownloadsAttempted.insert(attempt).inserted else { continue }
+                Task { [weak self] in await self?.fetchChosenCover(url, id: id, bookID: bookID) }
+            }
+        }
+        if changed {
+            save()
+            onBooksChanged?()
+        }
+        for id in rescans { rescan(id) }
+    }
+
+    /// Downloads a cover chosen on another device (or lost from the art cache) and installs it,
+    /// unless the choice changed while it was downloading.
+    private func fetchChosenCover(_ url: URL, id: String, bookID: String) async {
+        let sw = Stopwatch()
+        let data: Data
+        do {
+            data = try await CoverSearch.download(url)
+        } catch {
+            Logger.artwork.notice("[covers] fetch failed for \(bookID, privacy: .public) url=\(url.absoluteString, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        func stillWanted() -> Book? {
+            guard let book = book(id: bookID), coverChoices[book.syncKey]?.url == url.absoluteString else { return nil }
+            return book
+        }
+        guard stillWanted() != nil else { return }
+        let artwork = ArtworkStore.shared
+        let stored = await Task.detached(priority: .utility) { artwork.store(imageData: data, id: id) }.value
+        guard stored, let book = stillWanted() else { return }
+        installCustomCover(id, for: book)
+        writeCoverFile(data, for: book)
+        Logger.artwork.info("[covers] fetched chosen cover for \(book.title, privacy: .public) bytes=\(data.count) in \(sw.ms, format: .fixed(precision: 0))ms")
+        save()
+        onBooksChanged?()
+    }
+
+    /// Where Earmark keeps a chosen cover next to a book's audio: cover.jpg in a book folder, or
+    /// "<file name>.jpg" beside a single file (the name the scanner pairs with that file). Nil for books
+    /// that aren't on this device, and for a file added on its own, whose folder Earmark can't write.
+    private func coverFileURL(for book: Book) -> URL? {
+        guard let bookURL = url(forBook: book), source(for: book)?.kind != .file else { return nil }
+        switch book.kind {
+        case .folder: return bookURL.appending(path: "cover.jpg")
+        case .singleFile: return bookURL.deletingPathExtension().appendingPathExtension("jpg")
+        }
+    }
+
+    /// Saves a chosen cover next to the book's audio. Only ever replaces an image Earmark wrote itself
+    /// (checked against the hash in `writtenCovers`), never the user's own.
+    private func writeCoverFile(_ data: Data, for book: Book) {
+        guard let target = coverFileURL(for: book) else { return }
+        if FileManager.default.fileExists(atPath: target.path) {
+            guard let written = writtenCovers[book.id], let existing = try? Data(contentsOf: target),
+                  ArtworkStore.fingerprint(of: existing) == written else {
+                Logger.artwork.info("[covers] leaving existing \(target.lastPathComponent, privacy: .public) for \(book.title, privacy: .public) — not Earmark's")
+                return
+            }
+        }
+        guard let jpeg = ArtworkStore.coverJPEG(from: data) else { return }
+        do {
+            try jpeg.write(to: target, options: .atomic)
+            writtenCovers[book.id] = ArtworkStore.fingerprint(of: jpeg)
+            Logger.artwork.info("[covers] wrote \(target.lastPathComponent, privacy: .public) for \(book.title, privacy: .public) bytes=\(jpeg.count)")
+        } catch {
+            Logger.artwork.notice("[covers] couldn't write \(target.lastPathComponent, privacy: .public) for \(book.title, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Deletes the cover image Earmark wrote next to a book's audio, if it's still the one it wrote.
+    /// Returns true when a file was removed.
+    private func removeCoverFile(for book: Book) -> Bool {
+        guard let written = writtenCovers.removeValue(forKey: book.id), let target = coverFileURL(for: book),
+              let existing = try? Data(contentsOf: target), ArtworkStore.fingerprint(of: existing) == written else { return false }
+        do {
+            try FileManager.default.removeItem(at: target)
+            Logger.artwork.info("[covers] removed \(target.lastPathComponent, privacy: .public) for \(book.title, privacy: .public)")
+            return true
+        } catch {
+            Logger.artwork.notice("[covers] couldn't remove \(target.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return false
+        }
     }
 
     // MARK: - Metadata corrections

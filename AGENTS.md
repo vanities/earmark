@@ -10,7 +10,11 @@ are, with great organization and CarPlay — and never nag.
 
 - **Never copy or move the user's audio.** Sources are security-scoped bookmarks
   (`BookmarkStore`) or the app's own Documents folder. The only files Earmark writes about
-  a book are cover thumbnails in Caches (`ArtworkStore`) and JSON in Application Support.
+  a book are cover thumbnails in Caches (`ArtworkStore`), JSON in Application Support, and —
+  when the user picks a cover for a book on this device — one image beside its audio
+  (`cover.jpg` in a book folder, `<file>.jpg` next to a single file) so other apps see it.
+  Earmark only ever replaces or deletes an image it wrote itself (hash in
+  `LibraryState.writtenCovers`), never one the user put there.
 - **No donation / tip / rating prompts. Ever.**
 - Remote (SMB) books are real library sources: `LibraryScanner.scanRemote` walks the share,
   `MetadataReader.read(asset:)` reads tags through `SMBResourceLoader`, and `LibraryModel.visibleBooks`
@@ -34,7 +38,8 @@ Earmark/
     Network/      NASClient (AMSMB2 wrapper; bounded range reads only — never abort a stream mid-callback),
                   SMBResourceLoader (AVAssetResourceLoaderDelegate streaming), DownloadManager (downloads,
                   Move-into-Earmark, persisted queue, BGProcessingTask), KeychainStore
-    Library/      also CoverSearch (iTunes + Open Library lookups) and QuickTagReader (header sniffing + ID3)
+    Library/      also CoverSearch (iTunes + Open Library lookups), CoverSync (pure cover-choice merge
+                  and per-device plan; newest choice wins across devices) and QuickTagReader
   CarPlay/        CarPlaySceneDelegate (from Info.plist), CarPlayInterface (templates)
   Views/          Root (TabView + bottom-accessory mini player), Library, Player, Folders, Settings, Components
   Resources/      Info.plist (background audio, Files integration, CarPlay scene), assets, entitlements

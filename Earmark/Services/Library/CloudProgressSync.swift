@@ -9,7 +9,9 @@ final class CloudProgressSync {
     private let store = NSUbiquitousKeyValueStore.default
     private static let key = "progress.v1"
     private static let logKey = "readinglog.v1"
-    private static let coverKey = "covers.v1"
+    /// syncKey → cover URL, as builds before cover choices wrote it. Still read, so their covers carry over.
+    private static let legacyCoverKey = "covers.v1"
+    private static let coverKey = "covers.v2"
     private static let maxBytes = 900_000  // KVS caps a value near 1 MB; stay under it.
     private var observer: (any NSObjectProtocol)?
     /// Called when another device changes the store.
@@ -44,13 +46,30 @@ final class CloudProgressSync {
         store.synchronize()
     }
 
-    func loadCoverURLs() -> [String: String] {
-        guard let data = store.data(forKey: Self.coverKey) else { return [:] }
-        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    /// Cover choices by syncKey, with the old URL-only format folded in underneath (any real choice beats it).
+    func loadCoverChoices() -> [String: CoverChoice] {
+        var choices: [String: CoverChoice] = [:]
+        if let data = store.data(forKey: Self.legacyCoverKey),
+           let urls = try? JSONDecoder().decode([String: String].self, from: data) {
+            choices = CoverSync.legacyChoices(urls)
+        }
+        if let data = store.data(forKey: Self.coverKey) {
+            let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+            if let current = try? decoder.decode([String: CoverChoice].self, from: data) {
+                choices.merge(current) { _, new in new }
+            } else {
+                Logger.store.error("[cloud] cover choices bytes=\(data.count) undecodable — ignoring")
+            }
+        }
+        return choices
     }
 
-    func saveCoverURLs(_ map: [String: String]) {
-        guard let data = try? JSONEncoder().encode(map), data.count <= Self.maxBytes else { return }
+    func saveCoverChoices(_ choices: [String: CoverChoice]) {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(choices), data.count <= Self.maxBytes else {
+            Logger.store.error("[cloud] cover choices too large or unencodable — not syncing")
+            return
+        }
         store.set(data, forKey: Self.coverKey)
         store.synchronize()
     }

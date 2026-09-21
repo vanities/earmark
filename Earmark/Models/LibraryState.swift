@@ -16,8 +16,11 @@ struct LibraryState: Codable, Sendable {
     var nasServers: [NASServer] = []
     /// Book ID → artwork ID chosen by the user via Find Cover. Survives rescans.
     var customArtwork: [String: String] = [:]
-    /// Book syncKey → chosen cover's source URL, so a custom cover can be re-fetched on another device.
-    var customCoverURLs: [String: String] = [:]
+    /// Book syncKey → the cover the user picked (or went back from). Synced, so every device shows the same one.
+    var coverChoices: [String: CoverChoice] = [:]
+    /// Book ID → SHA-256 of the cover image Earmark wrote next to that book's audio, so it only ever
+    /// replaces or deletes an image it wrote itself — never the user's own cover.jpg.
+    var writtenCovers: [String: String] = [:]
     /// Book ID → user corrections to detected title/author/series/etc. Survives rescans.
     var metadataOverrides: [String: BookMetadataOverride] = [:]
     /// Book ID → saved spots. Survives rescans.
@@ -27,7 +30,7 @@ struct LibraryState: Codable, Sendable {
 
     init(sources: [LibrarySource] = [], books: [Book] = [], progress: [String: PlaybackProgress] = [:],
          hiddenBookIDs: Set<String> = [], lastBookID: String? = nil, nasServers: [NASServer] = [],
-         customArtwork: [String: String] = [:], customCoverURLs: [String: String] = [:], metadataOverrides: [String: BookMetadataOverride] = [:], bookmarks: [String: [Bookmark]] = [:], readingLog: [ReadingLogEntry] = []) {
+         customArtwork: [String: String] = [:], coverChoices: [String: CoverChoice] = [:], writtenCovers: [String: String] = [:], metadataOverrides: [String: BookMetadataOverride] = [:], bookmarks: [String: [Bookmark]] = [:], readingLog: [ReadingLogEntry] = []) {
         self.sources = sources
         self.books = books
         self.progress = progress
@@ -35,7 +38,8 @@ struct LibraryState: Codable, Sendable {
         self.lastBookID = lastBookID
         self.nasServers = nasServers
         self.customArtwork = customArtwork
-        self.customCoverURLs = customCoverURLs
+        self.coverChoices = coverChoices
+        self.writtenCovers = writtenCovers
         self.metadataOverrides = metadataOverrides
         self.bookmarks = bookmarks
         self.readingLog = readingLog
@@ -43,7 +47,7 @@ struct LibraryState: Codable, Sendable {
 
     /// User state worth protecting: anything beyond the always-present Documents source.
     var hasUserData: Bool {
-        !progress.isEmpty || !nasServers.isEmpty || !customArtwork.isEmpty
+        !progress.isEmpty || !nasServers.isEmpty || !customArtwork.isEmpty || !coverChoices.isEmpty
             || sources.contains { $0.kind != .appDocuments }
     }
 
@@ -61,7 +65,8 @@ struct LibraryState: Codable, Sendable {
         nasServers.append(contentsOf: old.nasServers.filter { !serverIDs.contains($0.id) })
         for (key, value) in old.progress where progress[key] == nil { progress[key] = value }
         for (key, value) in old.customArtwork where customArtwork[key] == nil { customArtwork[key] = value }
-        for (key, value) in old.customCoverURLs where customCoverURLs[key] == nil { customCoverURLs[key] = value }
+        for (key, value) in old.coverChoices where coverChoices[key] == nil { coverChoices[key] = value }
+        for (key, value) in old.writtenCovers where writtenCovers[key] == nil { writtenCovers[key] = value }
         for (key, value) in old.metadataOverrides where metadataOverrides[key] == nil { metadataOverrides[key] = value }
         let logIDs = Set(readingLog.map(\.id))
         readingLog.append(contentsOf: old.readingLog.filter { !logIDs.contains($0.id) })
@@ -76,7 +81,13 @@ struct LibraryState: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, customCoverURLs, metadataOverrides, bookmarks, readingLog
+        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog
+    }
+
+    /// Fields older builds wrote that now live elsewhere; read once, never written.
+    private enum LegacyKeys: String, CodingKey {
+        /// syncKey → cover URL, before `coverChoices` carried a date and a kind.
+        case customCoverURLs
     }
 
     init(from decoder: any Decoder) throws {
@@ -89,7 +100,12 @@ struct LibraryState: Codable, Sendable {
         lastBookID = try c.decodeIfPresent(String.self, forKey: .lastBookID)
         nasServers = try c.decodeIfPresent([NASServer].self, forKey: .nasServers) ?? []
         customArtwork = try c.decodeIfPresent([String: String].self, forKey: .customArtwork) ?? [:]
-        customCoverURLs = try c.decodeIfPresent([String: String].self, forKey: .customCoverURLs) ?? [:]
+        coverChoices = try c.decodeIfPresent([String: CoverChoice].self, forKey: .coverChoices) ?? [:]
+        let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+        if let urls = try? legacy.decodeIfPresent([String: String].self, forKey: .customCoverURLs) {
+            coverChoices = CoverSync.legacyChoices(urls).merging(coverChoices) { _, current in current }
+        }
+        writtenCovers = try c.decodeIfPresent([String: String].self, forKey: .writtenCovers) ?? [:]
         metadataOverrides = try c.decodeIfPresent([String: BookMetadataOverride].self, forKey: .metadataOverrides) ?? [:]
         bookmarks = try c.decodeIfPresent([String: [Bookmark]].self, forKey: .bookmarks) ?? [:]
         readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []

@@ -21,6 +21,7 @@
 		2268B189466027ABFCEB1438 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBDEE3EE28DD74DBB044B5D /* PlayerView.swift */; };
 		2452A42928A096BC12775122 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB16F753EB29D72187857F1 /* AppSettings.swift */; };
 		2FC49A0262FEA03223CF383D /* CloudProgressSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED77F24493E6E912E2FF488 /* CloudProgressSync.swift */; };
+		31A2FABD9C0AC14289040FEE /* CoverChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A619A7B7DD9D628D7CF41 /* CoverChoice.swift */; };
 		32301B9659200C43DBFF1561 /* BookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 692A485EFDE03BB1D9D10A80 /* BookDetailView.swift */; };
 		32C224FAF75DAF8F54BCA093 /* BookContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81295036C4374E8D926BA71 /* BookContextMenu.swift */; };
 		3D71630BC6D33F673ECDEF77 /* Logger+Earmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5450C0C927711EAF2A80272 /* Logger+Earmark.swift */; };
@@ -47,6 +48,8 @@
 		74004571BB6526C746CB5353 /* String+Natural.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45A581851B7063C9FA6A72FB /* String+Natural.swift */; };
 		75C52F1CC39B1FBE4E14F387 /* FormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6A588CA99CD56CAB8F90A9 /* FormattingTests.swift */; };
 		77ADF8C366265AFAA1738EEB /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */; };
+		792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9286881105751BAB5361070 /* CoverSyncTests.swift */; };
+		7D104AE357D798ADF398A74B /* CoverSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E324682D9AA6260811DB36 /* CoverSync.swift */; };
 		8517AD7736CAB8F19231B70F /* FoldersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 815C177E8C621E8444326E8A /* FoldersView.swift */; };
 		87AF4C2B6C9C0D019E45DC6E /* QuickTagReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB9C9B02A68EA1886195C96 /* QuickTagReader.swift */; };
 		880D77B866EB135454DA72C2 /* BookMetadataOverrideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */; };
@@ -158,6 +161,7 @@
 		1AE6570FAB96CBA9EFC8F2B3 /* NASServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASServer.swift; sourceTree = "<group>"; };
 		1BD632FF90D5B26691454004 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		1C7DE4A5CA938E53610AB05B /* Earmark.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Earmark.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		22E324682D9AA6260811DB36 /* CoverSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSync.swift; sourceTree = "<group>"; };
 		22F43F134AAFB6721B29281D /* ArtworkStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStoreTests.swift; sourceTree = "<group>"; };
 		261DF5544E541EB03D960595 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		26B535F6B51ECA35675979B7 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
@@ -226,11 +230,13 @@
 		B67917FDCE2F12C66E46943F /* MarkFinishedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkFinishedSheet.swift; sourceTree = "<group>"; };
 		B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinder.swift; sourceTree = "<group>"; };
 		B8099B37BF7CE43AB8CBEA21 /* NowPlayingSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingSnapshot.swift; sourceTree = "<group>"; };
+		B9286881105751BAB5361070 /* CoverSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSyncTests.swift; sourceTree = "<group>"; };
 		C266E3FFEA78B55E971D7D96 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		C5450C0C927711EAF2A80272 /* Logger+Earmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Logger+Earmark.swift"; sourceTree = "<group>"; };
 		C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookGrouperTests.swift; sourceTree = "<group>"; };
 		CD89F1372BCDEC869661AF28 /* MetadataReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataReader.swift; sourceTree = "<group>"; };
 		CF5B4DC8D23973CFE456A9AA /* EditBookDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditBookDetailsView.swift; sourceTree = "<group>"; };
+		D10A619A7B7DD9D628D7CF41 /* CoverChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverChoice.swift; sourceTree = "<group>"; };
 		D4AB7E053E1EDBD08ABF661A /* chapter1.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chapter1.mp3; sourceTree = "<group>"; };
 		D85D1074D532B131D98066F4 /* ArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStore.swift; sourceTree = "<group>"; };
 		DBC158F247888142811C2A71 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -383,6 +389,7 @@
 				B55B4E3AF3EE0F9EE6FCB7A6 /* Bookmark.swift */,
 				B64E59C7852D5E60D668A957 /* BookMetadataOverride.swift */,
 				AAC7A3575E89FE9701132A68 /* Chapter.swift */,
+				D10A619A7B7DD9D628D7CF41 /* CoverChoice.swift */,
 				7990E564C463C8EE7985A33A /* LibraryQueries.swift */,
 				009737EB74631A870EB84AA1 /* LibrarySource.swift */,
 				E9E958126C9019EBE21E1F84 /* LibraryState.swift */,
@@ -501,6 +508,7 @@
 				4C32B20761401506F2E5104B /* BookmarkStore.swift */,
 				DED77F24493E6E912E2FF488 /* CloudProgressSync.swift */,
 				4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */,
+				22E324682D9AA6260811DB36 /* CoverSync.swift */,
 				B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */,
 				9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */,
 				5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */,
@@ -544,6 +552,7 @@
 				C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */,
 				2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */,
 				862DC9C49B6D67781476C544 /* BookPositionTests.swift */,
+				B9286881105751BAB5361070 /* CoverSyncTests.swift */,
 				50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */,
 				0C6A588CA99CD56CAB8F90A9 /* FormattingTests.swift */,
 				2830512E63C478A2F7832BA2 /* LibraryScannerTests.swift */,
@@ -698,6 +707,7 @@
 				0112F693050CA4D6636F3F1D /* BookGrouperTests.swift in Sources */,
 				880D77B866EB135454DA72C2 /* BookMetadataOverrideTests.swift in Sources */,
 				C8EC46FF05F7D82EF6AB9FAB /* BookPositionTests.swift in Sources */,
+				792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */,
 				AB6F08EFFEA0C2C4B16D6C7B /* DuplicateFinderTests.swift in Sources */,
 				75C52F1CC39B1FBE4E14F387 /* FormattingTests.swift in Sources */,
 				ACA01A55A610A0839A8F4561 /* LibraryScannerTests.swift in Sources */,
@@ -744,8 +754,10 @@
 				A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */,
 				7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */,
 				2FC49A0262FEA03223CF383D /* CloudProgressSync.swift in Sources */,
+				31A2FABD9C0AC14289040FEE /* CoverChoice.swift in Sources */,
 				D7B7CB040A9E935D47B6EDDC /* CoverPickerView.swift in Sources */,
 				A4F337EE34090B232B78240B /* CoverSearch.swift in Sources */,
+				7D104AE357D798ADF398A74B /* CoverSync.swift in Sources */,
 				56D848C9D4236C5B79568674 /* DownloadManager.swift in Sources */,
 				53406C677A959DAEC0FA9D63 /* DuplicateFinder.swift in Sources */,
 				43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */,
