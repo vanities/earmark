@@ -37,7 +37,19 @@ struct Book: Identifiable, Codable, Hashable, Sendable {
 
     /// Device-independent identity for cross-device sync. Unlike `id`, it omits the per-install
     /// source UUID, so the same book on another phone (same file layout) resolves to the same key.
-    var syncKey: String { relativePath.lowercased() }
+    /// A folder split into several books (album tags, several multi-part .m4b sets) shares one path,
+    /// so those books add their group key — otherwise they'd overwrite each other's progress and covers.
+    var syncKey: String {
+        let path = relativePath.lowercased()
+        guard kind == .folder, let group = groupKey, !group.isEmpty else { return path }
+        return "\(path)|\(group.lowercased())"
+    }
+
+    /// The group key inside `id` (see `makeID`): empty for an ordinary one-book folder.
+    var groupKey: String? {
+        let prefix = "\(sourceID.uuidString)|\(relativePath)|"
+        return id.hasPrefix(prefix) ? String(id.dropFirst(prefix.count)) : nil
+    }
 
     var totalDuration: TimeInterval { tracks.reduce(0) { $0 + $1.duration } }
 

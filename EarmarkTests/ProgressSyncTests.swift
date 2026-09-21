@@ -44,6 +44,20 @@ final class ProgressSyncTests: XCTestCase {
         XCTAssertEqual(snap["some/other/book"]?.time, 77, "a book not on this device is preserved")
     }
 
+    func testBooksSplitFromOneFolderDontShareProgress() {
+        // One folder holding two album-tagged books: same relative path, different group keys.
+        let source = UUID()
+        func split(_ group: String) -> Book {
+            Book(id: Book.makeID(sourceID: source, relativePath: "Box Set", groupKey: group), sourceID: source,
+                 relativePath: "Box Set", kind: .folder, title: group, tracks: [], chapters: [], addedAt: .now, totalBytes: 0)
+        }
+        let one = split("book one"), two = split("book two")
+        let cloud = [one.syncKey: progress(track: 4, time: 44, at: Date(timeIntervalSince1970: 500))]
+        let merged = ProgressSync.merged(local: [:], books: [one, two], cloud: cloud)
+        XCTAssertEqual(merged[one.id]?.time, 44)
+        XCTAssertNil(merged[two.id], "listening to one book of a box set must not move its sibling")
+    }
+
     func testEmptyCloudReturnsLocalUnchanged() {
         let b = book(id: "id", path: "p")
         let local = ["id": progress(track: 1, time: 5, at: .now)]
