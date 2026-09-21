@@ -834,8 +834,11 @@ final class LibraryModel {
 
     /// Drops the user's cover for a book — on every device — and goes back to the art its files provide.
     func useOriginalCover(for book: Book) {
+        let previous = coverChoices[book.syncKey]
+        let group = books.filter { $0.syncKey == book.syncKey }
+        let untracked = group.filter { writtenCovers[$0.id] == nil }
         var rescans: Set<UUID> = []
-        for member in books where member.syncKey == book.syncKey {
+        for member in group {
             if restoreOriginalCover(member) { rescans.insert(member.sourceID) }
         }
         coverChoices[book.syncKey] = CoverChoice(kind: .original)
@@ -843,6 +846,38 @@ final class LibraryModel {
         save()
         onBooksChanged?()
         for id in rescans { rescan(id) }
+        // Builds before cover tracking wrote cover.jpg without recording it, so the original would keep
+        // showing the old pick. Such a file is removed only if it's byte-for-byte that pick.
+        if let previous, previous.chosenAt == .distantPast, let pickURL = previous.url.flatMap(URL.init(string:)) {
+            for member in untracked {
+                Task { [weak self] in await self?.removeLegacyCoverFile(for: member, pickedFrom: pickURL) }
+            }
+        }
+    }
+
+    /// Removes a cover.jpg an older build wrote beside a book's audio without tracking it — only when
+    /// it's identical to the image at the URL the user had picked, so a cover.jpg they made is never touched.
+    private func removeLegacyCoverFile(for book: Book, pickedFrom pickURL: URL) async {
+        guard let bookURL = url(forBook: book), source(for: book)?.kind != .file else { return }
+        let target = (book.kind == .folder ? bookURL : bookURL.deletingLastPathComponent()).appending(path: "cover.jpg")
+        guard let existing = try? Data(contentsOf: target) else { return }
+        guard let picked = try? await CoverSearch.download(pickURL), picked == existing else {
+            Logger.artwork.info("[covers] keeping \(target.path(percentEncoded: false), privacy: .public) — not the image Earmark wrote")
+            return
+        }
+        do {
+            try FileManager.default.removeItem(at: target)
+            Logger.artwork.info("[covers] removed legacy cover.jpg for \(book.title, privacy: .public)")
+        } catch {
+            Logger.artwork.notice("[covers] couldn't remove legacy cover.jpg for \(book.title, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        // Its scan thumbnail was made from that file; rebuild the book's art from what's left.
+        ArtworkStore.shared.remove(id: ArtworkStore.shared.id(for: book.id))
+        if customArtwork[book.id] == nil, let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index].artworkID = nil
+        }
+        rescan(book.sourceID)
     }
 
     /// Points a book at a custom cover already in the art cache, deleting the one it replaces.
