@@ -75,9 +75,12 @@ PALETTES = {
     ),
     "indigo": (
         "very dark charcoal, almost black",
-        "bright periwinkle indigo in the top-left to deep navy in the bottom-right",
-        "bright periwinkle indigo fading to soft violet",
-        "very dark indigo-black in the top-left to near-black in the bottom-right",
+        # Kept deliberately light: a deep-navy end made the whole icon read as a dark slab
+        # next to Mango's bright orange.
+        "light periwinkle blue in the top-left to a medium vivid royal blue in the "
+        "bottom-right, bright and luminous rather than dark",
+        "light periwinkle blue fading to soft cornflower",
+        "deep indigo in the top-left to very dark navy in the bottom-right",
     ),
 }
 
