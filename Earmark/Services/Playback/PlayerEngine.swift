@@ -292,7 +292,6 @@ final class PlayerEngine {
         isPlaying = false
         pausedAt = .now
         persistPosition()
-        AudioSessionManager.deactivate()
         Logger.player.info("[player] paused at \(self.currentTime, format: .fixed(precision: 1))")
         notify()
     }
@@ -534,7 +533,6 @@ final class PlayerEngine {
         if trackIndex + 1 < book.tracks.count {
             if sleepAtChapterEnd {
                 cancelSleepTimer(notify: false)
-                AudioSessionManager.deactivate()
                 isPlaying = false
                 loadTrack(index: trackIndex + 1, startAt: 0, autoplay: false)
                 persistPosition()

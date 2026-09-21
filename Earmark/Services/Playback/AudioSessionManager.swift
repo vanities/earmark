@@ -20,9 +20,13 @@ enum AudioSessionManager {
         }
     }
 
+    /// Only when a book ends — not on pause. Other apps aren't told to resume: pausing an audiobook
+    /// (or the sleep timer pausing it) must not start the music it interrupted, and keeping the session
+    /// while paused keeps Earmark the Now Playing app, so the car's play button resumes the book.
     static func deactivate() {
         do {
-            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            try AVAudioSession.sharedInstance().setActive(false)
+            Logger.player.info("[session] deactivated")
         } catch {
             Logger.player.debug("[session] deactivate: \(error.localizedDescription, privacy: .public)")
         }
