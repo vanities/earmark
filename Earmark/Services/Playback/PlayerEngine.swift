@@ -56,6 +56,8 @@ final class PlayerEngine {
     @ObservationIgnored private var pausedAt: Date?
     @ObservationIgnored private var wasPlayingBeforeInterruption = false
     @ObservationIgnored private var ticks = 0
+    /// The chapter the lock screen / CarPlay last heard about, so a new chapter is announced right away.
+    @ObservationIgnored private var notifiedChapterIndex: Int?
     @ObservationIgnored private var sleepTask: Task<Void, Never>?
     @ObservationIgnored private var sleepEndsAt: Date?
     @ObservationIgnored private var sleepArmedChapterIndex: Int?
@@ -616,7 +618,7 @@ final class PlayerEngine {
         currentTime = seconds
         ticks += 1
         if ticks % 10 == 0 { persistPosition() }
-        if ticks % 30 == 0 { notify() }
+        if ticks % 30 == 0 || currentChapterIndex != notifiedChapterIndex { notify() }
         if sleepTimer == .endOfChapter, let armed = sleepArmedChapterIndex, let now = currentChapterIndex {
             if now != armed {
                 // Skipped or scrubbed to another chapter: stop at the end of that one instead.
@@ -679,6 +681,7 @@ final class PlayerEngine {
     }
 
     private func notify() {
+        notifiedChapterIndex = currentChapterIndex
         stateDidChange?()
     }
 }
