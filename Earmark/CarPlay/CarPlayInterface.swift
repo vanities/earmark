@@ -4,7 +4,7 @@ import UIKit
 import os
 
 /// Builds the CarPlay UI: a "Continue" tab of in-progress books, a "Library" tab grouped
-/// by author, and the shared Now Playing template with speed and chapter buttons.
+/// by author, and the shared Now Playing template with speed, bookmark, undo-jump and chapter buttons.
 @MainActor
 final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
     private let interfaceController: CPInterfaceController
@@ -40,6 +40,7 @@ final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
         interfaceController.setRootTemplate(tabBar, animated: true, completion: nil)
         configureNowPlaying()
         observeChanges()
+        observeUndo()
     }
 
     func stop() {
@@ -105,12 +106,43 @@ final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
         template.isUpNextButtonEnabled = true
         template.upNextTitle = "Chapters"
         template.isAlbumArtistButtonEnabled = false
+        updateNowPlayingButtons()
+    }
 
-        // No sleep timer here: nobody's going to sleep in the car. It stays on the phone's player.
-        let rateButton = CPNowPlayingPlaybackRateButton { [weak self] _ in
+    /// Speed, a bookmark ("remember this bit"), and Undo Jump for a mis-tapped chapter. No sleep timer:
+    /// nobody's going to sleep in the car. Undo stays in place, dimmed when there's nothing to undo, so
+    /// the buttons never move under a driver's finger.
+    private func updateNowPlayingButtons(bookmarkJustAdded: Bool = false) {
+        let rate = CPNowPlayingPlaybackRateButton { [weak self] _ in
             MainActor.assumeIsolated { self?.environment.player.cycleSpeed() }
         }
-        template.updateNowPlayingButtons([rateButton])
+        let bookmark = CPNowPlayingImageButton(image: Self.symbol(bookmarkJustAdded ? "bookmark.fill" : "bookmark")) { [weak self] _ in
+            MainActor.assumeIsolated { self?.addBookmark() }
+        }
+        bookmark.isSelected = bookmarkJustAdded
+        let undo = CPNowPlayingImageButton(image: Self.symbol("arrow.uturn.backward")) { [weak self] _ in
+            MainActor.assumeIsolated {
+                Logger.carplay.info("[carplay] undo jump")
+                self?.environment.player.undoJump()
+            }
+        }
+        undo.isEnabled = environment.player.jumpOrigin != nil
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons([rate, bookmark, undo])
+    }
+
+    private static func symbol(_ name: String) -> UIImage { UIImage(systemName: name) ?? UIImage() }
+
+    private func addBookmark() {
+        let player = environment.player
+        guard let book = player.book else { return }
+        environment.library.addBookmark(for: book, offset: player.bookElapsed)
+        Logger.carplay.info("[carplay] bookmark at \(Int(player.bookElapsed))s in \(book.title, privacy: .public)")
+        // The filled bookmark is the confirmation — nothing to read while driving.
+        updateNowPlayingButtons(bookmarkJustAdded: true)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            self?.updateNowPlayingButtons()
+        }
     }
 
     nonisolated func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
@@ -140,6 +172,19 @@ final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
     }
 
     // MARK: - Observation
+
+    /// Lights up (or dims) the Undo Jump button as a jump becomes available or expires.
+    private func observeUndo() {
+        withObservationTracking {
+            _ = environment.player.jumpOrigin
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.observing else { return }
+                self.updateNowPlayingButtons()
+                self.observeUndo()
+            }
+        }
+    }
 
     private func observeChanges() {
         observing = true
