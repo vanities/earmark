@@ -1,5 +1,6 @@
 import SwiftUI
 import os
+import ShelfKit
 
 @main
 struct EarmarkApp: App {
@@ -13,6 +14,7 @@ struct EarmarkApp: App {
                 .environment(environment.player)
                 .environment(environment.settings)
                 .environment(environment.downloads)
+                .environment(environment.lock)
                 .onOpenURL { url in
                     if url.scheme == "earmark" {
                         Logger.library.info("[app] deep link \(url.absoluteString, privacy: .public)")

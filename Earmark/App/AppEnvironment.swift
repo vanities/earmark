@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Composition root shared by the phone UI and the CarPlay scene.
 @MainActor
@@ -11,6 +12,7 @@ final class AppEnvironment {
     let player: PlayerEngine
     let nowPlaying: NowPlayingController
     let downloads: DownloadManager
+    let lock: AppLock
 
     private init() {
         let sw = Stopwatch()
@@ -19,6 +21,7 @@ final class AppEnvironment {
         player = PlayerEngine(library: library, settings: settings)
         nowPlaying = NowPlayingController(player: player, settings: settings)
         downloads = DownloadManager(library: library)
+        lock = AppLock(appName: "Earmark", settings: settings)
 
         library.onBooksChanged = { [weak player] in
             player?.refreshBookFromLibrary()

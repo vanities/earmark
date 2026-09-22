@@ -3,6 +3,7 @@ import MediaPlayer
 import WidgetKit
 import UIKit
 import os
+import ShelfKit
 
 /// Mirrors player state to the lock screen, Control Center, CarPlay Now Playing,
 /// headphones, and the car's steering-wheel buttons.
@@ -206,25 +207,28 @@ final class NowPlayingController {
     /// Shares the minimal state the Continue Listening widget draws, and refreshes it — but only when
     /// something it shows actually changed, so we don't reload the widget on every playback tick.
     private func publishWidgetSnapshot(book: Book) {
+        // With the lock on, the Home Screen mustn't say what's being listened to; the widget
+        // still opens the book, after Face ID.
+        let locked = settings.lockMode != .off
         let snapshot = NowPlayingSnapshot(
             bookID: book.id,
-            title: book.title,
-            author: book.displayAuthor,
-            fraction: player.bookFraction,
-            remaining: player.bookRemaining.shortDurationString + " left",
+            title: locked ? "Continue listening" : book.title,
+            author: locked ? "Earmark is locked" : book.displayAuthor,
+            fraction: locked ? 0 : player.bookFraction,
+            remaining: locked ? "" : player.bookRemaining.shortDurationString + " left",
             isPlaying: player.isPlaying,
             updatedAt: .now
         )
         let coarse: (NowPlayingSnapshot) -> [AnyHashable] = { [$0.bookID, $0.title, $0.isPlaying, Int($0.fraction * 100)] }
         // Once the artwork has loaded, a new cover — or none, for a book without art — counts as a
         // change even when nothing else moved; otherwise the widget kept the previous book's cover.
-        let cover: String? = artworkLoading ? nil : (artworkImage == nil ? "" : artworkID ?? "")
+        let cover: String? = locked ? "" : artworkLoading ? nil : (artworkImage == nil ? "" : artworkID ?? "")
         let coverChanged = cover != nil && cover != widgetCoverID
         guard coverChanged || lastWidgetSnapshot.map(coarse) != coarse(snapshot) else { return }
         lastWidgetSnapshot = snapshot
         SharedNowPlaying.write(snapshot)
         if coverChanged, let cover {
-            SharedNowPlaying.writeCover(artworkImage?.jpegData(compressionQuality: 0.8))
+            SharedNowPlaying.writeCover(locked ? nil : artworkImage?.jpegData(compressionQuality: 0.8))
             widgetCoverID = cover
             Logger.nowPlaying.debug("[nowplaying] widget cover → \(cover.isEmpty ? "none" : cover, privacy: .public)")
         }

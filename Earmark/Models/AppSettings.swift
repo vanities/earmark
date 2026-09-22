@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ShelfKit
 
 enum HeadphoneTrackAction: String, CaseIterable, Codable, Sendable {
     /// Next/previous-track gestures (AirPods double/triple press) skip by the configured interval.
@@ -58,6 +59,8 @@ final class AppSettings {
     var ambientPlayerBackground: Bool { didSet { defaults.set(ambientPlayerBackground, forKey: Key.ambientBg) } }
     /// Books-per-year target shown on the Stats ring. 0 = no goal.
     var yearlyBookGoal: Int { didSet { defaults.set(yearlyBookGoal, forKey: Key.yearlyGoal) } }
+    /// When Earmark asks for Face ID again (ShelfKit's AppLock reads it here). Default off.
+    var lockMode: LockMode { didSet { defaults.set(lockMode.rawValue, forKey: Key.lockMode) } }
     /// A download listened to the end goes back to the NAS once another book starts. Default off.
     var removeFinishedDownloads: Bool { didSet { defaults.set(removeFinishedDownloads, forKey: Key.removeFinished) } }
 
@@ -80,6 +83,7 @@ final class AppSettings {
         ambientPlayerBackground = defaults.object(forKey: Key.ambientBg) as? Bool ?? true
         yearlyBookGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 12
         removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
+        lockMode = LockMode(rawValue: defaults.string(forKey: Key.lockMode) ?? "") ?? .off
     }
 
     private enum Key {
@@ -100,5 +104,9 @@ final class AppSettings {
         static let ambientBg = "appearance.ambientPlayerBackground"
         static let yearlyGoal = "stats.yearlyBookGoal"
         static let removeFinished = "downloads.removeFinished"
+        static let lockMode = "privacy.lockMode"
     }
 }
+
+/// The lock (ShelfKit's `AppLock`) reads and saves its mode here, under `privacy.lockMode`.
+extension AppSettings: LockSettings {}

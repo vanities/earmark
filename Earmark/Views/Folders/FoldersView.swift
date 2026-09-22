@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import os
+import ShelfKit
 
 struct FoldersView: View {
     @Environment(LibraryModel.self) private var library
@@ -376,10 +377,31 @@ private struct MirrorConfirmationModifier: ViewModifier {
     }
 }
 
+/// Everything hidden, and the way back. Behind Face ID when the lock is on — otherwise the list
+/// of what's hidden would give it away.
 struct HiddenBooksView: View {
     @Environment(LibraryModel.self) private var library
+    @Environment(AppSettings.self) private var settings
+    @State private var revealed = false
 
     var body: some View {
+        if settings.lockMode != .off && !revealed {
+            List {
+                Section {
+                    Button("Show Hidden Books") {
+                        Task { revealed = await AppLock.authenticate(reason: "Show hidden books") }
+                    }
+                } footer: {
+                    Text("Hidden books stay behind Face ID while the lock is on.")
+                }
+            }
+            .navigationTitle("Hidden Books")
+        } else {
+            hiddenList
+        }
+    }
+
+    private var hiddenList: some View {
         List(library.hiddenBooks) { book in
             HStack {
                 ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 6)

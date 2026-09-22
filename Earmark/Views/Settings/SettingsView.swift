@@ -1,9 +1,11 @@
 import SwiftUI
+import ShelfKit
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryModel.self) private var library
     @Environment(PlayerEngine.self) private var player
+    @Environment(AppLock.self) private var lock
     @State private var confirmingRemoveAll = false
 
     var body: some View {
@@ -100,6 +102,8 @@ struct SettingsView: View {
 
                 downloads
 
+                privacy
+
                 Section {
                     LabeledContent("Version", value: Self.version)
                     LabeledContent("License", value: "GPL-3.0")
@@ -150,6 +154,29 @@ struct SettingsView: View {
             Text("Downloads")
         } footer: {
             Text("A removed download plays from your NAS again, with your place and bookmarks. Only books still on a NAS count here — nothing that exists only on this iPhone is removed. With Remove When Finished on, a book you finish goes once you start another.")
+        }
+    }
+
+    private var privacy: some View {
+        Section {
+            Picker("Lock with Face ID", selection: Binding(
+                get: { settings.lockMode },
+                set: { mode in
+                    Task {
+                        // Asks first; the picker snaps back if Face ID says no.
+                        if await lock.setMode(mode) { AppEnvironment.shared.nowPlaying.update() }
+                    }
+                }
+            )) {
+                ForEach(LockMode.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .disabled(!AppLock.canLock)
+        } header: {
+            Text("Privacy")
+        } footer: {
+            Text(AppLock.canLock
+                 ? "With the lock on, Earmark asks for Face ID when it opens, covers itself in the app switcher, hides Hidden Books behind Face ID, and the widget stops showing what you're listening to. Playback controls on the Lock Screen and in CarPlay keep working."
+                 : "Set a passcode for this iPhone to use the lock.")
         }
     }
 

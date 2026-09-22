@@ -35,6 +35,8 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Earmark uses Face ID to unlock your library when you turn on the lock in Settings.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Earmark connects to your NAS or file server on the local network to browse, stream, and download your audiobooks.</string>
 
