@@ -2,12 +2,15 @@ import Foundation
 import os
 import ShelfKit
 
-/// Thin wrapper over iCloud key-value storage that holds one JSON blob of progress keyed by
-/// `Book.syncKey`. No-ops safely when the iCloud entitlement isn't present (device builds before
-/// the capability is enabled), so it never crashes — it just doesn't sync there.
+/// Earmark's side of iCloud key-value storage: progress keyed by `Book.syncKey`, the reading
+/// log, cover choices and bookmarks, one JSON value per key. The rules are ShelfKit's
+/// `CloudKeyValueStore`, shared with Mango — a write that changes nothing is skipped (a book saves
+/// its place every few seconds, and iCloud throttles an app that writes that often; this layer
+/// used to write every time), and nothing over iCloud's size cap is written. No-ops without the
+/// iCloud entitlement, so it never crashes — it just doesn't sync there.
 @MainActor
 final class CloudProgressSync {
-    private let store = NSUbiquitousKeyValueStore.default
+    private let store = CloudKeyValueStore()
     private static let key = "progress.v1"
     private static let logKey = "readinglog.v1"
     /// syncKey → cover URL, as builds before cover choices wrote it. Still read, so their covers carry over.
@@ -16,115 +19,59 @@ final class CloudProgressSync {
     private static let bookmarksKey = "bookmarks.v1"
     /// Bookmark id → when it was deleted, so a deletion reaches every device.
     private static let deletedBookmarksKey = "bookmarks.deleted.v1"
-    private static let maxBytes = 900_000  // KVS caps a value near 1 MB; stay under it.
-    private var observer: (any NSObjectProtocol)?
+
     /// Called when another device changes the store.
-    var onExternalChange: (() -> Void)?
+    var onExternalChange: (() -> Void)? {
+        get { store.onExternalChange }
+        set { store.onExternalChange = newValue }
+    }
 
     func start() {
-        observer = NotificationCenter.default.addObserver(
-            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: store, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.onExternalChange?() }
-        }
-        store.synchronize()
+        store.start()
     }
 
     func load() -> [String: PlaybackProgress] {
-        guard let data = store.data(forKey: Self.key) else { return [:] }
-        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([String: PlaybackProgress].self, from: data)) ?? [:]
+        store.load([String: PlaybackProgress].self, key: Self.key) ?? [:]
+    }
+
+    func save(_ snapshot: [String: PlaybackProgress]) {
+        store.save(snapshot, key: Self.key)
     }
 
     func loadReadingLog() -> [ReadingLogEntry] {
-        guard let data = store.data(forKey: Self.logKey) else { return [] }
-        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
-        return (try? decoder.decode([ReadingLogEntry].self, from: data)) ?? []
+        store.load([ReadingLogEntry].self, key: Self.logKey) ?? []
     }
 
     func saveReadingLog(_ entries: [ReadingLogEntry]) {
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(entries), data.count <= Self.maxBytes else { return }
-        store.set(data, forKey: Self.logKey)
-        store.synchronize()
+        store.save(entries, key: Self.logKey)
     }
 
     /// Cover choices by syncKey, with the old URL-only format folded in underneath (any real choice beats it).
     func loadCoverChoices() -> [String: CoverChoice] {
-        var choices: [String: CoverChoice] = [:]
-        if let data = store.data(forKey: Self.legacyCoverKey),
-           let urls = try? JSONDecoder().decode([String: String].self, from: data) {
-            choices = CoverSync.legacyChoices(urls)
-        }
-        if let data = store.data(forKey: Self.coverKey) {
-            let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
-            if let current = try? decoder.decode([String: CoverChoice].self, from: data) {
-                choices.merge(current) { _, new in new }
-            } else {
-                Logger.store.error("[cloud] cover choices bytes=\(data.count) undecodable — ignoring")
-            }
+        var choices = store.load([String: String].self, key: Self.legacyCoverKey).map(CoverSync.legacyChoices) ?? [:]
+        if let current = store.load([String: CoverChoice].self, key: Self.coverKey) {
+            choices.merge(current) { _, new in new }
         }
         return choices
     }
 
     func saveCoverChoices(_ choices: [String: CoverChoice]) {
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(choices), data.count <= Self.maxBytes else {
-            Logger.store.error("[cloud] cover choices too large or unencodable — not syncing")
-            return
-        }
-        store.set(data, forKey: Self.coverKey)
-        store.synchronize()
+        store.save(choices, key: Self.coverKey)
     }
 
     func loadBookmarks() -> [String: [Bookmark]] {
-        loadJSON([String: [Bookmark]].self, Self.bookmarksKey) ?? [:]
+        store.load([String: [Bookmark]].self, key: Self.bookmarksKey) ?? [:]
     }
 
     func saveBookmarks(_ bookmarks: [String: [Bookmark]]) {
-        saveJSON(bookmarks, Self.bookmarksKey)
+        store.save(bookmarks, key: Self.bookmarksKey)
     }
 
     func loadDeletedBookmarks() -> Tombstones {
-        loadJSON(Tombstones.self, Self.deletedBookmarksKey) ?? Tombstones()
+        store.load(Tombstones.self, key: Self.deletedBookmarksKey) ?? Tombstones()
     }
 
     func saveDeletedBookmarks(_ tombstones: Tombstones) {
-        saveJSON(tombstones, Self.deletedBookmarksKey)
-    }
-
-    private func loadJSON<T: Decodable>(_ type: T.Type, _ key: String) -> T? {
-        guard let data = store.data(forKey: key) else { return nil }
-        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
-        do {
-            return try decoder.decode(T.self, from: data)
-        } catch {
-            Logger.store.error("[cloud] \(key, privacy: .public) bytes=\(data.count) undecodable — ignoring")
-            return nil
-        }
-    }
-
-    /// Skips identical writes: KVS rate-limits chatty apps, and most saves change nothing here.
-    private func saveJSON<T: Encodable>(_ value: T, _ key: String) {
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601; encoder.outputFormatting = [.sortedKeys]
-        guard let data = try? encoder.encode(value), data.count <= Self.maxBytes else {
-            Logger.store.error("[cloud] \(key, privacy: .public) too large or unencodable — not syncing")
-            return
-        }
-        guard store.data(forKey: key) != data else { return }
-        store.set(data, forKey: key)
-        store.synchronize()
-    }
-
-    func save(_ snapshot: [String: PlaybackProgress]) {
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(snapshot) else { return }
-        guard data.count <= Self.maxBytes else {
-            Logger.store.error("[cloud] progress snapshot \(data.count) bytes exceeds KVS limit — not syncing")
-            return
-        }
-        store.set(data, forKey: Self.key)
-        store.synchronize()
+        store.save(tombstones, key: Self.deletedBookmarksKey)
     }
 }

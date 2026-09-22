@@ -16,7 +16,7 @@ packages:
   # when it's been tested here, never automatically.
   ShelfKit:
     url: https://github.com/vanities/shelfkit.git
-    exactVersion: 0.5.0
+    exactVersion: 0.6.0
 
 settings:
   base:

@@ -97,7 +97,8 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   it, so the next merge brings it back (Mango's deleted bookmarks did). Bookmarks sync as
   `bookmarks.v1` minus `LibraryState.deletedBookmarks` (tombstones, synced as
   `bookmarks.deleted.v1`, pruned at 180 days); the rules are `BookmarkSync` on ShelfKit's
-  `UnionSync`/`Tombstones`. Plumbing shared with Mango lives in ShelfKit
+  `UnionSync`/`Tombstones`; every key goes through ShelfKit's `CloudKeyValueStore` (unchanged
+  writes skipped, iCloud's size cap respected). Plumbing shared with Mango lives in ShelfKit
   (github.com/vanities/shelfkit), pinned with `exactVersion` in `project.yml`.
 - Heuristics live in `BookGrouper` and are unit-tested. When changing grouping rules, add a
   case to `BookGrouperTests` first.
