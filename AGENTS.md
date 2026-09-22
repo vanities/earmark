@@ -111,7 +111,8 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - Heuristics live in `BookGrouper` and are unit-tested. When changing grouping rules, add a
   case to `BookGrouperTests` first.
 - **Keep the UI like Mango's.** Both apps share a look (Sources, a source's page, the Library's
-  toolbar and Continue row, Stats); the pieces drawn identically are ShelfKit views. A change
+  toolbar and Continue row, an author's or series' page and Mango's series page, Stats); the
+  pieces drawn identically are ShelfKit views. A change
   to one app's version of those screens goes to the other's too, and nothing either app can do
   is dropped to make them match.
 - UI is native iOS 26 (Liquid Glass): `tabViewBottomAccessory` mini player,

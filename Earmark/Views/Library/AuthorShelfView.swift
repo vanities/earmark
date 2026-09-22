@@ -1,8 +1,9 @@
 import SwiftUI
 import ShelfKit
 
-/// An author's books arranged by sets of work (series in chronological order, then standalones),
-/// with Title and Recent as alternatives.
+/// An author's page, laid out as Mango's series page (`ShelfPageHeader`, a ••• menu), with the
+/// books arranged by sets of work (series in chronological order, then standalones), or by Title
+/// or Recent.
 struct AuthorShelfView: View {
     enum Arrangement: String, CaseIterable, Identifiable {
         case sets = "Sets", title = "Title", recent = "Recent"
@@ -12,14 +13,11 @@ struct AuthorShelfView: View {
     @Environment(LibraryModel.self) private var library
     @Environment(AppSettings.self) private var settings
     let group: LibraryGroup
+    let openPlayer: () -> Void
     @State private var arrangement: Arrangement = .sets
 
     /// Live books for this author (the group snapshot can go stale after a rescan).
-    private var books: [Book] {
-        let key = group.id.replacingOccurrences(of: "author:", with: "")
-        let live = library.visibleBooks.filter { ($0.author?.normalizedForMatching ?? "") == key }
-        return live.isEmpty ? group.books : live
-    }
+    private var books: [Book] { library.live(group).books }
 
     /// Series sections ordered by the earliest known year, then name; standalones last.
     private var sets: [LibraryGroup] {
@@ -36,17 +34,21 @@ struct AuthorShelfView: View {
     }
 
     var body: some View {
+        let ordered = sets
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                Picker("Arrange", selection: $arrangement) {
-                    ForEach(Arrangement.allCases) { Text($0.rawValue).tag($0) }
+                VStack(alignment: .leading, spacing: 16) {
+                    // Resume or start in reading order, whichever way the books below are arranged.
+                    ShelfPageHeader(title: group.title, books: ordered.flatMap(\.books), openPlayer: openPlayer)
+                    Picker("Arrange", selection: $arrangement) {
+                        ForEach(Arrangement.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
-                .padding(.top, 4)
 
                 switch arrangement {
                 case .sets:
-                    ForEach(sets) { section in
+                    ForEach(ordered) { section in
                         BookGridSection(title: section.title, books: section.books, layout: settings.libraryLayout)
                     }
                 case .title:
@@ -59,6 +61,11 @@ struct AuthorShelfView: View {
             .padding(.bottom, 24)
         }
         .navigationTitle(group.title)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ShelfPageMenu(name: "Author", books: books)
+            }
+        }
     }
 }

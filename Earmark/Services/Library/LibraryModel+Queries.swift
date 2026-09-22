@@ -28,6 +28,37 @@ extension LibraryModel {
             .sorted { (progress[$0.id]?.lastPlayedAt ?? .distantPast) > (progress[$1.id]?.lastPlayedAt ?? .distantPast) }
     }
 
+    /// A group's page as the library is now. The page opens with a snapshot, and a download, a
+    /// rescan or a hidden book changes what's in it; a finished book stays on the page, as on
+    /// Mango's series page, whatever the Library's own filter. The snapshot stands in while the
+    /// library has none of its books (mid-rescan).
+    func live(_ group: LibraryGroup) -> LibraryGroup {
+        let parts = group.id.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+        guard parts.count == 2 else { return group }
+        let key = parts[1]
+        let grouping: LibraryGrouping
+        let members: [Book]
+        switch parts[0] {
+        case "author":
+            grouping = .author
+            members = visibleBooks.filter { ($0.author?.normalizedForMatching ?? "") == key }
+        case "series":
+            grouping = .series
+            members = key == "none"
+                ? visibleBooks.filter { $0.series == nil }
+                : visibleBooks.filter { ($0.series?.normalizedForMatching ?? "") == key }
+        case "folder":
+            grouping = .folder
+            members = visibleBooks.filter { book in
+                let top = book.relativePath.split(separator: "/").first.map(String.init) ?? ""
+                return "\(book.sourceID.uuidString)/\(top)" == key
+            }
+        default:
+            return group
+        }
+        return groups(grouping, from: members).first { $0.id == group.id } ?? group
+    }
+
     /// A remote (NAS) book mirroring the same relative path as a local one, if any.
     func remoteTwin(of book: Book) -> Book? {
         guard !isRemote(book) else { return nil }

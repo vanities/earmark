@@ -74,6 +74,11 @@ chronological order (years come from tags or `[Y=1998]`-style folder names), wit
 after. Series, Folders, and a flat "All Books" grid are one tap away in the view menu, and search
 always shows a flat result list.
 
+An author's, series' or folder's page opens the way Mango's series page does: the covers, how
+many books and hours, and one button — **Resume** the book you were on there, or **Play** the first
+one you haven't finished. Its ••• menu downloads everything that's only on the NAS, or removes
+the downloads (they play from the NAS again).
+
 **Edit Details › Look Up Book** finds a book in Apple Books and Open Library and fills its title,
 author, narrator (split from Apple's "Author & Narrator"), series and year from the match you
 pick — only when you tap it, and nothing is saved until you do.

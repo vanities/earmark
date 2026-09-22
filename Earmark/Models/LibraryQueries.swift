@@ -47,3 +47,19 @@ struct LibraryGroup: Identifiable, Hashable, Sendable {
     let subtitle: String?
     let books: [Book]
 }
+
+/// What a shelf's page offers to play, as Mango's series page offers the next volume: the book
+/// in it you were listening to last, else the first one (in the page's order) you haven't
+/// finished. Nothing when every book is finished.
+enum NextUp {
+    static func pick(in books: [Book], progress: (String) -> PlaybackProgress?) -> (book: Book, resuming: Bool)? {
+        let underway = books.compactMap { book -> (Book, Date)? in
+            guard let entry = progress(book.id), let played = entry.lastPlayedAt, !entry.isFinished else { return nil }
+            return (book, played)
+        }
+        if let latest = underway.max(by: { $0.1 < $1.1 }) {
+            return (latest.0, true)
+        }
+        return books.first { progress($0.id)?.isFinished != true }.map { ($0, false) }
+    }
+}

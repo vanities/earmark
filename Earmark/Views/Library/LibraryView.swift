@@ -34,9 +34,9 @@ struct LibraryView: View {
                 .navigationDestination(isPresented: $showingLists) { ListsView() }
                 .navigationDestination(for: LibraryGroup.self) { group in
                     if group.id.hasPrefix("author:") {
-                        AuthorShelfView(group: group)
+                        AuthorShelfView(group: group, openPlayer: openPlayer)
                     } else {
-                        BookGridView(title: group.title, books: group.books)
+                        GroupShelfView(group: group, openPlayer: openPlayer)
                     }
                 }
                 .fileImporter(isPresented: $showImporter, allowedContentTypes: [.folder], allowsMultipleSelection: true) { result in
@@ -292,17 +292,19 @@ struct GroupListSection: View {
 /// Up to three fanned covers for a shelf.
 struct CoverStack: View {
     let books: [Book]
+    /// The square it fills: 72 in a Library row, the header's cover width on a shelf's page.
+    var size: CGFloat = 72
 
     var body: some View {
         ZStack {
             ForEach(Array(books.prefix(3).enumerated().reversed()), id: \.element.id) { index, book in
-                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 8)
-                    .frame(width: 56, height: 56)
+                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: size / 9)
+                    .frame(width: size * 7 / 9, height: size * 7 / 9)
                     .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
-                    .offset(x: CGFloat(index) * 8, y: CGFloat(-index) * 6)
+                    .offset(x: CGFloat(index) * size / 9, y: CGFloat(-index) * size / 12)
             }
         }
-        .frame(width: 72, height: 72, alignment: .bottomLeading)
+        .frame(width: size, height: size, alignment: .bottomLeading)
     }
 }
 
@@ -348,21 +350,5 @@ struct EmptyLibraryView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
         }
-    }
-}
-
-struct BookGridView: View {
-    @Environment(AppSettings.self) private var settings
-    let title: String
-    let books: [Book]
-
-    var body: some View {
-        ScrollView {
-            BookGridSection(title: title, books: books, layout: settings.libraryLayout)
-                .padding(.horizontal)
-                .padding(.bottom, 24)
-        }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
