@@ -1,7 +1,11 @@
 import SwiftUI
 import Charts
 import UniformTypeIdentifiers
+import ShelfKit
 
+/// What you've listened to, laid out as Mango's Stats are: headline tiles, the yearly goal,
+/// then a card for each way of looking at it. Built from the library, your places and the
+/// books you've logged — Earmark records nothing extra and sends nothing anywhere.
 struct StatsView: View {
     @Environment(LibraryModel.self) private var library
     @Environment(AppSettings.self) private var settings
@@ -20,30 +24,34 @@ struct StatsView: View {
                 if stats.isEmpty {
                     emptyState.frame(maxWidth: .infinity, minHeight: 460)
                 } else {
-                    VStack(spacing: 22) {
-                        goalRing(stats)
-                        chips(stats)
+                    VStack(alignment: .leading, spacing: 24) {
+                        headline(stats)
+                        goalCard(stats)
                         if stats.years.count > 1 { yearFilter(stats) }
                         yearChart(stats)
                         if let dist = ratingDistribution(stats), dist.contains(where: { $0.count > 0 }) {
                             ratingsCard(dist, avg: stats.averageRating)
                         }
                         if !filteredAuthors(stats).isEmpty { authorsCard(stats) }
-                        if !library.readingLog.isEmpty { loggedCard }
+                        libraryCard
+                        storageCard
+                        loggedCard
+                        footnote
                     }
                     .padding()
                 }
             }
             .navigationTitle("Stats")
+            // The same ••• menu as Mango's Stats, and the import only Earmark has.
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Log a Past Book", systemImage: "plus") { showLogPast = true }
+                        Button("Log a Book Read Elsewhere", systemImage: "plus") { showLogPast = true }
+                        Button("Change Yearly Goal…", systemImage: "target") { showGoalEditor = true }
                         Button("Import Reading History…", systemImage: "square.and.arrow.down") { importing = true }
-                        if !library.readingLog.isEmpty || settings.yearlyBookGoal > 0 {
-                            Button("Set Yearly Goal…", systemImage: "target") { showGoalEditor = true }
-                        }
-                    } label: { Image(systemName: "ellipsis.circle") }
+                    } label: {
+                        Label("More", systemImage: "ellipsis")
+                    }
                 }
             }
             .sheet(isPresented: $showLogPast) { LogPastBookView(entry: nil) }
@@ -59,58 +67,55 @@ struct StatsView: View {
         }
     }
 
-    // MARK: Goal ring (Goal Gradient + Endowed Progress + Fresh Start)
+    // MARK: Headline
 
-    private func goalRing(_ stats: ReadingStats) -> some View {
-        let goal = max(0, settings.yearlyBookGoal)
+    private func headline(_ stats: ReadingStats) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+            StatTile("\(stats.totalBooks)", "Books finished", systemImage: "checkmark.circle.fill", tint: .green)
+            // Books logged without a length count none; a "0h" headline would say nothing.
+            if stats.totalHours >= 1 {
+                StatTile("\(Int(stats.totalHours.rounded()))h", "Hours finished", systemImage: "clock.fill", tint: .blue)
+            }
+            StatTile("\(library.inProgressBooks.count)", "Listening now", systemImage: "headphones", tint: .red)
+            StatTile("\(stats.topAuthors.count)", "Authors", systemImage: "person.2.fill", tint: .purple)
+            if let avg = stats.averageRating {
+                StatTile(avg.formatted(.number.precision(.fractionLength(1))), "Average rating", systemImage: "star.fill", tint: .yellow)
+            }
+            if let best = stats.bestYear {
+                StatTile("\(best.count)", "Best year (\(String(best.year)))", systemImage: "trophy.fill", tint: .orange)
+            }
+        }
+    }
+
+    // MARK: Goal
+
+    private func goalCard(_ stats: ReadingStats) -> some View {
+        let goal = settings.yearlyBookGoal
         let done = stats.thisYear
-        let fraction = goal > 0 ? min(1, Double(done) / Double(goal)) : (done > 0 ? 1 : 0)
-        return VStack(spacing: 10) {
-            ZStack {
-                Circle().stroke(.quaternary, lineWidth: 14)
-                Circle()
-                    .trim(from: 0, to: animate ? fraction : 0)
-                    .stroke(AngularGradient(colors: [.orange, .yellow, .orange], center: .center),
-                            style: StrokeStyle(lineWidth: 14, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 2) {
-                    Text("\(done)").font(.system(size: 46, weight: .bold, design: .rounded)).monospacedDigit()
-                        .contentTransition(.numericText())
-                    Text(goal > 0 ? "of \(goal) this year" : "read this year").font(.subheadline).foregroundStyle(.secondary)
+        return StatCard("\(String(Calendar.current.component(.year, from: .now))) goal") {
+            HStack(spacing: 18) {
+                if goal > 0 {
+                    GoalRing(done: done, goal: goal, noun: "books")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(done >= goal ? "Goal reached." : "\(goal - done) to go · \(Int(min(1, Double(done) / Double(goal)) * 100))% there")
+                            .font(.headline)
+                        Text(GoalRing.pace(done: done, goal: goal))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("Change goal") { showGoalEditor = true }
+                            .font(.caption)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("\(done) finished this year").font(.headline)
+                        Button("Set a goal") { showGoalEditor = true }
+                            .font(.caption)
+                    }
                 }
             }
-            .frame(width: 190, height: 190)
-            .onTapGesture { showGoalEditor = true }
-            if goal > 0 {
-                Text(done >= goal ? "Goal reached — nice." : "\(goal - done) to go. You're \(Int(fraction * 100))% there.")
-                    .font(.footnote).foregroundStyle(done >= goal ? .green : .secondary)
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: Summary chips
-
-    private func chips(_ stats: ReadingStats) -> some View {
-        HStack(spacing: 12) {
-            chip("\(stats.totalBooks)", "Books", "books.vertical.fill")
-            chip("\(Int(stats.totalHours.rounded()))", "Hours", "clock.fill")
-            if let avg = stats.averageRating { chip(String(format: "%.1f", avg), "Avg Rating", "star.fill") }
-            if let best = stats.bestYear { chip("\(best.count)", "Best (\(String(best.year)))", "trophy.fill") }
         }
     }
 
-    private func chip(_ value: String, _ label: String, _ icon: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon).font(.caption).foregroundStyle(.tint)
-            Text(value).font(.title3.bold().monospacedDigit())
-            Text(label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 12)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 14))
-    }
-
-    // MARK: Year filter chips
+    // MARK: Year filter
 
     private func yearFilter(_ stats: ReadingStats) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -137,33 +142,35 @@ struct StatsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: Books-per-year bar chart (Von Restorff highlight, animated)
+    // MARK: Books per year (the best year stands out; a picked year is highlighted)
 
     private func yearChart(_ stats: ReadingStats) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Books per Year").font(.headline)
+        StatCard("Finished per year") {
             Chart(stats.years.sorted { $0.year < $1.year }) { year in
                 BarMark(
                     x: .value("Year", String(year.year)),
                     y: .value("Books", animate ? year.count : 0)
                 )
                 .foregroundStyle(barColor(year))
-                .cornerRadius(6)
+                .cornerRadius(4)
                 .annotation(position: .top) {
                     Text("\(year.count)").font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
                 }
             }
             .chartYAxis(.hidden)
-            .frame(height: 190)
+            .frame(height: 170)
             .animation(.easeOut(duration: 0.7), value: animate)
+            if let best = stats.bestYear {
+                Text("Best year: \(String(best.year)), \(best.count) finished")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
-        .padding().background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func barColor(_ year: ReadingStats.Year) -> AnyShapeStyle {
-        if let sel = selectedYear { return year.year == sel ? AnyShapeStyle(.orange) : AnyShapeStyle(.orange.opacity(0.25)) }
-        if year.year == library.readingStats.bestYear?.year { return AnyShapeStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .bottom, endPoint: .top)) }
-        return AnyShapeStyle(.orange.opacity(0.6))
+        if let sel = selectedYear { return year.year == sel ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.accentColor.opacity(0.25)) }
+        if year.year == library.readingStats.bestYear?.year { return AnyShapeStyle(Color.accentColor.gradient) }
+        return AnyShapeStyle(Color.accentColor.opacity(0.6))
     }
 
     // MARK: Rating distribution
@@ -180,11 +187,14 @@ struct StatsView: View {
     }
 
     private func ratingsCard(_ dist: [RatingBucket], avg: Double?) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Ratings").font(.headline)
-                Spacer()
-                if let avg { Text(String(format: "%.1f ★ avg", avg)).font(.subheadline).foregroundStyle(.secondary) }
+        StatCard("Ratings") {
+            if let avg {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(avg, format: .number.precision(.fractionLength(1)))
+                        .font(.title.weight(.semibold)).monospacedDigit()
+                    Text("average across \(dist.reduce(0) { $0 + $1.count }) rated")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             let maxC = max(1, dist.map(\.count).max() ?? 1)
             ForEach(dist.reversed()) { b in
@@ -204,7 +214,6 @@ struct StatsView: View {
                 }
             }
         }
-        .padding().background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: Authors (respects the year filter)
@@ -221,44 +230,105 @@ struct StatsView: View {
     }
 
     private func authorsCard(_ stats: ReadingStats) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(selectedYear.map { "Most Read in \($0)" } ?? "Most Read Authors").font(.headline)
-            ForEach(filteredAuthors(stats).prefix(5)) { a in
+        let authors = Array(filteredAuthors(stats).prefix(5))
+        return StatCard(selectedYear.map { "Most read in \(String($0))" } ?? "Most read") {
+            ForEach(authors) { a in
                 HStack {
-                    Text(a.author).lineLimit(1)
+                    Text(a.author).font(.subheadline).lineLimit(1)
                     Spacer()
-                    Text("\(a.count)").foregroundStyle(.secondary).monospacedDigit()
+                    Text("\(a.count)")
+                        .font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(.secondary)
                 }
+                if a.id != authors.last?.id { Divider() }
             }
         }
-        .padding().background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: Logged past books
+    // MARK: The library, and where it lives (as in Mango)
 
-    private var loggedCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Logged Past Books").font(.headline).padding(.bottom, 2)
-            ForEach(library.readingLog.sorted { $0.finishedAt > $1.finishedAt }) { entry in
-                Button { editingEntry = entry } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.title).foregroundStyle(.primary).lineLimit(1)
-                            HStack(spacing: 6) {
-                                if let a = entry.author { Text(a).lineLimit(1) }
-                                Text(entry.finishedAt, format: .dateTime.year())
-                            }.font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if let r = entry.rating { StarsView(rating: r).font(.caption2) }
-                    }
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.plain)
-                Divider()
+    private var libraryCard: some View {
+        let books = library.visibleBooks
+        let finished = books.filter { library.isFinished($0) }.count
+        let listening = library.inProgressBooks.count
+        let notStarted = max(0, books.count - finished - listening)
+        return StatCard("Library") {
+            Chart {
+                SectorMark(angle: .value("Finished", finished), innerRadius: .ratio(0.6), angularInset: 1.5)
+                    .foregroundStyle(by: .value("State", "Finished"))
+                SectorMark(angle: .value("Listening", listening), innerRadius: .ratio(0.6), angularInset: 1.5)
+                    .foregroundStyle(by: .value("State", "Listening"))
+                SectorMark(angle: .value("Not started", notStarted), innerRadius: .ratio(0.6), angularInset: 1.5)
+                    .foregroundStyle(by: .value("State", "Not started"))
+            }
+            .chartLegend(position: .bottom, spacing: 8)
+            .frame(height: 180)
+        }
+    }
+
+    private var storageCard: some View {
+        let local = library.visibleBooks.filter { !library.isRemote($0) }.reduce(Int64(0)) { $0 + $1.totalBytes }
+        let remote = library.books.filter { library.isRemote($0) }.reduce(Int64(0)) { $0 + $1.totalBytes }
+        return StatCard("Where it lives") {
+            HStack(spacing: 16) {
+                storageStat("On this iPhone", local, "iphone")
+                storageStat("On the NAS", remote, "externaldrive.connected.to.line.below")
             }
         }
-        .padding().background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func storageStat(_ label: String, _ bytes: Int64, _ icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(bytes.byteCountString, systemImage: icon)
+                .font(.headline)
+                .labelStyle(.titleAndIcon)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Read elsewhere
+
+    /// Books finished before Earmark, or outside it, logged so they count. Tap one to change it.
+    private var loggedCard: some View {
+        StatCard("Read elsewhere") {
+            if library.readingLog.isEmpty {
+                Text("Books you finished before Earmark, or outside it, can be logged here so they count.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(library.readingLog.sorted { $0.finishedAt > $1.finishedAt }.prefix(8)) { entry in
+                    Button { editingEntry = entry } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.title).font(.subheadline).foregroundStyle(.primary).lineLimit(1)
+                                HStack(spacing: 6) {
+                                    if let author = entry.author { Text(author).lineLimit(1) }
+                                    Text(entry.finishedAt, format: .dateTime.year().month().day())
+                                }
+                                .font(.caption2).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if let rating = entry.rating { StarsView(rating: rating).font(.caption2) }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Edit…", systemImage: "pencil") { editingEntry = entry }
+                        Button("Remove", systemImage: "trash", role: .destructive) { library.removeReadingLogEntry(entry.id) }
+                    }
+                }
+            }
+            Button { showLogPast = true } label: {
+                Label("Log a book", systemImage: "plus.circle")
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private var footnote: some View {
+        Text("Worked out from your library, your places in each book and the books you've logged — finished books count their full length. Earmark collects no analytics and sends nothing anywhere; your places sync between your own devices through your own iCloud.")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
     }
 
     // MARK: Helpers
@@ -276,7 +346,7 @@ struct StatsView: View {
         } description: {
             Text("Mark a book finished, log past reads, or import your history — and it shows up here.")
         } actions: {
-            Button("Log a Past Book", systemImage: "plus") { showLogPast = true }.buttonStyle(.borderedProminent)
+            Button("Log a Book Read Elsewhere", systemImage: "plus") { showLogPast = true }.buttonStyle(.borderedProminent)
             Button("Import Reading History…", systemImage: "square.and.arrow.down") { importing = true }
         }
     }
@@ -288,7 +358,7 @@ struct StatsView: View {
                     Stepper("Books per year: \(settings.yearlyBookGoal)", value: Binding(
                         get: { settings.yearlyBookGoal }, set: { settings.yearlyBookGoal = max(0, $0) }), in: 0...200)
                 } footer: {
-                    Text("Your target for the ring at the top. Set to 0 to hide the goal.")
+                    Text("Your target for the year's goal card. Set to 0 for no goal.")
                 }
             }
             .navigationTitle("Yearly Goal").navigationBarTitleDisplayMode(.inline)
