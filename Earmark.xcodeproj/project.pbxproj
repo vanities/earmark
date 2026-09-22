@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0112F693050CA4D6636F3F1D /* BookGrouperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */; };
+		02CD73C0D0486B848E0C32FE /* NASClient+Streaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA26C5C4FCE8B21FC65224E /* NASClient+Streaming.swift */; };
 		0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3548D15C0779ABA8F894721B /* CarPlayInterface.swift */; };
 		0FBA666FCAC00DC25CBCB9AE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8845D138187AA30B4D2D66FA /* SettingsView.swift */; };
 		11E4A656986FEEB2998DFDAE /* LibraryModel+NAS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 765166563772C00B922D84CE /* LibraryModel+NAS.swift */; };
@@ -110,7 +111,6 @@
 		D5F042ABE818494360F7D3E4 /* DownloadRemovalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE95BB380E4FD3C19A12CC7C /* DownloadRemovalTests.swift */; };
 		D75496E8EFD9EB117DCC5840 /* TransportControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB98C6335A7018E5235A76C /* TransportControls.swift */; };
 		D7B7CB040A9E935D47B6EDDC /* CoverPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55737A1219DD9B7F7846B451 /* CoverPickerView.swift */; };
-		D7E20811D3F344ABAEA0E9B7 /* NASClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B109B71AE8D04ABEE3D1F75B /* NASClient.swift */; };
 		D80EB6EEE66E82CE50627EB3 /* NASSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E181EC730C19488655A75C /* NASSetupView.swift */; };
 		DB4086137F09CEFAA17EFF73 /* BookLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0F2842DE201D524D59A8EC /* BookLookupView.swift */; };
 		DC573F9124C7D83A64021012 /* MetadataReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD89F1372BCDEC869661AF28 /* MetadataReader.swift */; };
@@ -191,6 +191,7 @@
 		2830512E63C478A2F7832BA2 /* LibraryScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScannerTests.swift; sourceTree = "<group>"; };
 		2A5C8407099B00D442295FA5 /* LibraryModel+Lists.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Lists.swift"; sourceTree = "<group>"; };
 		2C7AF3FDAC4886294CC87E6E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		2DA26C5C4FCE8B21FC65224E /* NASClient+Streaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NASClient+Streaming.swift"; sourceTree = "<group>"; };
 		2F42D2B3237B9F8EDB917B4C /* Earmark.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Earmark.entitlements; sourceTree = "<group>"; };
 		2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookMetadataOverrideTests.swift; sourceTree = "<group>"; };
 		2FBF8E002F37F5E2A96D897F /* LibraryModel+History.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+History.swift"; sourceTree = "<group>"; };
@@ -252,7 +253,6 @@
 		A7521889F7E9EF7A25C99F0E /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		AAC7A3575E89FE9701132A68 /* Chapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chapter.swift; sourceTree = "<group>"; };
 		AEB16F753EB29D72187857F1 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		B109B71AE8D04ABEE3D1F75B /* NASClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASClient.swift; sourceTree = "<group>"; };
 		B2DBB1B328833BAC30AD5BC6 /* ArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkView.swift; sourceTree = "<group>"; };
 		B52A4E75C03AC08D157F6290 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		B55B4E3AF3EE0F9EE6FCB7A6 /* Bookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookmark.swift; sourceTree = "<group>"; };
@@ -572,7 +572,7 @@
 			children = (
 				E3E28E8D16340B9AFD1E8F80 /* DownloadManager.swift */,
 				DF1C494AE7F0A4EC67C96742 /* KeychainStore.swift */,
-				B109B71AE8D04ABEE3D1F75B /* NASClient.swift */,
+				2DA26C5C4FCE8B21FC65224E /* NASClient+Streaming.swift */,
 				E2E4D363B49AD5CFC7F0AFE9 /* SMBResourceLoader.swift */,
 			);
 			path = Network;
@@ -861,7 +861,7 @@
 				FE389CC9C8D9B2B44576B2F7 /* MetadataCache.swift in Sources */,
 				DC573F9124C7D83A64021012 /* MetadataReader.swift in Sources */,
 				E519E323BDCBEA02D6554D16 /* MiniPlayerView.swift in Sources */,
-				D7E20811D3F344ABAEA0E9B7 /* NASClient.swift in Sources */,
+				02CD73C0D0486B848E0C32FE /* NASClient+Streaming.swift in Sources */,
 				D80EB6EEE66E82CE50627EB3 /* NASSetupView.swift in Sources */,
 				96452920141A5BF5A62DB5E3 /* NameParser.swift in Sources */,
 				460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */,
@@ -1217,7 +1217,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.6.0;
+				version = 0.7.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

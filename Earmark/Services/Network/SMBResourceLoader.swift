@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import UniformTypeIdentifiers
 import os
+import ShelfKit
 
 /// Feeds AVFoundation byte ranges read over SMB, so AVPlayer (and metadata loading) work on
 /// files that never touch the disk.

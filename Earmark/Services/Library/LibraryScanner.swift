@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 struct ScanProgress: Sendable, Equatable {
     enum Phase: Sendable { case enumerating, metadata, artwork }
