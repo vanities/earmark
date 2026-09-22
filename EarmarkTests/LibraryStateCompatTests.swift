@@ -158,8 +158,9 @@ final class MetadataCacheHintTests: XCTestCase {
         XCTAssertNil(stale, "a size change invalidates the entry")
 
         // An entry written by a build that didn't know about hints.
+        let tagsJSON = try XCTUnwrap(String(bytes: JSONEncoder().encode(tags), encoding: .utf8))
         let legacy = """
-        {"src|old.mp3":{"fileSize":5,"metadata":\(String(decoding: try JSONEncoder().encode(tags), as: UTF8.self))}}
+        {"src|old.mp3":{"fileSize":5,"metadata":\(tagsJSON)}}
         """
         try Data(legacy.utf8).write(to: dir.appending(path: LibraryStore.metadataCacheFile))
         let old = await MetadataCache(store: store).entry(forKey: "src|old.mp3", fileSize: 5, modifiedAt: nil)

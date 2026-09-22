@@ -238,7 +238,6 @@ struct ChapterListSection: View {
     }
 }
 
-
 struct RemoteBadge: View {
     let serverName: String
     var compact = false
@@ -294,7 +293,6 @@ struct DownloadButton: View {
         }
     }
 }
-
 
 struct MoveButton: View {
     @Environment(DownloadManager.self) private var downloads

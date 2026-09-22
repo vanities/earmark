@@ -1,4 +1,6 @@
 disabled_rules:
+  # Job.State / Job.Kind read better nested inside the job they describe (as in Mango).
+  - nesting
   - shorthand_operator
   - type_body_length
   - large_tuple
@@ -19,6 +21,8 @@ excluded:
   - build
   - DerivedData
   - fixtures
+  # One-shot generators run with `swift scripts/…`, not part of the app target.
+  - scripts
 file_length:
   warning: 700
   error: 1000

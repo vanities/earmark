@@ -126,7 +126,9 @@ struct StatsView: View {
     }
 
     private func filterChip(_ label: String, selected: Bool, _ tap: @escaping () -> Void) -> some View {
-        Button(action: { withAnimation(.snappy) { tap() } }) {
+        Button {
+            withAnimation(.snappy) { tap() }
+        } label: {
             Text(label).font(.subheadline.weight(.medium))
                 .padding(.horizontal, 14).padding(.vertical, 7)
                 .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary.opacity(0.6)), in: Capsule())

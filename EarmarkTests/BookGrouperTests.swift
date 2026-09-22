@@ -431,7 +431,6 @@ extension BookGrouperTests {
     }
 }
 
-
 extension BookGrouperTests {
     // Regression: "Title - Series, Book N by Author" must not make the whole tail the author.
     func testByAuthorInFilenameResolvesCleanAuthor() {

@@ -536,7 +536,7 @@ final class PlayerEngine {
     /// them in Settings). If the current item has no tap yet and an effect just turned on, reattach.
     func applyPlaybackEffects() {
         audioProcessor.update(gain: settings.volumeBoost, skipSilence: settings.skipSilence, baseRate: speed, boostQuiet: settings.boostQuietVoices)
-        if let item = player.currentItem, item.audioMix == nil, (settings.volumeBoost != 1 || settings.skipSilence || settings.boostQuietVoices) {
+        if let item = player.currentItem, item.audioMix == nil, settings.volumeBoost != 1 || settings.skipSilence || settings.boostQuietVoices {
             attachAudioProcessor(to: item, asset: item.asset, generation: itemGeneration)
         }
         notify()

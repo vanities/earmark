@@ -188,7 +188,7 @@ private let tapPrepare: MTAudioProcessingTapPrepareCallback = { tap, _, format i
 
 private let tapUnprepare: MTAudioProcessingTapUnprepareCallback = { _ in }
 
-private let tapProcess: MTAudioProcessingTapProcessCallback = { tap, numberFrames, flags, bufferListInOut, numberFramesOut, flagsOut in
+private let tapProcess: MTAudioProcessingTapProcessCallback = { tap, numberFrames, _, bufferListInOut, numberFramesOut, flagsOut in
     let status = MTAudioProcessingTapGetSourceAudio(tap, numberFrames, bufferListInOut, flagsOut, nil, numberFramesOut)
     guard status == noErr else { return }
     let ctx = context(tap)

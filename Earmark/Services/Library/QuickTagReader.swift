@@ -85,7 +85,8 @@ enum QuickTagReader {
         while pos + headerLength <= tagEnd {
             let idBytes = b[pos..<pos + idLength]
             guard let first = idBytes.first, first != 0 else { break }
-            let id = String(decoding: idBytes, as: UTF8.self)
+            // Frame IDs are plain ASCII ("TIT2"); anything else matches no frame and is skipped.
+            let id = String(bytes: idBytes, encoding: .ascii) ?? ""
             let size: Int
             switch version {
             case 2: size = Int(b[pos + 3]) << 16 | Int(b[pos + 4]) << 8 | Int(b[pos + 5])

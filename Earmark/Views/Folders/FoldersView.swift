@@ -266,7 +266,7 @@ struct SourceDetailView: View {
                     MoveIntoEarmarkButton(source: source)
                         .padding(.horizontal)
                 }
-                if (source.kind == .appDocuments || source.kind == .folder), !library.nasServers.isEmpty {
+                if source.kind == .appDocuments || source.kind == .folder, !library.nasServers.isEmpty {
                     MirrorToNASButton(source: source)
                         .padding(.horizontal)
                 }
@@ -420,7 +420,6 @@ struct HiddenBooksView: View {
     }
 }
 
-
 struct DownloadJobRow: View {
     @Environment(DownloadManager.self) private var downloads
     let job: DownloadManager.Job
@@ -458,7 +457,6 @@ struct DownloadJobRow: View {
         .padding(.vertical, 2)
     }
 }
-
 
 /// "Sync from NAS": one tap to pull every book that isn't on this phone yet.
 struct SyncFromNASButton: View {
@@ -525,7 +523,6 @@ private struct SyncConfirmationModifier: ViewModifier {
         }
     }
 }
-
 
 /// "Move All into Earmark": consolidate a picked folder (BookPlayer, Downloads…) into On My iPhone › Earmark.
 struct MoveIntoEarmarkButton: View {
