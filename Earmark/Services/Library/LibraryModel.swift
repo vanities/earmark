@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import UIKit
 import os
+import ShelfKit
 
 /// Source of truth for the library on the main actor. Owns the security scopes of
 /// every folder the user added, runs scans off-main, and persists user state.

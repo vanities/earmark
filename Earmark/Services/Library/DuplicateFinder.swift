@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import os
+import ShelfKit
 
 /// Size + SHA-256 of the first and last 256 KB. Fast enough for thousands of files
 /// and practically collision-free for real audio.

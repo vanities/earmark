@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import os
+import ShelfKit
 
 struct EmbeddedChapter: Codable, Hashable, Sendable {
     var title: String

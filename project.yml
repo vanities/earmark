@@ -12,6 +12,11 @@ packages:
   AMSMB2:
     url: https://github.com/amosavian/AMSMB2.git
     from: 4.0.3
+  # Plumbing shared with Mango (github.com/vanities/shelfkit). Pinned: move to a new tag
+  # when it's been tested here, never automatically.
+  ShelfKit:
+    url: https://github.com/vanities/shelfkit.git
+    exactVersion: 0.1.0
 
 settings:
   base:
@@ -48,6 +53,7 @@ targets:
       # with "Library not loaded: @rpath/AMSMB2.framework/AMSMB2" (the simulator masks this).
       - package: AMSMB2
         embed: true
+      - package: ShelfKit
       - target: EarmarkWidgets
         embed: true
     settings:

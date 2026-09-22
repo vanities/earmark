@@ -9,10 +9,8 @@
 /* Begin PBXBuildFile section */
 		0112F693050CA4D6636F3F1D /* BookGrouperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */; };
 		0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3548D15C0779ABA8F894721B /* CarPlayInterface.swift */; };
-		0ED15F0F06D93E158524BE5E /* BookmarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C32B20761401506F2E5104B /* BookmarkStore.swift */; };
 		0FBA666FCAC00DC25CBCB9AE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8845D138187AA30B4D2D66FA /* SettingsView.swift */; };
 		1487A4C15D0A9869CD937D17 /* ArtworkStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22F43F134AAFB6721B29281D /* ArtworkStoreTests.swift */; };
-		15A0B790935B64EF8F34860F /* NASServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AE6570FAB96CBA9EFC8F2B3 /* NASServer.swift */; };
 		182123A438B927D533FC274E /* LibraryModel+Queries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5763E54B1EF17EE7A6B1D10D /* LibraryModel+Queries.swift */; };
 		193EC2C791350A0AC8D4C1E0 /* chapter1.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D4AB7E053E1EDBD08ABF661A /* chapter1.mp3 */; };
 		1C21AD7FFD57A485A68FFE00 /* ProgressSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E40164280CA9E44346EE942 /* ProgressSyncTests.swift */; };
@@ -29,6 +27,7 @@
 		43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD632FF90D5B26691454004 /* DuplicatesView.swift */; };
 		460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */; };
 		47BC3EFE4FBAA62C0E751B02 /* NowPlayingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8099B37BF7CE43AB8CBEA21 /* NowPlayingSnapshot.swift */; };
+		49C1CD1E96C277CD542DD32C /* ShelfKit in Frameworks */ = {isa = PBXBuildFile; productRef = 080064CA7375FB2EB147A68D /* ShelfKit */; };
 		4CD220CD3B9FE33F451B8FAD /* NowPlayingSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CDA2E1FA42BCA371320D1BD /* NowPlayingSnapshotTests.swift */; };
 		52B95B9DFF6E6BEAC1EFC712 /* PlaybackAudioProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */; };
 		53406C677A959DAEC0FA9D63 /* DuplicateFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7735C53E3604CE3F7602A18 /* DuplicateFinder.swift */; };
@@ -45,7 +44,6 @@
 		6F8D6EBFB6792D7B83659D92 /* AuthorShelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3457D77DB1151DAFB56F79 /* AuthorShelfView.swift */; };
 		7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC7A3575E89FE9701132A68 /* Chapter.swift */; };
 		736C0E1F111EAA5C052D24F0 /* EarmarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64354FEC8BAE495A5FABA85 /* EarmarkApp.swift */; };
-		74004571BB6526C746CB5353 /* String+Natural.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45A581851B7063C9FA6A72FB /* String+Natural.swift */; };
 		75C52F1CC39B1FBE4E14F387 /* FormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6A588CA99CD56CAB8F90A9 /* FormattingTests.swift */; };
 		77ADF8C366265AFAA1738EEB /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */; };
 		792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9286881105751BAB5361070 /* CoverSyncTests.swift */; };
@@ -163,7 +161,6 @@
 		0A2BC799EA823DD553F3B79F /* EarmarkTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EarmarkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C6A588CA99CD56CAB8F90A9 /* FormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingTests.swift; sourceTree = "<group>"; };
 		12BAAFAF14A3482B36D846E6 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
-		1AE6570FAB96CBA9EFC8F2B3 /* NASServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASServer.swift; sourceTree = "<group>"; };
 		1BD632FF90D5B26691454004 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		1C7DE4A5CA938E53610AB05B /* Earmark.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Earmark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		227D66FF20A1A98227B445B2 /* SelectBooksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectBooksView.swift; sourceTree = "<group>"; };
@@ -185,12 +182,10 @@
 		37C30F83F9766BA3DA5D331B /* DownloadRemoval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRemoval.swift; sourceTree = "<group>"; };
 		3C57B260908E128DE2B07322 /* ProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressBar.swift; sourceTree = "<group>"; };
 		4318C49E54FDB7B284984534 /* BookGrouper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookGrouper.swift; sourceTree = "<group>"; };
-		45A581851B7063C9FA6A72FB /* String+Natural.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Natural.swift"; sourceTree = "<group>"; };
 		47AE9F138750432E3DA4E7FF /* LibraryModel+Covers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Covers.swift"; sourceTree = "<group>"; };
 		484BF16F202F4CA32414EB12 /* LogPastBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPastBookView.swift; sourceTree = "<group>"; };
 		48CC979CDDE31B249D52F0EE /* PlaybackAudioProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackAudioProcessor.swift; sourceTree = "<group>"; };
 		4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
-		4C32B20761401506F2E5104B /* BookmarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkStore.swift; sourceTree = "<group>"; };
 		4C8AB46399D4EB8BF119A21C /* EarmarkIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarmarkIntents.swift; sourceTree = "<group>"; };
 		4EA9C1B59012131A51DF6716 /* Book.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Book.swift; sourceTree = "<group>"; };
 		50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinderTests.swift; sourceTree = "<group>"; };
@@ -271,6 +266,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B6A1DC3B4A7C7BCBBCD33244 /* AMSMB2 in Frameworks */,
+				49C1CD1E96C277CD542DD32C /* ShelfKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -403,7 +399,6 @@
 				7990E564C463C8EE7985A33A /* LibraryQueries.swift */,
 				009737EB74631A870EB84AA1 /* LibrarySource.swift */,
 				E9E958126C9019EBE21E1F84 /* LibraryState.swift */,
-				1AE6570FAB96CBA9EFC8F2B3 /* NASServer.swift */,
 				004868C0050F08507DC20E10 /* PlaybackProgress.swift */,
 				E769569E89D398ACA2E97FA0 /* ReadingLogEntry.swift */,
 				564EAE9677E67D93995FBBE0 /* ReadingStats.swift */,
@@ -516,7 +511,6 @@
 				D85D1074D532B131D98066F4 /* ArtworkStore.swift */,
 				37A3712B6BBC374281EF3C06 /* AudioFileTypes.swift */,
 				4318C49E54FDB7B284984534 /* BookGrouper.swift */,
-				4C32B20761401506F2E5104B /* BookmarkStore.swift */,
 				DED77F24493E6E912E2FF488 /* CloudProgressSync.swift */,
 				4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */,
 				22E324682D9AA6260811DB36 /* CoverSync.swift */,
@@ -553,7 +547,6 @@
 			isa = PBXGroup;
 			children = (
 				C5450C0C927711EAF2A80272 /* Logger+Earmark.swift */,
-				45A581851B7063C9FA6A72FB /* String+Natural.swift */,
 				0313295AD219C8A882927C8D /* TimeInterval+Format.swift */,
 			);
 			path = Extensions;
@@ -621,6 +614,7 @@
 			name = Earmark;
 			packageProductDependencies = (
 				F56A508B36B9A9CBCA46A207 /* AMSMB2 */,
+				080064CA7375FB2EB147A68D /* ShelfKit */,
 			);
 			productName = Earmark;
 			productReference = 1C7DE4A5CA938E53610AB05B /* Earmark.app */;
@@ -679,6 +673,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				6577CC70F0DD286BFDE57924 /* XCRemoteSwiftPackageReference "AMSMB2" */,
+				68A85DC56B59AF1858E4942A /* XCRemoteSwiftPackageReference "shelfkit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2ECD55EA0A8B041EED1CE472 /* Products */;
@@ -765,7 +760,6 @@
 				667D28B426ECD4C26731841A /* BookGrouper.swift in Sources */,
 				B6CBFF04A05D4520855BA824 /* BookMetadataOverride.swift in Sources */,
 				B8CFFEDA9D238934A4A6AE95 /* Bookmark.swift in Sources */,
-				0ED15F0F06D93E158524BE5E /* BookmarkStore.swift in Sources */,
 				0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */,
 				A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */,
 				7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */,
@@ -801,7 +795,6 @@
 				DC573F9124C7D83A64021012 /* MetadataReader.swift in Sources */,
 				E519E323BDCBEA02D6554D16 /* MiniPlayerView.swift in Sources */,
 				D7E20811D3F344ABAEA0E9B7 /* NASClient.swift in Sources */,
-				15A0B790935B64EF8F34860F /* NASServer.swift in Sources */,
 				53C1D700C302D5DB6385CA15 /* NASSetupView.swift in Sources */,
 				96452920141A5BF5A62DB5E3 /* NameParser.swift in Sources */,
 				460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */,
@@ -823,7 +816,6 @@
 				99731B5226535992377CC49E /* SelectBooksView.swift in Sources */,
 				0FBA666FCAC00DC25CBCB9AE /* SettingsView.swift in Sources */,
 				A95C89D8E852EF1FBB9D7621 /* StatsView.swift in Sources */,
-				74004571BB6526C746CB5353 /* String+Natural.swift in Sources */,
 				C97361F99B27E2C4C31264C2 /* TimeInterval+Format.swift in Sources */,
 				B4821B78796429BAF200DDF4 /* Track.swift in Sources */,
 				D75496E8EFD9EB117DCC5840 /* TransportControls.swift in Sources */,
@@ -1152,9 +1144,22 @@
 				minimumVersion = 4.0.3;
 			};
 		};
+		68A85DC56B59AF1858E4942A /* XCRemoteSwiftPackageReference "shelfkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vanities/shelfkit.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		080064CA7375FB2EB147A68D /* ShelfKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 68A85DC56B59AF1858E4942A /* XCRemoteSwiftPackageReference "shelfkit" */;
+			productName = ShelfKit;
+		};
 		F56A508B36B9A9CBCA46A207 /* AMSMB2 */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 6577CC70F0DD286BFDE57924 /* XCRemoteSwiftPackageReference "AMSMB2" */;

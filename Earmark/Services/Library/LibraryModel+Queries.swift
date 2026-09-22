@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 extension LibraryModel {
     /// Everything not hidden — and remote books step aside once a downloaded copy exists.

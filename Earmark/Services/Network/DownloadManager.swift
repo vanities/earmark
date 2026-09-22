@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import UIKit
 import os
+import ShelfKit
 
 /// Copies remote books into "On My iPhone › Earmark", one at a time, keeping the same
 /// relative folder layout so the local copy groups exactly like the remote one did.

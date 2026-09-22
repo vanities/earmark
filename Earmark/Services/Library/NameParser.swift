@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// Pulls author / series / index / narrator out of the names audiobook files actually
 /// have — "Author - Series, Book 2 - Title", "Author - Series 03 - Title (48 KBps Unabridged)",

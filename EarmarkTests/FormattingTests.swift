@@ -1,5 +1,6 @@
 import XCTest
 @testable import Earmark
+import ShelfKit
 
 final class FormattingTests: XCTestCase {
     func testNaturalSort() {

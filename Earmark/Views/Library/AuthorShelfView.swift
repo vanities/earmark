@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// An author's books arranged by sets of work (series in chronological order, then standalones),
 /// with Title and Recent as alternatives.

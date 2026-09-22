@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// A book that's on a NAS and downloaded too.
 struct DownloadPair: Hashable, Sendable {

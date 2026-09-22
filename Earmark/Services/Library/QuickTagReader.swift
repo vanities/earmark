@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// Reads ID3v2 tags and estimates duration from an MP3's first few hundred kilobytes.
 /// AVFoundation needs to pull a whole MP3 across the network to do the same, so remote

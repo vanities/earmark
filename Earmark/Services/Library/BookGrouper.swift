@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// A playable file found while walking a source, plus whatever tags we could read.
 struct ScannedFile: Hashable, Sendable {

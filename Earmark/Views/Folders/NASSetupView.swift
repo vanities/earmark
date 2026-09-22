@@ -1,5 +1,6 @@
 import SwiftUI
 import os
+import ShelfKit
 
 /// Connects an SMB share (Unraid, Synology, a Mac…) as a library folder.
 struct NASSetupView: View {
