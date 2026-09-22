@@ -15,25 +15,6 @@ final class LibraryModel {
         case failed(String)
     }
 
-    enum DuplicateScanState: Equatable {
-        case idle
-        case running(done: Int, total: Int)
-        case finished(Date)
-    }
-
-    enum NASStatus: Equatable {
-        case unknown, connecting, online
-        case offline(String)
-    }
-
-    /// What the player needs to play one track: a local file asset, or an SMB-streamed one.
-    struct PlaybackSource {
-        var asset: AVURLAsset
-        var loader: SMBResourceLoader?
-        var isRemote: Bool
-        var serverName: String?
-    }
-
     private(set) var sources: [LibrarySource] = []
     private(set) var books: [Book] = []
     private(set) var progress: [String: PlaybackProgress] = [:]
@@ -58,6 +39,8 @@ final class LibraryModel {
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
     @ObservationIgnored private(set) var deletedBookmarks = Tombstones()
+    /// NAS books whose download just finished, until the scan that finds the download (`noteDownloaded`).
+    @ObservationIgnored private var justDownloaded: Set<String> = []
     /// The user's own lists (LibraryModel+Lists).
     var bookLists: [BookList] = []
     /// Books finished outside the app: changed only by LibraryModel+History and the iCloud merge.
@@ -127,17 +110,6 @@ final class LibraryModel {
             MainActor.assumeIsolated { self?.save() }
         }
         rescanAll(reason: "launch")
-    }
-
-    static var documentsURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-    }
-
-    /// Path with a trailing slash so prefix checks don't match "Books" against "Books 2".
-    nonisolated static func directoryPath(_ url: URL) -> String {
-        var path = url.path(percentEncoded: false)
-        while path.hasSuffix("/") { path.removeLast() }
-        return path + "/"
     }
 
     private func ensureAppDocumentsSource() {
@@ -351,14 +323,7 @@ final class LibraryModel {
         let added = updated.filter { existing[$0.id] == nil }.count
         let removed = existing.count - (updated.count - added)
         if sources.first(where: { $0.id == sourceID })?.kind == .appDocuments {
-            // A book that was just downloaded from a NAS keeps the listening position of its remote twin.
-            let remoteByPath = Dictionary(books.filter { isRemote($0) }.map { ($0.relativePath, $0) }, uniquingKeysWith: { first, _ in first })
-            for book in updated where existing[book.id] == nil && progress[book.id] == nil {
-                if let twin = remoteByPath[book.relativePath], let twinProgress = progress[twin.id] {
-                    progress[book.id] = twinProgress
-                    Logger.library.info("[library] adopted progress from remote twin for \(book.title, privacy: .public)")
-                }
-            }
+            adoptStateFromRemoteTwins(of: updated.filter { existing[$0.id] == nil })
         }
         books.removeAll { $0.sourceID == sourceID }
         books.append(contentsOf: updated)
@@ -411,24 +376,57 @@ final class LibraryModel {
         }
     }
 
-    /// When a download is removed, the NAS copy picks up where it left off: the newer place, the
-    /// bookmarks, a picked cover or corrected details it lacks, hidden, "last played".
-    func returnDownloadState(from localID: String, to remoteID: String) {
-        progress[remoteID] = DownloadRemoval.place(from: progress[localID], onto: progress[remoteID])
-        if let marks = bookmarks[localID] { bookmarks[remoteID] = DownloadRemoval.bookmarks(from: marks, onto: bookmarks[remoteID] ?? []) }
-        if metadataOverrides[remoteID] == nil, let override = metadataOverrides[localID] { metadataOverrides[remoteID] = override }
-        if let art = customArtwork.removeValue(forKey: localID) {
-            if customArtwork[remoteID] == nil { customArtwork[remoteID] = art; setArtworkID(art, forBook: remoteID) } else { ArtworkStore.shared.remove(id: art) }
+    // MARK: - Copies of a book
+
+    /// The per-book state that follows a book between its copies (`CopyState`), read and written
+    /// together; only what changed is written back, so nothing else redraws.
+    private var copyState: CopyState {
+        get { CopyState(progress: progress, bookmarks: bookmarks, corrections: metadataOverrides, hidden: hiddenBookIDs, lastBookID: lastBookID) }
+        set {
+            if newValue.progress != progress { progress = newValue.progress }
+            if newValue.bookmarks != bookmarks { bookmarks = newValue.bookmarks }
+            if newValue.corrections != metadataOverrides { metadataOverrides = newValue.corrections }
+            if newValue.hidden != hiddenBookIDs { hiddenBookIDs = newValue.hidden }
+            if newValue.lastBookID != lastBookID { lastBookID = newValue.lastBookID }
         }
-        if hiddenBookIDs.remove(localID) != nil { hiddenBookIDs.insert(remoteID) }
-        if lastBookID == localID { lastBookID = remoteID }
-        progress[localID] = nil
-        bookmarks[localID] = nil
-        metadataOverrides[localID] = nil
-        writtenCovers[localID] = nil
-        ArtworkStore.shared.remove(id: ArtworkStore.shared.id(for: localID))
+    }
+
+    /// One copy of a book leaves the library and another stays — a download is removed (the NAS
+    /// copy stays), or a book moves into Earmark's folder (the moved copy stays). Everything done
+    /// to the leaving copy goes to the staying one (`CopyState.handOver`), and its picked cover.
+    /// `filesMoved`: the leaving copy's files went too, so a cover image Earmark wrote beside them
+    /// is still Earmark's to replace.
+    func handOverState(from oldID: String, to newID: String, filesMoved: Bool = false) {
+        var state = copyState
+        state.handOver(from: oldID, to: newID)
+        copyState = state
+        if let art = customArtwork.removeValue(forKey: oldID) {
+            if customArtwork[newID] == nil { customArtwork[newID] = art; setArtworkID(art, forBook: newID) } else { ArtworkStore.shared.remove(id: art) }
+        }
+        if filesMoved, writtenCovers[newID] == nil, let written = writtenCovers[oldID] { writtenCovers[newID] = written }
+        writtenCovers[oldID] = nil
+        ArtworkStore.shared.remove(id: ArtworkStore.shared.id(for: oldID))
         applyMetadataOverrides()
+        Logger.library.info("[library] state handed over \(oldID, privacy: .public) → \(newID, privacy: .public)\(filesMoved ? " with its files" : "", privacy: .public)")
         save()
+    }
+
+    /// A download finished: the scan that finds it knows which NAS book it came from.
+    func noteDownloaded(_ remoteID: String) { justDownloaded.insert(remoteID) }
+
+    /// Books that just arrived in Earmark's folder from a NAS take what was done to their NAS copy
+    /// and they don't have yet (`CopyState.adopt`): the place, bookmarks, corrections, hidden.
+    private func adoptStateFromRemoteTwins(of arrivals: [Book]) {
+        guard !arrivals.isEmpty else { return }
+        var state = copyState
+        var adopted: [String] = []
+        for (arrival, twin) in CopyState.remoteTwins(of: arrivals, among: books.filter { isRemote($0) }, downloaded: justDownloaded) {
+            justDownloaded.remove(twin.id)
+            if state.adopt(into: arrival.id, from: twin.id) { adopted.append(arrival.title) }
+        }
+        guard !adopted.isEmpty else { return }
+        copyState = state
+        Logger.library.info("[library] carried over from the NAS copy: \(adopted.joined(separator: ", "), privacy: .public)")
     }
 
     // MARK: - Progress
@@ -457,17 +455,6 @@ final class LibraryModel {
     /// The always-present "On My iPhone › Earmark" source.
     var appDocumentsSource: LibrarySource? {
         sources.first { $0.kind == .appDocuments }
-    }
-
-    /// Carry listening position from a book that was moved/downloaded to its new local identity.
-    func adoptProgress(from oldBookID: String, to newBookID: String) {
-        guard let entry = progress[oldBookID] else { return }
-        if progress[newBookID] == nil {
-            progress[newBookID] = entry
-            if lastBookID == oldBookID { lastBookID = newBookID }
-            Logger.library.info("[library] adopted progress → \(newBookID, privacy: .public)")
-            scheduleSave()
-        }
     }
 
     func setCurrentBook(_ bookID: String) {
@@ -680,15 +667,5 @@ final class LibraryModel {
         deletedBookmarks.bury(id)   // or iCloud's copy brings it back on the next merge
         save()
         onBooksChanged?()
-    }
-
-    // MARK: - Files app
-
-    func revealInFiles(_ book: Book) {
-        guard let url = url(forBook: book) else { return }
-        let target = "shareddocuments://" + url.path(percentEncoded: true)
-        guard let filesURL = URL(string: target) else { return }
-        Logger.ui.info("[ui] reveal in Files \(book.title, privacy: .public)")
-        UIApplication.shared.open(filesURL)
     }
 }

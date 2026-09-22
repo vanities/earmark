@@ -15,13 +15,14 @@ own sandbox, and interrupt you with donation screens. Earmark does none of that:
 
 - **Pick a whole folder.** iCloud Drive, On My iPhone, another app's folder, or a NAS share
   connected in the Files app. Earmark keeps a security-scoped bookmark and reads in place.
-  Nothing is copied, nothing is moved.
+  Nothing is copied or moved unless you ask.
 - **Auto-organized.** A folder of MP3s is a book, each `.m4b` is a book, `Disc 1/Disc 2`
   folders merge, and `Author / Series / Book` trees (or tags) fill in author and series.
   Group by author, series, or folder; search everything.
 - **Consolidate.** "Move into Earmark" copies books from any folder you picked (another
-  player's folder, Downloads) into On My iPhone › Earmark, verifies them, deletes the originals,
-  and carries your listening position, so everything ends up in one place.
+  player's folder, Downloads) into On My iPhone › Earmark, checks every file arrived whole, and
+  only then deletes the originals — a different file already there is never overwritten. Your
+  place, bookmarks and corrected details come along, so everything ends up in one place.
 - **Find covers.** One tap searches Apple's audiobook catalog and Open Library for artwork and saves
   your pick (as `cover.jpg` next to the files for local books).
 - **Find duplicates.** Fingerprints every file (size + content hash) and shows identical
@@ -125,7 +126,8 @@ Keychain). Earmark indexes the folder listing over SMB, reads tags the same way 
 local files, and shows the books on the shelf with a Remote badge. Playback streams through
 AVFoundation's resource loader, so nothing is written to disk unless you tap **Download to
 iPhone** on a book, which copies its folder into On My iPhone › Earmark. Once a downloaded copy
-exists, the remote entry hides and your listening position carries over. **Sync from NAS** (on
+exists, the remote entry hides and the download picks up everything you did to it: your place,
+bookmarks, corrected details, even hidden. **Sync from NAS** (on
 the NAS folder's page, or swipe its row) queues every book that isn't on the phone yet and skips
 files you already have. If the NAS can't be reached, the player says so instead of failing silently.
 

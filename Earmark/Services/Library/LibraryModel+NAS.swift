@@ -8,6 +8,19 @@ import ShelfKit
 /// SMB servers: their clients (one per server, kept for the app's life), the password in the
 /// Keychain, and what the player streams a remote track through.
 extension LibraryModel {
+    enum NASStatus: Equatable {
+        case unknown, connecting, online
+        case offline(String)
+    }
+
+    /// What the player needs to play one track: a local file asset, or an SMB-streamed one.
+    struct PlaybackSource {
+        var asset: AVURLAsset
+        var loader: SMBResourceLoader?
+        var isRemote: Bool
+        var serverName: String?
+    }
+
     static func keychainKey(for serverID: UUID) -> String { "nas.\(serverID.uuidString)" }
 
     func server(id: UUID) -> NASServer? {

@@ -37,7 +37,7 @@ struct FoldersView: View {
                 } header: {
                     Text("Library Folders")
                 } footer: {
-                    Text("Earmark plays your files where they are. Nothing is copied or moved.")
+                    Text("Earmark plays your files where they are. It never copies, moves, renames or deletes them unless you ask — only covers and a small library file are written.")
                 }
 
                 Section {

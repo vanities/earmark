@@ -54,7 +54,7 @@ extension LibraryModel {
         }
         if local.kind == .singleFile { DownloadRemoval.removeImages(pairedWith: bookURL, in: folder) }
         DownloadRemoval.pruneEmptyFolders(from: folder, bookFolder: local.kind == .folder, root: root)
-        returnDownloadState(from: local.id, to: remote.id)
+        handOverState(from: local.id, to: remote.id)
         // A library salvaged from an older build can carry a second "On My iPhone" source over
         // the same folder; `deleteBookFiles` rescans only this one, and the other would go on
         // listing what was just deleted.

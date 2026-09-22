@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import os
 import ShelfKit
 
 extension LibraryModel {
@@ -139,6 +141,17 @@ extension LibraryModel {
 
     // MARK: Files and twins
 
+    static var documentsURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
+    /// Path with a trailing slash so prefix checks don't match "Books" against "Books 2".
+    nonisolated static func directoryPath(_ url: URL) -> String {
+        var path = url.path(percentEncoded: false)
+        while path.hasSuffix("/") { path.removeLast() }
+        return path + "/"
+    }
+
     func url(forBook book: Book) -> URL? {
         guard let root = rootURL(for: book.sourceID), !isRemote(book) else { return nil }
         if book.kind == .singleFile, sources.first(where: { $0.id == book.sourceID })?.kind == .file {
@@ -169,5 +182,13 @@ extension LibraryModel {
         return books.first { candidate in
             candidate.id != book.id && candidate.relativePath == book.relativePath && source(for: candidate)?.kind == .appDocuments
         }
+    }
+
+    func revealInFiles(_ book: Book) {
+        guard let url = url(forBook: book) else { return }
+        let target = "shareddocuments://" + url.path(percentEncoded: true)
+        guard let filesURL = URL(string: target) else { return }
+        Logger.ui.info("[ui] reveal in Files \(book.title, privacy: .public)")
+        UIApplication.shared.open(filesURL)
     }
 }

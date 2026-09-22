@@ -15,6 +15,14 @@ are, with great organization and CarPlay — and never nag.
   (`cover.jpg` in a book folder, `<file>.jpg` next to a single file) so other apps see it.
   Earmark only ever replaces or deletes an image it wrote itself (hash in
   `LibraryState.writtenCovers`), never one the user put there.
+- **Move into Earmark** (a book in a folder the user picked → On My iPhone › Earmark) is the one
+  move, and only when asked: ShelfKit's `LocalMove` copies, checks every file arrived whole, and
+  only then removes the originals. A file already there counts as moved only if every byte
+  matches; a different one is never overwritten. Folders it empties go, up to the picked folder.
+- **What the listener did follows the book between copies** (`CopyState`, tested): a move or a
+  removed download hands everything to the copy that stays (`handOverState`); a download fills
+  what it lacks from the NAS copy it came from (`adoptStateFromRemoteTwins`). Place, bookmarks,
+  corrections, hidden, last played — never just the position.
 - **No donation / tip / rating prompts. Ever.**
 - Remote (SMB) books are real library sources: `LibraryScanner.scanRemote` walks the share,
   `MetadataReader.read(asset:)` reads tags through `SMBResourceLoader`, and `LibraryModel.visibleBooks`
@@ -32,12 +40,14 @@ Earmark/
     Library/      BookmarkStore, LibraryStore (JSON), MetadataReader (AVFoundation tags/chapters),
                   MetadataCache (actor), ArtworkStore, NameParser (real-world file/folder name patterns),
                   QuickTagReader (ID3/MPEG header parser for remote MP3s — avoids whole-file downloads),
-                  BookGrouper (pure logic), LibraryScanner,
-                  DuplicateFinder, LibraryModel (@MainActor @Observable source of truth)
+                  BookGrouper (pure logic), LibraryScanner, DuplicateFinder, CopyState (what follows a
+                  book between copies), Catalogs (the iTunes + Open Library client Find Cover and
+                  Look Up share), LibraryModel (@MainActor @Observable source of truth; its feature
+                  files +Covers/+Downloads/+Duplicates/+History/+Lists/+NAS/+Cloud/+Queries)
     Playback/     PlayerEngine (AVPlayer), AudioSessionManager, NowPlayingController (lock screen/CarPlay)
     Network/      NASClient (AMSMB2 wrapper; bounded range reads only — never abort a stream mid-callback),
                   SMBResourceLoader (AVAssetResourceLoaderDelegate streaming), DownloadManager (downloads,
-                  Move-into-Earmark, persisted queue, BGProcessingTask), KeychainStore
+                  Move-into-Earmark via ShelfKit's LocalMove, persisted queue, BGProcessingTask), KeychainStore
     Library/      also CoverSearch (iTunes + Open Library lookups), CoverSync (pure cover-choice merge
                   and per-device plan; newest choice wins across devices) and QuickTagReader
   CarPlay/        CarPlaySceneDelegate (from Info.plist), CarPlayInterface (templates)

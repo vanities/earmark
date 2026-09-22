@@ -5,6 +5,12 @@ import os
 
 /// Finding the same audio in more than one place, and deleting the copies the user picks.
 extension LibraryModel {
+    enum DuplicateScanState: Equatable {
+        case idle
+        case running(done: Int, total: Int)
+        case finished(Date)
+    }
+
     private struct FingerprintTarget: Sendable {
         var key: String
         var url: URL

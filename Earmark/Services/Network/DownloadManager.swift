@@ -294,8 +294,10 @@ final class DownloadManager {
         change(&jobs[index])
     }
 
-    /// Copy → verify sizes → delete originals. Files already present in Earmark's folder with the
-    /// same size are skipped (and their originals removed), which is how duplicates collapse.
+    /// Copy → check → remove the originals, through ShelfKit's `LocalMove`, off the main actor:
+    /// nothing already in Earmark's folder is ever overwritten, and a file already there byte for
+    /// byte counts as moved (that's how duplicates collapse). Folders the book leaves empty go,
+    /// up to the folder the user picked. Everything done to the book comes along.
     private func performMove(_ job: Job) async {
         guard let book = library.book(id: job.bookID), let root = library.rootURL(for: book.sourceID), let local = library.appDocumentsSource else {
             update(job.id) { $0.state = .failed; $0.error = "This book's folder isn't available." }
@@ -304,75 +306,68 @@ final class DownloadManager {
         let background = UIApplication.shared.beginBackgroundTask(withName: "earmark.move")
         defer { UIApplication.shared.endBackgroundTask(background) }
         let sw = Stopwatch()
-        let fileManager = FileManager.default
         let documents = LibraryModel.documentsURL
 
-        // Audio files plus any images sitting in the book's folder(s).
+        // The audio, plus the images that are the book's (`imagesMoving`) — its own folder's
+        // too, where a cover sits above the disc folders.
         var relatives = book.tracks.map(\.relativePath)
-        let folders = Set(book.tracks.map { ($0.relativePath as NSString).deletingLastPathComponent })
+        var folders = Set(book.tracks.map { ($0.relativePath as NSString).deletingLastPathComponent })
+        if book.kind == .folder { folders.insert(book.relativePath) }
         for folder in folders {
-            let folderURL = root.appending(path: folder)
-            if let names = try? fileManager.contentsOfDirectory(atPath: folderURL.path) {
-                for name in names where AudioFileTypes.images.contains((name as NSString).pathExtension.lowercased()) {
-                    relatives.append(folder.isEmpty ? name : folder + "/" + name)
-                }
-            }
+            let names = (try? FileManager.default.contentsOfDirectory(atPath: root.appending(path: folder).path(percentEncoded: false))) ?? []
+            relatives += Self.imagesMoving(with: book, from: names).map { folder.isEmpty ? $0 : folder + "/" + $0 }
         }
-        let files: [(src: URL, dest: URL, size: Int64)] = relatives.map { rel in
-            let src = root.appending(path: rel)
-            let size = Int64((try? src.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-            return (src, documents.appending(path: rel), size)
+        let files = relatives.map { rel in
+            let source = root.appending(path: rel)
+            return LocalMove.File(source: source, destination: documents.appending(path: rel),
+                                  size: Int64((try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0))
         }
         update(job.id) { $0.totalBytes = max(1, files.reduce(0) { $0 + $1.size }) }
 
-        var done: Int64 = 0
-        for file in files {
-            if cancelled.withLock({ $0.contains(job.id) }) {
-                update(job.id) { $0.state = .cancelled }
-                return
+        let jobID = job.id, cancelled = self.cancelled
+        let outcome: Result<Void, any Error> = await Task.detached(priority: .userInitiated) {
+            Result {
+                try LocalMove.run(files, into: "Earmark", pruningUpTo: root, progress: { bytes in
+                    Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = bytes } }
+                }, isCancelled: { cancelled.withLock { $0.contains(jobID) } })
             }
-            let existing = Int64((try? file.dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1)
-            if existing != file.size {
-                do {
-                    try fileManager.createDirectory(at: file.dest.deletingLastPathComponent(), withIntermediateDirectories: true)
-                    try? fileManager.removeItem(at: file.dest)
-                    try fileManager.copyItem(at: file.src, to: file.dest)
-                } catch {
-                    try? fileManager.removeItem(at: file.dest)
-                    Logger.downloads.error("[downloads] move copy failed \(file.src.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
-                    update(job.id) { $0.state = .failed; $0.error = "Couldn't copy \(file.src.lastPathComponent): \(error.localizedDescription)" }
-                    return
-                }
-            }
-            done += file.size
-            update(job.id) { $0.doneBytes = done }
+        }.value
+        var originalsNote: String?
+        switch outcome {
+        case .success:
+            break
+        case .failure(LocalMove.Failure.originalsLeft(let count, let app)):
+            originalsNote = LocalMove.Failure.originalsLeft(count, app: app).errorDescription
+        case .failure(LocalMove.Failure.cancelled):
+            update(job.id) { $0.state = .cancelled }
+            Logger.downloads.info("[downloads] move cancelled \(book.title, privacy: .public)")
+            return
+        case .failure(let error):
+            Logger.downloads.error("[downloads] move failed \(book.title, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            update(job.id) { $0.state = .failed; $0.error = error.localizedDescription }
+            return
         }
-
-        // Everything is in Earmark's folder now; remove the originals (verify size first).
-        var leftBehind = 0
-        for file in files {
-            let copied = Int64((try? file.dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? -1)
-            guard copied == file.size else { leftBehind += 1; continue }
-            do { try fileManager.removeItem(at: file.src) } catch { leftBehind += 1 }
-        }
-        for folder in folders.sorted(by: { $0.count > $1.count }) where !folder.isEmpty {
-            let folderURL = root.appending(path: folder)
-            if let names = try? fileManager.contentsOfDirectory(atPath: folderURL.path), names.allSatisfy({ $0.hasPrefix(".") }) {
-                try? fileManager.removeItem(at: folderURL)
-            }
-        }
-        // New identity in the local source; keep the listening position.
-        let groupKey = book.id.split(separator: "|", omittingEmptySubsequences: false).last.map(String.init) ?? ""
-        library.adoptProgress(from: book.id, to: Book.makeID(sourceID: local.id, relativePath: book.relativePath, groupKey: groupKey))
-
+        // A new identity in Earmark's folder, and everything done to the book goes with it.
+        library.handOverState(from: book.id, to: Book.makeID(sourceID: local.id, relativePath: book.relativePath, groupKey: book.groupKey ?? ""),
+                              filesMoved: true)
         update(job.id) {
             $0.state = .done
             $0.doneBytes = $0.totalBytes
-            if leftBehind > 0 { $0.error = "Copied, but \(leftBehind) original file\(leftBehind == 1 ? "" : "s") couldn't be removed." }
+            if let originalsNote { $0.error = originalsNote }
         }
-        Logger.downloads.info("[downloads] moved \(book.title, privacy: .public) files=\(files.count) leftBehind=\(leftBehind) in \(sw.seconds, format: .fixed(precision: 1))s")
+        Logger.downloads.info("[downloads] moved \(book.title, privacy: .public) files=\(files.count)\(originalsNote == nil ? "" : " (some originals left)", privacy: .public) in \(sw.seconds, format: .fixed(precision: 1))s")
         library.rescan(local.id)
         library.rescan(book.sourceID)
+    }
+
+    /// The pictures that move with a book. A folder that is the book: every image in it (its
+    /// cover, whatever it's called). A folder it shares with other books: only an image named
+    /// like one of its own files ("Dune.jpg" beside "Dune.m4b") — a neighbour's cover stays.
+    nonisolated static func imagesMoving(with book: Book, from names: [String]) -> [String] {
+        let images = names.filter { AudioFileTypes.images.contains(($0 as NSString).pathExtension.lowercased()) }
+        if book.kind == .folder, (book.groupKey ?? "").isEmpty { return images }
+        let stems = Set(book.tracks.map { ($0.fileName as NSString).deletingPathExtension.normalizedForMatching })
+        return images.filter { stems.contains(($0 as NSString).deletingPathExtension.normalizedForMatching) }
     }
 
     /// Uploads a local book's files to the NAS, skipping any already there at the right size, keeping
@@ -522,6 +517,7 @@ final class DownloadManager {
         }
         update(job.id) { $0.state = .done; $0.doneBytes = $0.totalBytes }
         Logger.downloads.info("[downloads] done \(book.title, privacy: .public) files=\(files.count) in \(sw.seconds, format: .fixed(precision: 1))s")
+        library.noteDownloaded(book.id)
         if let local = library.sources.first(where: { $0.kind == .appDocuments }) {
             library.rescan(local.id)
         }
