@@ -3,6 +3,11 @@ import Foundation
 import Observation
 import os
 
+// One state machine around one AVPlayer. Every section drives that player and its private
+// state, so splitting the file would mean opening both to the whole app; it runs past the
+// 700-line lint warning on purpose.
+// swiftlint:disable file_length
+
 enum SleepTimerMode: Hashable, Sendable {
     case off
     case duration(TimeInterval)

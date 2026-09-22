@@ -136,4 +136,38 @@ extension LibraryModel {
     private func countLabel(_ books: [Book]) -> String {
         books.count == 1 ? "1 book" : "\(books.count) books"
     }
+
+    // MARK: Files and twins
+
+    func url(forBook book: Book) -> URL? {
+        guard let root = rootURL(for: book.sourceID), !isRemote(book) else { return nil }
+        if book.kind == .singleFile, sources.first(where: { $0.id == book.sourceID })?.kind == .file {
+            return root
+        }
+        return root.appending(path: book.relativePath)
+    }
+
+    func url(forTrack track: Track, in book: Book) -> URL? {
+        guard let root = rootURL(for: book.sourceID), !isRemote(book) else { return nil }
+        if sources.first(where: { $0.id == book.sourceID })?.kind == .file {
+            return root
+        }
+        return root.appending(path: track.relativePath)
+    }
+
+    func sourceName(for id: UUID) -> String {
+        sources.first { $0.id == id }?.displayName ?? "Unknown"
+    }
+
+    func source(for book: Book) -> LibrarySource? {
+        sources.first { $0.id == book.sourceID }
+    }
+
+    /// A downloaded copy of a remote book, matched by its path relative to the library root.
+    func localTwin(of book: Book) -> Book? {
+        guard isRemote(book) else { return nil }
+        return books.first { candidate in
+            candidate.id != book.id && candidate.relativePath == book.relativePath && source(for: candidate)?.kind == .appDocuments
+        }
+    }
 }

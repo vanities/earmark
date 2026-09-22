@@ -41,11 +41,13 @@ final class LibraryModel {
     private(set) var lastBookID: String?
     private(set) var scanStatus: [UUID: ScanStatus] = [:]
     private(set) var unsupportedFiles: [UUID: [String]] = [:]
-    private(set) var duplicateGroups: [DuplicateGroup] = []
-    private(set) var duplicateScan: DuplicateScanState = .idle
+    // Duplicate state is changed only by LibraryModel+Duplicates (and `removeSource`), NAS state
+    // only by LibraryModel+NAS — an extension in another file can't use `private(set)`.
+    var duplicateGroups: [DuplicateGroup] = []
+    var duplicateScan: DuplicateScanState = .idle
     private(set) var hasLoaded = false
-    private(set) var nasServers: [NASServer] = []
-    private(set) var nasStatus: [UUID: NASStatus] = [:]
+    var nasServers: [NASServer] = []
+    var nasStatus: [UUID: NASStatus] = [:]
     // Cover state is changed only by LibraryModel+Covers (an extension in another file can't use
     // `private(set)`); everything else reads it.
     var customArtwork: [String: String] = [:]
@@ -55,11 +57,12 @@ final class LibraryModel {
     @ObservationIgnored var coverDownloadsAttempted: Set<String> = []
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
-    @ObservationIgnored private var deletedBookmarks = Tombstones()
+    @ObservationIgnored private(set) var deletedBookmarks = Tombstones()
     /// The user's own lists (LibraryModel+Lists).
     var bookLists: [BookList] = []
-    private(set) var readingLog: [ReadingLogEntry] = []
-    @ObservationIgnored private let cloudSync = CloudProgressSync()
+    /// Books finished outside the app: changed only by LibraryModel+History and the iCloud merge.
+    var readingLog: [ReadingLogEntry] = []
+    @ObservationIgnored let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
 
@@ -69,16 +72,17 @@ final class LibraryModel {
     /// newer one, or the book was reset — so a paused player can move there instead of saving over it.
     @ObservationIgnored var onSavedPositionChanged: ((Set<String>) -> Void)?
 
-    @ObservationIgnored private let store: LibraryStore
+    @ObservationIgnored let store: LibraryStore
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private let scanner: LibraryScanner
     @ObservationIgnored private var resolvedRoots: [UUID: URL] = [:]
     @ObservationIgnored private var scanTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var saveTask: Task<Void, Never>?
-    @ObservationIgnored private var fingerprints: [String: FileFingerprint] = [:]
-    @ObservationIgnored private var fingerprintsLoaded = false
+    /// LibraryModel+Duplicates' cache of file fingerprints, loaded on first use.
+    @ObservationIgnored var fingerprints: [String: FileFingerprint] = [:]
+    @ObservationIgnored var fingerprintsLoaded = false
     @ObservationIgnored private var backgroundObserver: (any NSObjectProtocol)?
-    @ObservationIgnored private var nasClients: [UUID: NASClient] = [:]
+    @ObservationIgnored var nasClients: [UUID: NASClient] = [:]
 
     var isScanning: Bool {
         scanStatus.values.contains { if case .scanning = $0 { return true } else { return false } }
@@ -184,30 +188,6 @@ final class LibraryModel {
 
     func rootURL(for sourceID: UUID) -> URL? { resolvedRoots[sourceID] }
 
-    func url(forBook book: Book) -> URL? {
-        guard let root = resolvedRoots[book.sourceID], !isRemote(book) else { return nil }
-        if book.kind == .singleFile, sources.first(where: { $0.id == book.sourceID })?.kind == .file {
-            return root
-        }
-        return root.appending(path: book.relativePath)
-    }
-
-    func url(forTrack track: Track, in book: Book) -> URL? {
-        guard let root = resolvedRoots[book.sourceID], !isRemote(book) else { return nil }
-        if sources.first(where: { $0.id == book.sourceID })?.kind == .file {
-            return root
-        }
-        return root.appending(path: track.relativePath)
-    }
-
-    func sourceName(for id: UUID) -> String {
-        sources.first { $0.id == id }?.displayName ?? "Unknown"
-    }
-
-    func source(for book: Book) -> LibrarySource? {
-        sources.first { $0.id == book.sourceID }
-    }
-
     // MARK: - Sources
 
     func addFolders(_ urls: [URL]) {
@@ -258,6 +238,13 @@ final class LibraryModel {
             if started { url.stopAccessingSecurityScopedResource() }
             Logger.library.error("[library] add source failed for \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// A NAS share joins the library like any folder (see `addNAS` in LibraryModel+NAS).
+    func addRemoteSource(_ source: LibrarySource) {
+        sources.append(source)
+        save()
+        scan(source)
     }
 
     func removeSource(_ id: UUID) {
@@ -320,12 +307,7 @@ final class LibraryModel {
         scanStatus[source.id] = .scanning(ScanProgress(phase: .enumerating, processed: 0, total: 0))
         let scanner = self.scanner
         let sourceID = source.id
-        let reportProgress: @Sendable (ScanProgress) -> Void = { [weak self] progress in
-            Task { @MainActor [weak self] in
-                guard let self, case .scanning = self.scanStatus[sourceID] else { return }
-                self.scanStatus[sourceID] = .scanning(progress)
-            }
-        }
+        let reportProgress = progressReporter(for: sourceID)
         scanTasks[sourceID] = Task { [weak self] in
             do {
                 let result = try await scanner.scan(source: source, root: root, progress: reportProgress)
@@ -335,10 +317,17 @@ final class LibraryModel {
                 Logger.scan.info("[scan] cancelled for source \(sourceID.uuidString, privacy: .public)")
             } catch {
                 Logger.scan.error("[scan] failed: \(error.localizedDescription, privacy: .public)")
-                self?.scanStatus[sourceID] = .failed(error.localizedDescription)
-                if let self, let index = self.sourceIndex(sourceID) {
-                    self.sources[index].lastError = error.localizedDescription
-                }
+                self?.setSourceError(sourceID, error.localizedDescription)
+            }
+        }
+    }
+
+    /// Reports a scan's progress until that scan has finished or failed.
+    private func progressReporter(for sourceID: UUID) -> @Sendable (ScanProgress) -> Void {
+        { [weak self] progress in
+            Task { @MainActor [weak self] in
+                guard let self, case .scanning = self.scanStatus[sourceID] else { return }
+                self.scanStatus[sourceID] = .scanning(progress)
             }
         }
     }
@@ -403,12 +392,7 @@ final class LibraryModel {
         nasStatus[serverID] = .connecting
         scanStatus[sourceID] = .scanning(ScanProgress(phase: .enumerating, processed: 0, total: 0))
         let scanner = self.scanner
-        let reportProgress: @Sendable (ScanProgress) -> Void = { [weak self] progress in
-            Task { @MainActor [weak self] in
-                guard let self, case .scanning = self.scanStatus[sourceID] else { return }
-                self.scanStatus[sourceID] = .scanning(progress)
-            }
-        }
+        let reportProgress = progressReporter(for: sourceID)
         scanTasks[sourceID] = Task { [weak self] in
             do {
                 try await client.ensureConnected()
@@ -422,85 +406,8 @@ final class LibraryModel {
                 Logger.scan.error("[scan] remote failed: \(error.localizedDescription, privacy: .public)")
                 guard let self else { return }
                 self.nasStatus[serverID] = .offline(error.localizedDescription)
-                self.scanStatus[sourceID] = .failed(error.localizedDescription)
-                if let index = self.sourceIndex(sourceID) { self.sources[index].lastError = error.localizedDescription }
+                self.setSourceError(sourceID, error.localizedDescription)
             }
-        }
-    }
-
-    // MARK: - NAS
-
-    static func keychainKey(for serverID: UUID) -> String { "nas.\(serverID.uuidString)" }
-
-    func server(id: UUID) -> NASServer? {
-        nasServers.first { $0.id == id }
-    }
-
-    func server(for book: Book) -> NASServer? {
-        guard let serverID = source(for: book)?.serverID else { return nil }
-        return server(id: serverID)
-    }
-
-    func isRemote(_ book: Book) -> Bool {
-        source(for: book)?.kind == .smb
-    }
-
-    func client(forServer id: UUID) -> NASClient? {
-        if let client = nasClients[id] { return client }
-        guard let server = server(id: id), let password = KeychainStore.get(Self.keychainKey(for: id)) else {
-            Logger.nas.error("[nas] no credentials for server \(id.uuidString, privacy: .public)")
-            return nil
-        }
-        do {
-            let client = try NASClient(server: server, password: password)
-            nasClients[id] = client
-            return client
-        } catch {
-            Logger.nas.error("[nas] client init failed: \(error.localizedDescription, privacy: .public)")
-            return nil
-        }
-    }
-
-    func client(for book: Book) -> NASClient? {
-        guard let serverID = source(for: book)?.serverID else { return nil }
-        return client(forServer: serverID)
-    }
-
-    /// Connects, verifies the folder is listable, stores the password, and starts the first scan.
-    func addNAS(_ server: NASServer, password: String) async throws {
-        Logger.nas.info("[nas] adding \(server.displayLocation, privacy: .public)")
-        let client = try NASClient(server: server, password: password)
-        try await client.connect()
-        _ = try await client.list("")
-        try KeychainStore.set(password, for: Self.keychainKey(for: server.id))
-        nasClients[server.id] = client
-        nasServers.removeAll { $0.id == server.id }
-        nasServers.append(server)
-        nasStatus[server.id] = .online
-        let source = LibrarySource(id: UUID(), kind: .smb, displayName: server.name, bookmark: nil, addedAt: .now, serverID: server.id)
-        sources.append(source)
-        save()
-        scan(source)
-    }
-
-    /// Streams remote tracks through `SMBResourceLoader`; local tracks read the file directly.
-    func playbackSource(forTrack track: Track, in book: Book) -> PlaybackSource? {
-        guard let source = source(for: book) else { return nil }
-        if source.kind == .smb {
-            guard let serverID = source.serverID, let client = client(forServer: serverID) else { return nil }
-            let (asset, loader) = client.makeAsset(relativePath: track.relativePath, size: track.fileSize, preciseTiming: false, containerHint: track.containerHint)
-            return PlaybackSource(asset: asset, loader: loader, isRemote: true, serverName: client.server.name)
-        }
-        guard let url = url(forTrack: track, in: book) else { return nil }
-        let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
-        return PlaybackSource(asset: asset, loader: nil, isRemote: false, serverName: nil)
-    }
-
-    /// A downloaded copy of a remote book, matched by its path relative to the library root.
-    func localTwin(of book: Book) -> Book? {
-        guard isRemote(book) else { return nil }
-        return books.first { candidate in
-            candidate.id != book.id && candidate.relativePath == book.relativePath && source(for: candidate)?.kind == .appDocuments
         }
     }
 
@@ -610,43 +517,6 @@ final class LibraryModel {
         scheduleSave()
     }
 
-    // MARK: - Reading log (books finished outside the app)
-
-    @discardableResult
-    func addReadingLogEntry(title: String, author: String?, finishedAt: Date, rating: Int? = nil, hours: Double? = nil) -> ReadingLogEntry {
-        let entry = ReadingLogEntry(title: title, author: author?.isEmpty == true ? nil : author, finishedAt: finishedAt,
-                                    rating: rating.map { min(5, max(1, $0)) }, hours: hours)
-        readingLog.append(entry)
-        Logger.library.info("[library] logged past book \(title, privacy: .public)")
-        scheduleSave()
-        return entry
-    }
-
-    func updateReadingLogEntry(_ entry: ReadingLogEntry) {
-        guard let index = readingLog.firstIndex(where: { $0.id == entry.id }) else { return }
-        readingLog[index] = entry
-        scheduleSave()
-    }
-
-    func removeReadingLogEntry(_ id: String) {
-        readingLog.removeAll { $0.id == id }
-        scheduleSave()
-    }
-
-    /// Aggregated history for the Stats tab: finished library books plus hand-logged past books.
-    var readingStats: ReadingStats {
-        var items: [ReadingStatsBuilder.Item] = []
-        for book in visibleBooks {
-            guard let entry = progress[book.id], entry.isFinished else { continue }
-            let when = entry.finishedAt ?? entry.lastPlayedAt ?? book.addedAt
-            items.append(.init(finishedAt: when, hours: book.totalDuration / 3600, rating: entry.rating, author: book.author))
-        }
-        for entry in readingLog {
-            items.append(.init(finishedAt: entry.finishedAt, hours: entry.hours ?? 0, rating: entry.rating, author: entry.author))
-        }
-        return ReadingStatsBuilder.build(items)
-    }
-
     func resetProgress(_ bookID: String) {
         // Kept as a dated, not-started entry rather than removed: with nothing to compare, the next
         // iCloud merge brought the old position straight back.
@@ -694,28 +564,7 @@ final class LibraryModel {
                 Logger.store.error("[store] save failed: \(error.localizedDescription, privacy: .public)")
             }
         }
-        if pushCloud {
-            let snapshot = ProgressSync.cloudSnapshot(local: progress, books: books, existingCloud: cloudSync.load())
-            cloudSync.save(snapshot)
-            cloudSync.saveReadingLog(mergedReadingLog(with: cloudSync.loadReadingLog()))
-            cloudSync.saveCoverChoices(CoverSync.merged(local: coverChoices, cloud: cloudSync.loadCoverChoices()))
-            let buried = allDeletedBookmarks()
-            cloudSync.saveBookmarks(BookmarkSync.snapshot(local: bookmarks, books: books, existingCloud: cloudSync.loadBookmarks(), buried: buried))
-            cloudSync.saveDeletedBookmarks(buried)
-        }
-    }
-
-    /// Bookmarks deleted here or on any device, forgotten after 180 days (every device has seen
-    /// them by then, and iCloud's store is capped near 1 MB).
-    private func allDeletedBookmarks() -> Tombstones {
-        deletedBookmarks.merging(cloudSync.loadDeletedBookmarks()).pruned(before: .now.addingTimeInterval(-180 * 86_400))
-    }
-
-    /// Union of local and cloud reading-log entries by id (local wins on conflict).
-    private func mergedReadingLog(with cloud: [ReadingLogEntry]) -> [ReadingLogEntry] {
-        var byID = Dictionary(readingLog.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        for entry in cloud where byID[entry.id] == nil { byID[entry.id] = entry }
-        return byID.values.sorted { $0.finishedAt > $1.finishedAt }
+        if pushCloud { pushToCloud() }
     }
 
     /// Folds any newer progress from other devices into the local library.
@@ -747,110 +596,13 @@ final class LibraryModel {
         if coversChanged { reconcileCovers() }
     }
 
-    private func scheduleSave() {
+    func scheduleSave() {
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(800))
             guard !Task.isCancelled else { return }
             self?.save()
         }
-    }
-
-    // MARK: - Duplicates
-
-    private struct FingerprintTarget: Sendable {
-        var key: String
-        var url: URL
-        var size: Int64
-    }
-
-    func findDuplicates() {
-        if case .running = duplicateScan { return }
-        if !fingerprintsLoaded {
-            fingerprints = store.loadJSON([String: FileFingerprint].self, named: LibraryStore.fingerprintsFile) ?? [:]
-            fingerprintsLoaded = true
-        }
-        let targets: [FingerprintTarget] = visibleBooks.flatMap { book in
-            book.tracks.compactMap { track -> FingerprintTarget? in
-                guard let url = url(forTrack: track, in: book) else { return nil }
-                return FingerprintTarget(key: DuplicateFinder.trackKey(book.sourceID, track.relativePath), url: url, size: track.fileSize)
-            }
-        }
-        let known = fingerprints
-        let total = targets.count
-        duplicateScan = .running(done: 0, total: total)
-        Logger.duplicates.info("[duplicates] start files=\(total) cached=\(known.count)")
-        let sw = Stopwatch()
-
-        Task { [weak self] in
-            let computed: [String: FileFingerprint] = await Task.detached(priority: .userInitiated) {
-                var out: [String: FileFingerprint] = [:]
-                for (index, target) in targets.enumerated() {
-                    if let cached = known[target.key], cached.size == target.size {
-                        out[target.key] = cached
-                    } else {
-                        do {
-                            out[target.key] = try DuplicateFinder.fingerprint(url: target.url)
-                        } catch {
-                            Logger.duplicates.error("[duplicates] fingerprint failed \(target.url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
-                        }
-                    }
-                    if index % 25 == 0 {
-                        let done = index + 1
-                        Task { @MainActor [weak self] in self?.duplicateScan = .running(done: done, total: total) }
-                    }
-                }
-                return out
-            }.value
-            guard let self else { return }
-            self.fingerprints = computed
-            let store = self.store
-            Task.detached(priority: .utility) {
-                try? store.saveJSON(computed, named: LibraryStore.fingerprintsFile)
-            }
-            self.duplicateGroups = DuplicateFinder.duplicateGroups(books: self.visibleBooks, fingerprints: computed)
-            self.duplicateScan = .finished(.now)
-            Logger.duplicates.info("[duplicates] done groups=\(self.duplicateGroups.count) in \(sw.ms, format: .fixed(precision: 0))ms")
-        }
-    }
-
-    /// Permanently deletes files from disk. Returns human-readable errors, if any.
-    func deleteFiles(_ files: [DuplicateFile]) -> [String] {
-        var errors: [String] = []
-        var touchedSources: Set<UUID> = []
-        for file in files {
-            guard let root = resolvedRoots[file.sourceID] else {
-                errors.append("\(file.relativePath): folder unavailable")
-                continue
-            }
-            let url = root.appending(path: file.relativePath)
-            do {
-                try FileManager.default.removeItem(at: url)
-                touchedSources.insert(file.sourceID)
-                Logger.duplicates.notice("[duplicates] deleted \(file.relativePath, privacy: .public)")
-            } catch {
-                errors.append("\(file.relativePath): \(error.localizedDescription)")
-                Logger.duplicates.error("[duplicates] delete failed \(file.relativePath, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            }
-        }
-        duplicateGroups = []
-        duplicateScan = .idle
-        for id in touchedSources { rescan(id) }
-        return errors
-    }
-
-    func deleteBookFiles(_ book: Book) -> [String] {
-        let files = book.tracks.map {
-            DuplicateFile(bookID: book.id, bookTitle: book.title, sourceID: book.sourceID, relativePath: $0.relativePath, size: $0.fileSize)
-        }
-        let errors = deleteFiles(files)
-        if errors.isEmpty, book.kind == .folder, let folder = url(forBook: book) {
-            let leftovers = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
-            if leftovers.allSatisfy({ AudioFileTypes.images.contains(($0 as NSString).pathExtension.lowercased()) || $0.hasPrefix(".") }) {
-                try? FileManager.default.removeItem(at: folder)
-            }
-        }
-        return errors
     }
 
     /// The one way cover code (LibraryModel+Covers) changes a book: which artwork it shows.
@@ -928,51 +680,6 @@ final class LibraryModel {
         deletedBookmarks.bury(id)   // or iCloud's copy brings it back on the next merge
         save()
         onBooksChanged?()
-    }
-
-    // MARK: - Import reading history
-
-    private struct HistoryItem: Decodable {
-        var title: String
-        var author: String?
-        var year: Int
-        var month: Int?
-        var rating: Int?
-        var hours: Double?
-    }
-
-    private static func normTitle(_ t: String) -> String {
-        String(t.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
-    }
-
-    /// Imports a reading history (e.g. parsed from a blog): backdates matching library books as
-    /// finished with their rating, and logs the rest as past books. Skips anything already recorded.
-    /// Returns (books backdated, past books logged).
-    @discardableResult
-    func importReadingHistory(_ data: Data) -> (matched: Int, logged: Int) {
-        guard let items = try? JSONDecoder().decode([HistoryItem].self, from: data) else { return (0, 0) }
-        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = .current
-        let libraryByTitle = Dictionary(books.map { (Self.normTitle($0.title), $0) }, uniquingKeysWith: { a, _ in a })
-        var loggedTitles = Set(readingLog.map { Self.normTitle($0.title) })
-        var matched = 0, logged = 0
-        for item in items {
-            let key = Self.normTitle(item.title)
-            guard !key.isEmpty else { continue }
-            let date = calendar.date(from: DateComponents(year: item.year, month: item.month ?? 6, day: 15)) ?? .now
-            if let book = libraryByTitle[key] ?? books.first(where: { let n = Self.normTitle($0.title); return !n.isEmpty && (n.hasPrefix(key) || key.hasPrefix(n)) }) {
-                if progress[book.id]?.isFinished != true {
-                    markFinished(book.id, on: date)
-                    matched += 1
-                }
-                if let rating = item.rating, progress[book.id]?.rating == nil { setRating(book.id, rating) }
-            } else if !loggedTitles.contains(key) {
-                addReadingLogEntry(title: item.title, author: item.author, finishedAt: date, rating: item.rating, hours: item.hours)
-                loggedTitles.insert(key)
-                logged += 1
-            }
-        }
-        Logger.library.info("[library] imported reading history: matched=\(matched) logged=\(logged)")
-        return (matched, logged)
     }
 
     // MARK: - Files app
