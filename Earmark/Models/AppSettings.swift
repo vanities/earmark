@@ -63,6 +63,8 @@ final class AppSettings {
     var lockMode: LockMode { didSet { defaults.set(lockMode.rawValue, forKey: Key.lockMode) } }
     /// A download listened to the end goes back to the NAS once another book starts. Default off.
     var removeFinishedDownloads: Bool { didSet { defaults.set(removeFinishedDownloads, forKey: Key.removeFinished) } }
+    /// This device's slot in iCloud's listening totals — each device writes only its own, as in Mango.
+    @ObservationIgnored let deviceID: String
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -84,6 +86,13 @@ final class AppSettings {
         yearlyBookGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 12
         removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
         lockMode = LockMode(rawValue: defaults.string(forKey: Key.lockMode) ?? "") ?? .off
+        if let existing = defaults.string(forKey: Key.deviceID) {
+            deviceID = existing
+        } else {
+            let fresh = UUID().uuidString
+            defaults.set(fresh, forKey: Key.deviceID)
+            deviceID = fresh
+        }
     }
 
     private enum Key {
@@ -105,6 +114,7 @@ final class AppSettings {
         static let yearlyGoal = "stats.yearlyBookGoal"
         static let removeFinished = "downloads.removeFinished"
         static let lockMode = "privacy.lockMode"
+        static let deviceID = "sync.deviceID"
     }
 }
 

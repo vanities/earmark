@@ -33,6 +33,10 @@ own sandbox, and interrupt you with donation screens. Earmark does none of that:
 - **NAS support.** Add an SMB share (Unraid, Synology, any file server) as a library folder.
   Remote books show a **Remote** badge, stream while you're on the NAS's network, and can be
   downloaded to the phone with one tap; the local copy then takes over automatically.
+- **Stats.** Books finished, a yearly goal, and time listening: this week, this month, your
+  streak, a calendar of the last four months, when in the day you listen, and the books that
+  took the most time. Only time audio actually plays counts. Day totals sync through your own
+  iCloud, the same way Mango counts reading.
 - **CarPlay.** A real CarPlay app with *Continue* and *Library* tabs plus Now Playing with
   speed, bookmark, undo-jump and chapter buttons — and even without the CarPlay entitlement,
   full control from the car's Now Playing screen.

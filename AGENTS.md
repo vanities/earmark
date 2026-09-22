@@ -35,7 +35,8 @@ are, with great organization and CarPlay — and never nag.
 ```
 Earmark/
   App/            EarmarkApp (SwiftUI @main), AppEnvironment (composition root, shared with CarPlay)
-  Models/         Book, Track, Chapter, LibrarySource, PlaybackProgress, LibraryState, AppSettings
+  Models/         Book, Track, Chapter, LibrarySource, PlaybackProgress, LibraryState, AppSettings,
+                  ListeningSession (+ ListeningRecorder: time audio actually played)
   Services/
     Library/      BookmarkStore, LibraryStore (JSON), MetadataReader (AVFoundation tags/chapters),
                   MetadataCache (actor), ArtworkStore, NameParser (real-world file/folder name patterns),
@@ -43,11 +44,12 @@ Earmark/
                   BookGrouper (pure logic), LibraryScanner, DuplicateFinder, CopyState (what follows a
                   book between copies), Catalogs (the iTunes + Open Library client Find Cover and
                   Look Up share), LibraryModel (@MainActor @Observable source of truth; its feature
-                  files +Covers/+Downloads/+Duplicates/+History/+Lists/+NAS/+Cloud/+Queries)
+                  files +Activity/+Covers/+Downloads/+Duplicates/+History/+Lists/+NAS/+Cloud/+Queries)
     Playback/     PlayerEngine (AVPlayer), AudioSessionManager, NowPlayingController (lock screen/CarPlay)
-    Network/      NASClient (AMSMB2 wrapper; bounded range reads only — never abort a stream mid-callback),
-                  SMBResourceLoader (AVAssetResourceLoaderDelegate streaming), DownloadManager (downloads,
-                  Move-into-Earmark via ShelfKit's LocalMove, persisted queue, BGProcessingTask), KeychainStore
+    Network/      NASClient+Streaming (Earmark's asset glue over ShelfKit's NASClient — bounded range
+                  reads only, never abort a stream mid-callback), SMBResourceLoader
+                  (AVAssetResourceLoaderDelegate streaming), DownloadManager (downloads, Move-into-Earmark
+                  via ShelfKit's LocalMove, persisted queue, BGProcessingTask), KeychainStore
     Library/      also CoverSearch (iTunes + Open Library lookups), CoverSync (pure cover-choice merge
                   and per-device plan; newest choice wins across devices) and QuickTagReader
   CarPlay/        CarPlaySceneDelegate (from Info.plist), CarPlayInterface (templates)
@@ -100,6 +102,12 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   `UnionSync`/`Tombstones`; every key goes through ShelfKit's `CloudKeyValueStore` (unchanged
   writes skipped, iCloud's size cap respected). Plumbing shared with Mango lives in ShelfKit
   (github.com/vanities/shelfkit), pinned with `exactVersion` in `project.yml`.
+- **Listening time** counts only while audio plays: `PlayerEngine`'s ticks feed a
+  `ListeningRecorder`, and every path that stops playback (pause, end of book, sleep timer,
+  interruption, failure, switching books) calls `finishListening()` itself — `syncPlayingState`
+  sees no change after those, so it can't catch them. Sessions stay on this device
+  (`LibraryState.sessions`); day totals sync as `activity.v1`, one slot per device, through
+  ShelfKit's `DeviceActivity` — the same rules and Stats cards as Mango's reading time.
 - Heuristics live in `BookGrouper` and are unit-tested. When changing grouping rules, add a
   case to `BookGrouperTests` first.
 - **Keep the UI like Mango's.** Both apps share a look (Sources, a source's page, the Library's

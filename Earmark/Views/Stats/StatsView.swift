@@ -20,13 +20,25 @@ struct StatsView: View {
     var body: some View {
         NavigationStack {
             let stats = library.readingStats
+            let activity = library.activityStats
             ScrollView {
                 if stats.isEmpty {
                     emptyState.frame(maxWidth: .infinity, minHeight: 460)
                 } else {
                     VStack(alignment: .leading, spacing: 24) {
-                        headline(stats)
+                        headline(stats, activity)
                         goalCard(stats)
+                        if activity.hasActivity {
+                            StatCard("Time listening") {
+                                ActivityTimeView(stats: activity, sessionLabel: "Average session")
+                            }
+                            StatCard("Last \(ActivityStats.heatmapWeeks) weeks") {
+                                ActivityHeatmap(days: activity.heatmap)
+                            }
+                            StatCard("When you listen") {
+                                ActivityHabitsView(stats: activity)
+                            }
+                        }
                         if stats.years.count > 1 { yearFilter(stats) }
                         yearChart(stats)
                         if let dist = ratingDistribution(stats), dist.contains(where: { $0.count > 0 }) {
@@ -69,20 +81,29 @@ struct StatsView: View {
 
     // MARK: Headline
 
-    private func headline(_ stats: ReadingStats) -> some View {
+    /// Six tiles, as on Mango: with time listened, the time, the streak and the days; before any,
+    /// the finished books' length and the ratings instead, so the grid is never half empty.
+    private func headline(_ stats: ReadingStats, _ activity: ActivityStats) -> some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
             StatTile("\(stats.totalBooks)", "Books finished", systemImage: "checkmark.circle.fill", tint: .green)
-            // Books logged without a length count none; a "0h" headline would say nothing.
-            if stats.totalHours >= 1 {
+            if activity.hasActivity {
+                StatTile(Durations.short(activity.totalSeconds), "Time listening", systemImage: "clock.fill", tint: .blue)
+                StatTile("\(activity.currentStreak) day\(activity.currentStreak == 1 ? "" : "s")", "Current streak",
+                         systemImage: "flame.fill", tint: .red)
+                StatTile("\(activity.daysActive)", "Days listened", systemImage: "calendar", tint: .orange)
+            } else if stats.totalHours >= 1 {
+                // Books logged without a length count none; a "0h" headline would say nothing.
                 StatTile("\(Int(stats.totalHours.rounded()))h", "Hours finished", systemImage: "clock.fill", tint: .blue)
             }
-            StatTile("\(library.inProgressBooks.count)", "Listening now", systemImage: "headphones", tint: .red)
+            StatTile("\(library.inProgressBooks.count)", "Listening now", systemImage: "headphones", tint: .pink)
             StatTile("\(stats.topAuthors.count)", "Authors", systemImage: "person.2.fill", tint: .purple)
-            if let avg = stats.averageRating {
-                StatTile(avg.formatted(.number.precision(.fractionLength(1))), "Average rating", systemImage: "star.fill", tint: .yellow)
-            }
-            if let best = stats.bestYear {
-                StatTile("\(best.count)", "Best year (\(String(best.year)))", systemImage: "trophy.fill", tint: .orange)
+            if !activity.hasActivity {
+                if let avg = stats.averageRating {
+                    StatTile(avg.formatted(.number.precision(.fractionLength(1))), "Average rating", systemImage: "star.fill", tint: .yellow)
+                }
+                if let best = stats.bestYear {
+                    StatTile("\(best.count)", "Best year (\(String(best.year)))", systemImage: "trophy.fill", tint: .orange)
+                }
             }
         }
     }
@@ -326,7 +347,7 @@ struct StatsView: View {
     }
 
     private var footnote: some View {
-        Text("Worked out from your library, your places in each book and the books you've logged — finished books count their full length. Earmark collects no analytics and sends nothing anywhere; your places sync between your own devices through your own iCloud.")
+        Text("Worked out from your library, your places in each book, the books you've logged, and time with a book actually playing — the clock runs only while audio plays, at any speed. Earmark collects no analytics and sends nothing anywhere; your places and day totals sync between your own devices through your own iCloud.")
             .font(.caption2)
             .foregroundStyle(.tertiary)
     }

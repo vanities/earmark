@@ -45,6 +45,8 @@ final class LibraryModel {
     var bookLists: [BookList] = []
     /// Books finished outside the app: changed only by LibraryModel+History and the iCloud merge.
     var readingLog: [ReadingLogEntry] = []
+    /// This device's listening sessions: changed only by LibraryModel+Activity.
+    var sessions: [ListeningSession] = []
     @ObservationIgnored let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
@@ -56,7 +58,7 @@ final class LibraryModel {
     @ObservationIgnored var onSavedPositionChanged: ((Set<String>) -> Void)?
 
     @ObservationIgnored let store: LibraryStore
-    @ObservationIgnored private let settings: AppSettings
+    @ObservationIgnored let settings: AppSettings
     @ObservationIgnored private let scanner: LibraryScanner
     @ObservationIgnored private var resolvedRoots: [UUID: URL] = [:]
     @ObservationIgnored private var scanTasks: [UUID: Task<Void, Never>] = [:]
@@ -96,6 +98,7 @@ final class LibraryModel {
         deletedBookmarks = state.deletedBookmarks
         bookLists = state.bookLists
         readingLog = state.readingLog
+        sessions = state.sessions
         ensureAppDocumentsSource()
         cloudSync.onExternalChange = { [weak self] in self?.mergeCloudProgress() }
         cloudSync.start()
@@ -109,6 +112,7 @@ final class LibraryModel {
         backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.save() }
         }
+        recoverInterruptedListening()
         rescanAll(reason: "launch")
     }
 
@@ -543,6 +547,7 @@ final class LibraryModel {
         var state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, coverChoices: coverChoices, writtenCovers: writtenCovers, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
         state.deletedBookmarks = deletedBookmarks
         state.bookLists = bookLists
+        state.sessions = sessions
         let store = self.store
         Task.detached(priority: .utility) {
             do {

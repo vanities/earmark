@@ -19,6 +19,9 @@ final class CloudProgressSync {
     private static let bookmarksKey = "bookmarks.v1"
     /// Bookmark id → when it was deleted, so a deletion reaches every device.
     private static let deletedBookmarksKey = "bookmarks.deleted.v1"
+    /// Device ID → that device's listening day totals (Mango's key and format; each device
+    /// writes only its own slot, so adding them up never double-counts).
+    private static let activityKey = "activity.v1"
 
     /// Called when another device changes the store.
     var onExternalChange: (() -> Void)? {
@@ -73,5 +76,13 @@ final class CloudProgressSync {
 
     func saveDeletedBookmarks(_ tombstones: Tombstones) {
         store.save(tombstones, key: Self.deletedBookmarksKey)
+    }
+
+    func loadActivity() -> [String: [String: DayActivity]] {
+        store.load([String: [String: DayActivity]].self, key: Self.activityKey) ?? [:]
+    }
+
+    func saveActivity(_ activity: [String: [String: DayActivity]]) {
+        store.save(activity, key: Self.activityKey)
     }
 }

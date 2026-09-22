@@ -77,6 +77,8 @@ final class PlayerEngine {
     /// book starts — not at the end itself, where Listen Again and Up Next still want the file.
     @ObservationIgnored private var finishedDownloadIDs: Set<String> = []
     @ObservationIgnored private var currentLoader: SMBResourceLoader?
+    /// Time actually listened, for Stats (`ListeningRecorder`, recorded through the library).
+    @ObservationIgnored private var listening = ListeningRecorder()
     @ObservationIgnored private let audioProcessor = PlaybackAudioProcessor()
 
     init(library: LibraryModel, settings: AppSettings) {
@@ -128,6 +130,7 @@ final class PlayerEngine {
         }
         Logger.player.info("[player] load \(newBook.title, privacy: .public) tracks=\(newBook.tracks.count) chapters=\(newBook.chapters.count) autoplay=\(autoplay)")
         persistPosition()
+        finishListening()
         cancelSleepTimer(notify: false)
         book = newBook
         upNext = nil
@@ -188,6 +191,7 @@ final class PlayerEngine {
 
     func unload() {
         persistPosition()
+        finishListening()
         jumpOrigin = nil
         detachItemObservers()
         player.replaceCurrentItem(with: nil)
@@ -280,6 +284,7 @@ final class PlayerEngine {
         case .failed:
             isLoading = false
             isPlaying = false
+            finishListening()
             if isRemote {
                 errorMessage = "Couldn't reach \(remoteServerName ?? "your NAS"). Make sure this iPhone is on the same network (or VPN) as the NAS, then tap play to retry."
             } else {
@@ -296,6 +301,7 @@ final class PlayerEngine {
         errorMessage = message
         isLoading = false
         isPlaying = false
+        finishListening()
         Logger.player.error("[player] \(message, privacy: .public)")
         notify()
     }
@@ -312,6 +318,14 @@ final class PlayerEngine {
         }
         if isLoading {
             playWhenReady = true
+            return
+        }
+        if didFinishCurrentBook {
+            // Play on a finished book starts it over, as opening it from the Library does. AVPlayer
+            // can't play on from the end, so without this the button did nothing.
+            Logger.player.info("[player] book was finished — starting over")
+            loadTrack(index: 0, startAt: 0, autoplay: true)
+            notify()
             return
         }
         if let pausedAt, settings.smartRewind {
@@ -335,6 +349,7 @@ final class PlayerEngine {
         isPlaying = false
         pausedAt = .now
         persistPosition()
+        finishListening()
         Logger.player.info("[player] paused at \(self.currentTime, format: .fixed(precision: 1))")
         notify()
     }
@@ -656,6 +671,7 @@ final class PlayerEngine {
             if sleepAtChapterEnd {
                 cancelSleepTimer(notify: false)
                 isPlaying = false
+                finishListening()
                 loadTrack(index: trackIndex + 1, startAt: 0, autoplay: false)
                 persistPosition()
             } else {
@@ -663,6 +679,7 @@ final class PlayerEngine {
             }
         } else {
             isPlaying = false
+            finishListening()
             currentTime = trackDuration
             didFinishCurrentBook = true
             library.markFinished(book.id)
@@ -715,6 +732,13 @@ final class PlayerEngine {
         currentTime = seconds
         ticks += 1
         if ticks % 10 == 0 { persistPosition() }
+        if isPlaying, let book {
+            if let finished = listening.tick(bookID: book.id, bookKey: book.syncKey, title: book.title) {
+                library.recordSession(finished)
+            }
+            // Every minute: a session cut off by the app being killed still counts next launch.
+            if ticks % 120 == 0 { ListeningCheckpoint.save(listening.open) }
+        }
         if ticks % 30 == 0 || currentChapterIndex != notifiedChapterIndex { notify() }
         if jumpOrigin != nil, isPlaying {
             ticksSinceJump += 1
@@ -740,8 +764,17 @@ final class PlayerEngine {
         if !playing {
             pausedAt = .now
             persistPosition()
+            finishListening()
         }
         notify()
+    }
+
+    /// Playback stopped (or moved to another book): the session so far goes to the library.
+    /// Every path that sets `isPlaying = false` calls this itself — `syncPlayingState` sees no
+    /// change after one of them, so it can't be left to catch those.
+    private func finishListening() {
+        if let session = listening.finish() { library.recordSession(session) }
+        ListeningCheckpoint.save(nil)
     }
 
     private func handleInterruption(type: AVAudioSession.InterruptionType?, options: AVAudioSession.InterruptionOptions) {
@@ -754,6 +787,7 @@ final class PlayerEngine {
                 isPlaying = false
                 pausedAt = .now
                 persistPosition()
+                finishListening()
                 notify()
             }
         case .ended:

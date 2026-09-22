@@ -32,6 +32,8 @@ struct LibraryState: Codable, Sendable {
     var readingLog: [ReadingLogEntry] = []
     /// The user's own lists of books.
     var bookLists: [BookList] = []
+    /// This device's listening sessions. Local detail; only day totals travel to other devices.
+    var sessions: [ListeningSession] = []
 
     init(sources: [LibrarySource] = [], books: [Book] = [], progress: [String: PlaybackProgress] = [:],
          hiddenBookIDs: Set<String> = [], lastBookID: String? = nil, nasServers: [NASServer] = [],
@@ -84,12 +86,14 @@ struct LibraryState: Codable, Sendable {
         }
         let listIDs = Set(bookLists.map(\.id))
         bookLists.append(contentsOf: old.bookLists.filter { !listIDs.contains($0.id) })
+        let sessionIDs = Set(sessions.map(\.id))
+        sessions.append(contentsOf: old.sessions.filter { !sessionIDs.contains($0.id) })
         hiddenBookIDs.formUnion(old.hiddenBookIDs)
         if lastBookID == nil { lastBookID = old.lastBookID }
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks, bookLists
+        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks, bookLists, sessions
     }
 
     /// Fields older builds wrote that now live elsewhere; read once, never written.
@@ -119,5 +123,6 @@ struct LibraryState: Codable, Sendable {
         deletedBookmarks = try c.decodeIfPresent(Tombstones.self, forKey: .deletedBookmarks) ?? Tombstones()
         bookLists = try c.decodeIfPresent([BookList].self, forKey: .bookLists) ?? []
         readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
+        sessions = try c.decodeIfPresent([ListeningSession].self, forKey: .sessions) ?? []
     }
 }
