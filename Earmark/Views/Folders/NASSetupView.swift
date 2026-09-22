@@ -9,6 +9,8 @@ struct NASSetupView: View {
 
     @State private var name = ""
     @State private var host = ""
+    /// Empty means SMB's standard 445; a NAS behind a port forward or a Docker share differs.
+    @State private var port = ""
     @State private var share = ""
     @State private var path = ""
     @State private var username = ""
@@ -16,8 +18,16 @@ struct NASSetupView: View {
     @State private var isConnecting = false
     @State private var errorMessage: String?
 
+    /// The port typed, or 445 when the field is empty; nil when what's typed isn't a port.
+    private var portNumber: Int? {
+        let typed = port.trimmingCharacters(in: .whitespaces)
+        guard !typed.isEmpty else { return 445 }
+        return Int(typed).flatMap { (1...65535).contains($0) ? $0 : nil }
+    }
+
     private var canConnect: Bool {
-        !host.trimmingCharacters(in: .whitespaces).isEmpty && !share.trimmingCharacters(in: .whitespaces).isEmpty && !isConnecting
+        !host.trimmingCharacters(in: .whitespaces).isEmpty && !share.trimmingCharacters(in: .whitespaces).isEmpty
+            && portNumber != nil && !isConnecting
     }
 
     var body: some View {
@@ -29,6 +39,8 @@ struct NASSetupView: View {
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                    TextField("Port (445 if left empty)", text: $port)
+                        .keyboardType(.numberPad)
                     TextField("Share (e.g. media)", text: $share)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -84,6 +96,7 @@ struct NASSetupView: View {
             id: UUID(),
             name: name.trimmingCharacters(in: .whitespaces).nilIfEmpty ?? trimmedHost,
             host: trimmedHost,
+            port: portNumber ?? 445,
             share: share.trimmingCharacters(in: CharacterSet(charactersIn: "/ ")),
             path: trimmedPath,
             username: username.trimmingCharacters(in: .whitespaces),

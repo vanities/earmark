@@ -282,11 +282,7 @@ struct SelectBooksView: View {
     }
 
     private func remove(_ books: [Book], _ status: Status) {
-        let copies = books.compactMap { status.pairs[$0.syncKey]?.download }
-        // The player lets go of a loaded (paused, finished) download first, so its last position
-        // lands on the NAS copy rather than a deleted file.
-        if let loaded = player.book?.id, copies.contains(where: { $0.id == loaded }) { player.unload() }
-        library.removeDownloads(copies)
+        player.removeDownloads(books.compactMap { status.pairs[$0.syncKey]?.download }, in: library)
         selection.removeAll()
     }
 }

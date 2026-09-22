@@ -66,6 +66,16 @@ extension LibraryModel {
         return local.totalBytes
     }
 
+    /// Every download still on a NAS: what Settings counts and can remove.
+    var downloadsOnDevice: [Book] {
+        downloadPairs().values.map(\.download)
+    }
+
+    /// Downloads of books listened to the end.
+    var finishedDownloads: [Book] {
+        downloadsOnDevice.filter { progress(for: $0.id).isFinished }
+    }
+
     /// Removes several downloads. Returns how many went and the bytes freed.
     @discardableResult
     func removeDownloads(_ books: [Book]) -> (count: Int, bytes: Int64) {
@@ -76,5 +86,21 @@ extension LibraryModel {
         }
         Logger.downloads.info("[downloads] removed \(count)/\(books.count) downloads bytes=\(bytes)")
         return (count, bytes)
+    }
+}
+
+extension PlayerEngine {
+    /// Removes downloads the way every screen should: the one playing keeps its file, and one
+    /// that's only loaded (finished, paused) is let go first, so its place lands on the NAS copy
+    /// rather than on a deleted file.
+    @discardableResult
+    func removeDownloads(_ books: [Book], in library: LibraryModel) -> (count: Int, bytes: Int64) {
+        let copies = books.compactMap { library.downloadedCopy(of: $0) }
+        let removable = copies.filter { !(isPlaying && book?.id == $0.id) }
+        if let loaded = book?.id, removable.contains(where: { $0.id == loaded }) { unload() }
+        if removable.count < copies.count {
+            Logger.downloads.info("[downloads] keeping the download that's playing")
+        }
+        return library.removeDownloads(removable)
     }
 }

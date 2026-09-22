@@ -58,6 +58,8 @@ final class AppSettings {
     var ambientPlayerBackground: Bool { didSet { defaults.set(ambientPlayerBackground, forKey: Key.ambientBg) } }
     /// Books-per-year target shown on the Stats ring. 0 = no goal.
     var yearlyBookGoal: Int { didSet { defaults.set(yearlyBookGoal, forKey: Key.yearlyGoal) } }
+    /// A download listened to the end goes back to the NAS once another book starts. Default off.
+    var removeFinishedDownloads: Bool { didSet { defaults.set(removeFinishedDownloads, forKey: Key.removeFinished) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -77,6 +79,7 @@ final class AppSettings {
         boostQuietVoices = defaults.object(forKey: Key.boostQuiet) as? Bool ?? false
         ambientPlayerBackground = defaults.object(forKey: Key.ambientBg) as? Bool ?? true
         yearlyBookGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 12
+        removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
     }
 
     private enum Key {
@@ -96,5 +99,6 @@ final class AppSettings {
         static let boostQuiet = "playback.boostQuietVoices"
         static let ambientBg = "appearance.ambientPlayerBackground"
         static let yearlyGoal = "stats.yearlyBookGoal"
+        static let removeFinished = "downloads.removeFinished"
     }
 }

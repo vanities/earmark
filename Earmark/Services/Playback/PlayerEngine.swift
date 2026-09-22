@@ -68,6 +68,9 @@ final class PlayerEngine {
     @ObservationIgnored private var sleepArmedChapterIndex: Int?
     @ObservationIgnored private var itemGeneration = 0
     @ObservationIgnored private var didFinishCurrentBook = false
+    /// Downloads listened to the end here, with Remove when finished on. They go once another
+    /// book starts — not at the end itself, where Listen Again and Up Next still want the file.
+    @ObservationIgnored private var finishedDownloadIDs: Set<String> = []
     @ObservationIgnored private var currentLoader: SMBResourceLoader?
     @ObservationIgnored private let audioProcessor = PlaybackAudioProcessor()
 
@@ -140,6 +143,8 @@ final class PlayerEngine {
         let position = startAt ?? BookPosition(trackIndex: saved.trackIndex, time: saved.time)
         let index = min(max(0, position.trackIndex), max(0, newBook.tracks.count - 1))
         loadTrack(index: index, startAt: position.time, autoplay: autoplay)
+        // Only now, with the new book's file in the player, can the finished one's go.
+        removeFinishedDownloads(startingOver: newBook.id)
     }
 
     /// Picks up scan changes (precise durations, new chapters) without interrupting playback.
@@ -656,6 +661,10 @@ final class PlayerEngine {
             currentTime = trackDuration
             didFinishCurrentBook = true
             library.markFinished(book.id)
+            if settings.removeFinishedDownloads, library.downloadedCopy(of: book)?.id == book.id {
+                finishedDownloadIDs.insert(book.id)
+                Logger.downloads.info("[downloads] \(book.title, privacy: .public) finished — removing its download when another book starts")
+            }
             upNext = library.nextInSeries(after: book)
             if upNext != nil { Logger.player.info("[player] up next: \(self.upNext?.title ?? "-", privacy: .public)") }
             cancelSleepTimer(notify: false)
@@ -758,6 +767,15 @@ final class PlayerEngine {
         guard reason == .oldDeviceUnavailable, isPlaying else { return }
         Logger.player.info("[player] audio route lost — pausing")
         pause()
+    }
+
+    /// Moving on from a book finished here removes its download (unless it's the one starting).
+    private func removeFinishedDownloads(startingOver nextID: String) {
+        let finished = finishedDownloadIDs.subtracting([nextID]).compactMap { library.book(id: $0) }
+        finishedDownloadIDs.removeAll()
+        guard !finished.isEmpty, settings.removeFinishedDownloads else { return }
+        let result = library.removeDownloads(finished)
+        Logger.downloads.info("[downloads] removed \(result.count) finished download(s) bytes=\(result.bytes) on moving on")
     }
 
     // MARK: - Persistence

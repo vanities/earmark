@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryModel.self) private var library
     @Environment(PlayerEngine.self) private var player
+    @State private var confirmingRemoveAll = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -97,6 +98,8 @@ struct SettingsView: View {
                     }
                 }
 
+                downloads
+
                 Section {
                     LabeledContent("Version", value: Self.version)
                     LabeledContent("License", value: "GPL-3.0")
@@ -116,7 +119,42 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .confirmationDialog("Remove all downloads?", isPresented: $confirmingRemoveAll, titleVisibility: .visible) {
+                let onDevice = library.downloadsOnDevice
+                Button("Remove \(onDevice.count) Download\(onDevice.count == 1 ? "" : "s") (\(Self.bytes(onDevice)))", role: .destructive) {
+                    player.removeDownloads(onDevice, in: library)
+                }
+            } message: {
+                Text("They'll play from your NAS again, with your place and bookmarks. A book that's playing keeps its download.")
+            }
         }
+    }
+
+    /// Space the NAS already has a copy of: see it, and give it back.
+    private var downloads: some View {
+        @Bindable var settings = settings
+        let onDevice = library.downloadsOnDevice
+        let finished = library.finishedDownloads
+        return Section {
+            LabeledContent("On this iPhone", value: onDevice.isEmpty ? "None"
+                           : "\(onDevice.count) book\(onDevice.count == 1 ? "" : "s") · \(Self.bytes(onDevice))")
+            Toggle("Remove When Finished", isOn: $settings.removeFinishedDownloads)
+            Button(finished.isEmpty ? "Remove Finished Downloads"
+                   : "Remove Finished Downloads (\(finished.count) · \(Self.bytes(finished)))") {
+                player.removeDownloads(finished, in: library)
+            }
+            .disabled(finished.isEmpty)
+            Button("Remove All Downloads", role: .destructive) { confirmingRemoveAll = true }
+                .disabled(onDevice.isEmpty)
+        } header: {
+            Text("Downloads")
+        } footer: {
+            Text("A removed download plays from your NAS again, with your place and bookmarks. Only books still on a NAS count here — nothing that exists only on this iPhone is removed. With Remove When Finished on, a book you finish goes once you start another.")
+        }
+    }
+
+    private static func bytes(_ books: [Book]) -> String {
+        books.reduce(Int64(0)) { $0 + $1.totalBytes }.byteCountString
     }
 
     static var version: String {

@@ -37,8 +37,7 @@ struct BookContextMenu: View {
             // Not while it's playing — a book that's only loaded (finished, paused) can go.
             if !(player.isPlaying && player.book?.id == copy.id) {
                 Button("Remove Download (\(copy.totalBytes.byteCountString))", systemImage: "trash") {
-                    if player.book?.id == copy.id { player.unload() }
-                    library.removeDownload(of: book)
+                    player.removeDownloads([copy], in: library)
                 }
             }
         } else if library.isRemote(book) {
