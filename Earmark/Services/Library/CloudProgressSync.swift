@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Thin wrapper over iCloud key-value storage that holds one JSON blob of progress keyed by
 /// `Book.syncKey`. No-ops safely when the iCloud entitlement isn't present (device builds before
@@ -12,6 +13,9 @@ final class CloudProgressSync {
     /// syncKey → cover URL, as builds before cover choices wrote it. Still read, so their covers carry over.
     private static let legacyCoverKey = "covers.v1"
     private static let coverKey = "covers.v2"
+    private static let bookmarksKey = "bookmarks.v1"
+    /// Bookmark id → when it was deleted, so a deletion reaches every device.
+    private static let deletedBookmarksKey = "bookmarks.deleted.v1"
     private static let maxBytes = 900_000  // KVS caps a value near 1 MB; stay under it.
     private var observer: (any NSObjectProtocol)?
     /// Called when another device changes the store.
@@ -71,6 +75,45 @@ final class CloudProgressSync {
             return
         }
         store.set(data, forKey: Self.coverKey)
+        store.synchronize()
+    }
+
+    func loadBookmarks() -> [String: [Bookmark]] {
+        loadJSON([String: [Bookmark]].self, Self.bookmarksKey) ?? [:]
+    }
+
+    func saveBookmarks(_ bookmarks: [String: [Bookmark]]) {
+        saveJSON(bookmarks, Self.bookmarksKey)
+    }
+
+    func loadDeletedBookmarks() -> Tombstones {
+        loadJSON(Tombstones.self, Self.deletedBookmarksKey) ?? Tombstones()
+    }
+
+    func saveDeletedBookmarks(_ tombstones: Tombstones) {
+        saveJSON(tombstones, Self.deletedBookmarksKey)
+    }
+
+    private func loadJSON<T: Decodable>(_ type: T.Type, _ key: String) -> T? {
+        guard let data = store.data(forKey: key) else { return nil }
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            Logger.store.error("[cloud] \(key, privacy: .public) bytes=\(data.count) undecodable — ignoring")
+            return nil
+        }
+    }
+
+    /// Skips identical writes: KVS rate-limits chatty apps, and most saves change nothing here.
+    private func saveJSON<T: Encodable>(_ value: T, _ key: String) {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601; encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(value), data.count <= Self.maxBytes else {
+            Logger.store.error("[cloud] \(key, privacy: .public) too large or unencodable — not syncing")
+            return
+        }
+        guard store.data(forKey: key) != data else { return }
+        store.set(data, forKey: key)
         store.synchronize()
     }
 

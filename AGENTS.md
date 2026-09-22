@@ -81,6 +81,12 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   older builds: give new fields a default *and* decode them with `decodeIfPresent` (see
   `LibraryState.init(from:)`), then add a case to `LibraryStateCompatTests`. `LibraryStore` moves an
   undecodable library aside and restores it once a build can read it again.
+- **iCloud sync never plain-unions anything that can be deleted** — the other device still has
+  it, so the next merge brings it back (Mango's deleted bookmarks did). Bookmarks sync as
+  `bookmarks.v1` minus `LibraryState.deletedBookmarks` (tombstones, synced as
+  `bookmarks.deleted.v1`, pruned at 180 days); the rules are `BookmarkSync` on ShelfKit's
+  `UnionSync`/`Tombstones`. Plumbing shared with Mango lives in ShelfKit
+  (github.com/vanities/shelfkit), pinned with `exactVersion` in `project.yml`.
 - Heuristics live in `BookGrouper` and are unit-tested. When changing grouping rules, add a
   case to `BookGrouperTests` first.
 - UI is native iOS 26 (Liquid Glass): `tabViewBottomAccessory` mini player,

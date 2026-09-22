@@ -25,6 +25,7 @@
 		3D71630BC6D33F673ECDEF77 /* Logger+Earmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5450C0C927711EAF2A80272 /* Logger+Earmark.swift */; };
 		3EEBE763303B22E8E1DF4574 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 865231380D0FAD86ADF60709 /* PrivacyInfo.xcprivacy */; };
 		43AECC5818923C91A6C5F96E /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD632FF90D5B26691454004 /* DuplicatesView.swift */; };
+		445E53611B5B96BFC6B23410 /* BookmarkSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28065A28B64CBEDF3065F454 /* BookmarkSyncTests.swift */; };
 		460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622DE5E4F3EF19AFA051592C /* NowPlayingController.swift */; };
 		47BC3EFE4FBAA62C0E751B02 /* NowPlayingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8099B37BF7CE43AB8CBEA21 /* NowPlayingSnapshot.swift */; };
 		49C1CD1E96C277CD542DD32C /* ShelfKit in Frameworks */ = {isa = PBXBuildFile; productRef = 080064CA7375FB2EB147A68D /* ShelfKit */; };
@@ -169,6 +170,7 @@
 		261DF5544E541EB03D960595 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		26B535F6B51ECA35675979B7 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		27B3D8FEA19546CFA173987A /* PlayerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerEngine.swift; sourceTree = "<group>"; };
+		28065A28B64CBEDF3065F454 /* BookmarkSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkSyncTests.swift; sourceTree = "<group>"; };
 		2830512E63C478A2F7832BA2 /* LibraryScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScannerTests.swift; sourceTree = "<group>"; };
 		2C7AF3FDAC4886294CC87E6E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		2F42D2B3237B9F8EDB917B4C /* Earmark.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Earmark.entitlements; sourceTree = "<group>"; };
@@ -557,6 +559,7 @@
 			children = (
 				22F43F134AAFB6721B29281D /* ArtworkStoreTests.swift */,
 				C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */,
+				28065A28B64CBEDF3065F454 /* BookmarkSyncTests.swift */,
 				2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */,
 				862DC9C49B6D67781476C544 /* BookPositionTests.swift */,
 				B9286881105751BAB5361070 /* CoverSyncTests.swift */,
@@ -717,6 +720,7 @@
 				0112F693050CA4D6636F3F1D /* BookGrouperTests.swift in Sources */,
 				880D77B866EB135454DA72C2 /* BookMetadataOverrideTests.swift in Sources */,
 				C8EC46FF05F7D82EF6AB9FAB /* BookPositionTests.swift in Sources */,
+				445E53611B5B96BFC6B23410 /* BookmarkSyncTests.swift in Sources */,
 				792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */,
 				D5F042ABE818494360F7D3E4 /* DownloadRemovalTests.swift in Sources */,
 				AB6F08EFFEA0C2C4B16D6C7B /* DuplicateFinderTests.swift in Sources */,
@@ -1149,7 +1153,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.2.0;
+				version = 0.3.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

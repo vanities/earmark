@@ -55,6 +55,7 @@ final class LibraryModel {
     @ObservationIgnored var coverDownloadsAttempted: Set<String> = []
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
+    @ObservationIgnored private var deletedBookmarks = Tombstones()
     private(set) var readingLog: [ReadingLogEntry] = []
     @ObservationIgnored private let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
@@ -103,6 +104,7 @@ final class LibraryModel {
         writtenCovers = state.writtenCovers
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
+        deletedBookmarks = state.deletedBookmarks
         readingLog = state.readingLog
         ensureAppDocumentsSource()
         cloudSync.onExternalChange = { [weak self] in self?.mergeCloudProgress() }
@@ -678,7 +680,8 @@ final class LibraryModel {
     private func persist(pushCloud: Bool) {
         saveTask?.cancel()
         saveTask = nil
-        let state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, coverChoices: coverChoices, writtenCovers: writtenCovers, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
+        var state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, coverChoices: coverChoices, writtenCovers: writtenCovers, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
+        state.deletedBookmarks = deletedBookmarks
         let store = self.store
         Task.detached(priority: .utility) {
             do {
@@ -692,7 +695,16 @@ final class LibraryModel {
             cloudSync.save(snapshot)
             cloudSync.saveReadingLog(mergedReadingLog(with: cloudSync.loadReadingLog()))
             cloudSync.saveCoverChoices(CoverSync.merged(local: coverChoices, cloud: cloudSync.loadCoverChoices()))
+            let buried = allDeletedBookmarks()
+            cloudSync.saveBookmarks(BookmarkSync.snapshot(local: bookmarks, books: books, existingCloud: cloudSync.loadBookmarks(), buried: buried))
+            cloudSync.saveDeletedBookmarks(buried)
         }
+    }
+
+    /// Bookmarks deleted here or on any device, forgotten after 180 days (every device has seen
+    /// them by then, and iCloud's store is capped near 1 MB).
+    private func allDeletedBookmarks() -> Tombstones {
+        deletedBookmarks.merging(cloudSync.loadDeletedBookmarks()).pruned(before: .now.addingTimeInterval(-180 * 86_400))
     }
 
     /// Union of local and cloud reading-log entries by id (local wins on conflict).
@@ -707,11 +719,14 @@ final class LibraryModel {
         let merged = ProgressSync.merged(local: progress, books: books, cloud: cloudSync.load())
         let mergedLog = mergedReadingLog(with: cloudSync.loadReadingLog())
         let mergedCovers = CoverSync.merged(local: coverChoices, cloud: cloudSync.loadCoverChoices())
+        let buried = allDeletedBookmarks()
+        let mergedMarks = BookmarkSync.merged(local: bookmarks, books: books, cloud: cloudSync.loadBookmarks(), buried: buried)
+        let marksChanged = mergedMarks != bookmarks || buried != deletedBookmarks
         let logChanged = mergedLog.count != readingLog.count
         // Compare values, not counts: a replaced cover keeps its key and changes only the choice.
         let coversChanged = mergedCovers != coverChoices
         let progressChanged = merged != progress
-        guard progressChanged || logChanged || coversChanged else { return }
+        guard progressChanged || logChanged || coversChanged || marksChanged else { return }
         let moved = Set(merged.keys.filter { id in
             guard let new = merged[id] else { return false }
             guard let old = progress[id] else { return true }
@@ -720,7 +735,8 @@ final class LibraryModel {
         progress = merged
         if logChanged { readingLog = mergedLog }
         if coversChanged { coverChoices = mergedCovers }
-        Logger.library.info("[library] merged from iCloud progress=\(progressChanged) log=\(logChanged) covers=\(coversChanged)")
+        if marksChanged { (bookmarks, deletedBookmarks) = (mergedMarks, buried) }
+        Logger.library.info("[library] merged from iCloud progress=\(progressChanged) log=\(logChanged) covers=\(coversChanged) bookmarks=\(marksChanged)")
         persist(pushCloud: false)   // write locally; don't echo the merge straight back
         onBooksChanged?()
         if !moved.isEmpty { onSavedPositionChanged?(moved) }
@@ -905,6 +921,7 @@ final class LibraryModel {
         guard var list = bookmarks[book.id] else { return }
         list.removeAll { $0.id == id }
         bookmarks[book.id] = list.isEmpty ? nil : list
+        deletedBookmarks.bury(id)   // or iCloud's copy brings it back on the next merge
         save()
         onBooksChanged?()
     }

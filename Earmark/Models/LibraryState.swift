@@ -26,6 +26,8 @@ struct LibraryState: Codable, Sendable {
     var metadataOverrides: [String: BookMetadataOverride] = [:]
     /// Book ID → saved spots. Survives rescans.
     var bookmarks: [String: [Bookmark]] = [:]
+    /// Bookmarks deleted here or on another device, by id, so an iCloud merge can't bring them back.
+    var deletedBookmarks = Tombstones()
     /// Books finished before/outside the app, for Stats history.
     var readingLog: [ReadingLogEntry] = []
 
@@ -71,10 +73,11 @@ struct LibraryState: Codable, Sendable {
         for (key, value) in old.metadataOverrides where metadataOverrides[key] == nil { metadataOverrides[key] = value }
         let logIDs = Set(readingLog.map(\.id))
         readingLog.append(contentsOf: old.readingLog.filter { !logIDs.contains($0.id) })
+        deletedBookmarks = deletedBookmarks.merging(old.deletedBookmarks)
         for (key, oldList) in old.bookmarks {
             var list = bookmarks[key] ?? []
             let known = Set(list.map(\.id))
-            list.append(contentsOf: oldList.filter { !known.contains($0.id) })
+            list.append(contentsOf: oldList.filter { !known.contains($0.id) && !deletedBookmarks.contains($0.id) })
             bookmarks[key] = list.sorted { $0.offset < $1.offset }
         }
         hiddenBookIDs.formUnion(old.hiddenBookIDs)
@@ -82,7 +85,7 @@ struct LibraryState: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog
+        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks
     }
 
     /// Fields older builds wrote that now live elsewhere; read once, never written.
@@ -109,6 +112,7 @@ struct LibraryState: Codable, Sendable {
         writtenCovers = try c.decodeIfPresent([String: String].self, forKey: .writtenCovers) ?? [:]
         metadataOverrides = try c.decodeIfPresent([String: BookMetadataOverride].self, forKey: .metadataOverrides) ?? [:]
         bookmarks = try c.decodeIfPresent([String: [Bookmark]].self, forKey: .bookmarks) ?? [:]
+        deletedBookmarks = try c.decodeIfPresent(Tombstones.self, forKey: .deletedBookmarks) ?? Tombstones()
         readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
     }
 }
