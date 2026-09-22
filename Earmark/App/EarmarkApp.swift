@@ -5,6 +5,7 @@ import ShelfKit
 @main
 struct EarmarkApp: App {
     private let environment = AppEnvironment.shared
+    @State private var listPicking = ListPicking()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -15,6 +16,7 @@ struct EarmarkApp: App {
                 .environment(environment.settings)
                 .environment(environment.downloads)
                 .environment(environment.lock)
+                .environment(listPicking)
                 .onOpenURL { url in
                     if url.scheme == "earmark" {
                         Logger.library.info("[app] deep link \(url.absoluteString, privacy: .public)")

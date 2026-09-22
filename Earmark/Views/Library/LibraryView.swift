@@ -10,6 +10,7 @@ struct LibraryView: View {
 
     @State private var searchText = ""
     @State private var showImporter = false
+    @State private var showingLists = false
     @State private var importError: String?
 
     private var filteredBooks: [Book] {
@@ -30,6 +31,7 @@ struct LibraryView: View {
                 .navigationDestination(for: Book.self) { book in
                     BookDetailView(book: book, openPlayer: openPlayer)
                 }
+                .navigationDestination(isPresented: $showingLists) { ListsView() }
                 .navigationDestination(for: LibraryGroup.self) { group in
                     if group.id.hasPrefix("author:") {
                         AuthorShelfView(group: group)
@@ -118,6 +120,10 @@ struct LibraryView: View {
             } label: {
                 Label("View Options", systemImage: "line.3.horizontal.decrease")
             }
+        }
+        // Its own button: at the foot of View Options it sat below the fold of a long menu.
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button("Add Folder", systemImage: "plus") { showImporter = true }

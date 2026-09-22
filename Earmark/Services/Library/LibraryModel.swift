@@ -56,6 +56,8 @@ final class LibraryModel {
     private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
     private(set) var bookmarks: [String: [Bookmark]] = [:]
     @ObservationIgnored private var deletedBookmarks = Tombstones()
+    /// The user's own lists (LibraryModel+Lists).
+    var bookLists: [BookList] = []
     private(set) var readingLog: [ReadingLogEntry] = []
     @ObservationIgnored private let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
@@ -105,6 +107,7 @@ final class LibraryModel {
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
         deletedBookmarks = state.deletedBookmarks
+        bookLists = state.bookLists
         readingLog = state.readingLog
         ensureAppDocumentsSource()
         cloudSync.onExternalChange = { [weak self] in self?.mergeCloudProgress() }
@@ -682,6 +685,7 @@ final class LibraryModel {
         saveTask = nil
         var state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, coverChoices: coverChoices, writtenCovers: writtenCovers, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
         state.deletedBookmarks = deletedBookmarks
+        state.bookLists = bookLists
         let store = self.store
         Task.detached(priority: .utility) {
             do {

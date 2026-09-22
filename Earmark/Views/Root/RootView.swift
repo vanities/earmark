@@ -6,6 +6,7 @@ struct RootView: View {
 
     @Environment(PlayerEngine.self) private var player
     @Environment(AppLock.self) private var lock
+    @Environment(ListPicking.self) private var listPicking
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .library
     @State private var showPlayer = false
@@ -23,6 +24,8 @@ struct RootView: View {
         .sheet(isPresented: $showPlayer) {
             PlayerView()
         }
+        // Add to List… from any book's menu, wherever it was opened.
+        .sheet(item: Bindable(listPicking).book) { ListPickerView(book: $0) }
         // The phone's own scene phase, not the app's (CarPlay keeps that active). The lock draws
         // in a window of its own, so it covers the player sheet too; `initial` puts it up at launch.
         .onChange(of: scenePhase, initial: true) { _, phase in lock.sceneChanged(to: phase) }

@@ -30,6 +30,8 @@ struct LibraryState: Codable, Sendable {
     var deletedBookmarks = Tombstones()
     /// Books finished before/outside the app, for Stats history.
     var readingLog: [ReadingLogEntry] = []
+    /// The user's own lists of books.
+    var bookLists: [BookList] = []
 
     init(sources: [LibrarySource] = [], books: [Book] = [], progress: [String: PlaybackProgress] = [:],
          hiddenBookIDs: Set<String> = [], lastBookID: String? = nil, nasServers: [NASServer] = [],
@@ -80,12 +82,14 @@ struct LibraryState: Codable, Sendable {
             list.append(contentsOf: oldList.filter { !known.contains($0.id) && !deletedBookmarks.contains($0.id) })
             bookmarks[key] = list.sorted { $0.offset < $1.offset }
         }
+        let listIDs = Set(bookLists.map(\.id))
+        bookLists.append(contentsOf: old.bookLists.filter { !listIDs.contains($0.id) })
         hiddenBookIDs.formUnion(old.hiddenBookIDs)
         if lastBookID == nil { lastBookID = old.lastBookID }
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks
+        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks, bookLists
     }
 
     /// Fields older builds wrote that now live elsewhere; read once, never written.
@@ -113,6 +117,7 @@ struct LibraryState: Codable, Sendable {
         metadataOverrides = try c.decodeIfPresent([String: BookMetadataOverride].self, forKey: .metadataOverrides) ?? [:]
         bookmarks = try c.decodeIfPresent([String: [Bookmark]].self, forKey: .bookmarks) ?? [:]
         deletedBookmarks = try c.decodeIfPresent(Tombstones.self, forKey: .deletedBookmarks) ?? Tombstones()
+        bookLists = try c.decodeIfPresent([BookList].self, forKey: .bookLists) ?? []
         readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
     }
 }

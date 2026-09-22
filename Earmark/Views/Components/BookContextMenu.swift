@@ -5,6 +5,7 @@ struct BookContextMenu: View {
     @Environment(LibraryModel.self) private var library
     @Environment(PlayerEngine.self) private var player
     @Environment(DownloadManager.self) private var downloads
+    @Environment(ListPicking.self) private var listPicking
     let book: Book
 
     var body: some View {
@@ -31,6 +32,7 @@ struct BookContextMenu: View {
                 }
             }
         }
+        Button("Add to List…", systemImage: "text.badge.plus") { listPicking.book = book }
         Divider()
         if let copy = library.downloadedCopy(of: book) {
             // Listened to it, done with it: give the space back; it plays from the NAS again.
