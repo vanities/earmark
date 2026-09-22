@@ -15,7 +15,8 @@ packages:
   # Plumbing shared with Mango (github.com/vanities/shelfkit). Pinned: move to a new tag
   # when it's been tested here, never automatically.
   ShelfKit:
-    path: ../shelfkit
+    url: https://github.com/vanities/shelfkit.git
+    exactVersion: 0.5.0
 
 settings:
   base:

@@ -254,7 +254,6 @@
 		AEB16F753EB29D72187857F1 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B109B71AE8D04ABEE3D1F75B /* NASClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASClient.swift; sourceTree = "<group>"; };
 		B2DBB1B328833BAC30AD5BC6 /* ArtworkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkView.swift; sourceTree = "<group>"; };
-		B433AB707127EDD18D4A61CF /* shelfkit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = shelfkit; path = ../shelfkit; sourceTree = SOURCE_ROOT; };
 		B52A4E75C03AC08D157F6290 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		B55B4E3AF3EE0F9EE6FCB7A6 /* Bookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookmark.swift; sourceTree = "<group>"; };
 		B64E59C7852D5E60D668A957 /* BookMetadataOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookMetadataOverride.swift; sourceTree = "<group>"; };
@@ -361,7 +360,6 @@
 				C307836167CE954A66D7E341 /* Earmark */,
 				E2A194C74F4E0DCF8DD23EEA /* EarmarkTests */,
 				78F5F12265B4E54A3DAB5F20 /* EarmarkWidgets */,
-				DDDCDEAFD666EF9B6CB5BFB7 /* Packages */,
 				99B4700BF938E87E07E58FCB /* Shared */,
 				2ECD55EA0A8B041EED1CE472 /* Products */,
 			);
@@ -569,14 +567,6 @@
 			path = Library;
 			sourceTree = "<group>";
 		};
-		DDDCDEAFD666EF9B6CB5BFB7 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				B433AB707127EDD18D4A61CF /* shelfkit */,
-			);
-			name = Packages;
-			sourceTree = "<group>";
-		};
 		DE90A540943396782202E0DD /* Network */ = {
 			isa = PBXGroup;
 			children = (
@@ -734,7 +724,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				6577CC70F0DD286BFDE57924 /* XCRemoteSwiftPackageReference "AMSMB2" */,
-				C8A5D6252B5194DD07D5E68B /* XCLocalSwiftPackageReference "../shelfkit" */,
+				68A85DC56B59AF1858E4942A /* XCRemoteSwiftPackageReference "shelfkit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2ECD55EA0A8B041EED1CE472 /* Products */;
@@ -1213,13 +1203,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		C8A5D6252B5194DD07D5E68B /* XCLocalSwiftPackageReference "../shelfkit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shelfkit;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
 		6577CC70F0DD286BFDE57924 /* XCRemoteSwiftPackageReference "AMSMB2" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -1229,11 +1212,20 @@
 				minimumVersion = 4.0.3;
 			};
 		};
+		68A85DC56B59AF1858E4942A /* XCRemoteSwiftPackageReference "shelfkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vanities/shelfkit.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.5.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		080064CA7375FB2EB147A68D /* ShelfKit */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 68A85DC56B59AF1858E4942A /* XCRemoteSwiftPackageReference "shelfkit" */;
 			productName = ShelfKit;
 		};
 		F56A508B36B9A9CBCA46A207 /* AMSMB2 */ = {

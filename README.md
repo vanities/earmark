@@ -80,7 +80,7 @@ through downloads and rescans — lists hold books by their path.
 
 ## Getting your books in
 
-1. **Add Folder** in Library or Folders and pick the folder — you get read access to the
+1. **Add Folder…** in Library's ••• menu or in Sources, and pick the folder — you get read access to the
    whole tree. Add as many as you like.
 2. Or, in the Files app, move audiobooks into **On My iPhone › Earmark**. That folder is
    scanned automatically.
@@ -121,15 +121,20 @@ and skip buttons still appear in the car's built-in Now Playing screen.
 
 ## NAS / SMB
 
-Folders › **Add NAS…** asks for host, share, folder, and login (the password is stored in the
+Sources › **Add NAS Share…** asks for host, share, folder, and login (the password is stored in the
 Keychain). Earmark indexes the folder listing over SMB, reads tags the same way it does for
 local files, and shows the books on the shelf with a Remote badge. Playback streams through
 AVFoundation's resource loader, so nothing is written to disk unless you tap **Download to
 iPhone** on a book, which copies its folder into On My iPhone › Earmark. Once a downloaded copy
 exists, the remote entry hides and the download picks up everything you did to it: your place,
-bookmarks, corrected details, even hidden. **Sync from NAS** (on
-the NAS folder's page, or swipe its row) queues every book that isn't on the phone yet and skips
+bookmarks, corrected details, even hidden. **Download Everything** (Sources › Sync, the ••• menu
+on the NAS's page, or swipe its row) queues every book that isn't on the phone yet and skips
 files you already have. If the NAS can't be reached, the player says so instead of failing silently.
+
+A source's page shows it the way Mango shows its sources: how much is in both places (on a NAS,
+how much is on this iPhone; on this iPhone, how much is safe on the NAS), and a compact row per
+book under its author with a ring for what it can do — download, upload, remove a download, or
+move a book in from a folder you picked.
 
 Indexing a share is cheap on bandwidth: MP3 tags and durations are read from the first few
 hundred KB of each file (`QuickTagReader`), so a 16 GB library indexes in a few minutes without
@@ -140,7 +145,7 @@ to listen to, or point the phone's NAS folder at the same tree you already curat
 
 **Done with a download? Give the space back.** A downloaded book's menu has **Remove Download**:
 it deletes the copy in On My iPhone › Earmark and the book plays from the NAS again, with its
-place and bookmarks intact. **Select** on a folder's page picks several books at once — on the
+place and bookmarks intact. **Select** on a source's page picks several books at once — on the
 NAS to download them or remove their downloads, on this iPhone to upload them to the NAS or
 remove downloads — with the count and size on each button. Only ever a download whose book is
 still on the NAS: a book that exists only on the phone, or in a folder you picked, is never

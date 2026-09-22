@@ -51,7 +51,9 @@ Earmark/
     Library/      also CoverSearch (iTunes + Open Library lookups), CoverSync (pure cover-choice merge
                   and per-device plan; newest choice wins across devices) and QuickTagReader
   CarPlay/        CarPlaySceneDelegate (from Info.plist), CarPlayInterface (templates)
-  Views/          Root (TabView + bottom-accessory mini player), Library, Player, Folders, Settings, Components
+  Views/          Root (TabView + bottom-accessory mini player), Library, Player, Sources (SourcesView,
+                  SourceBrowserView — laid out as Mango's, drawn with ShelfKit's shared views), Stats,
+                  Settings, Components
   Resources/      Info.plist (background audio, Files integration, CarPlay scene), assets, entitlements
 EarmarkTests/     XCTest: grouping heuristics, positions, formatting, duplicates, real-file scanner test
 scripts/          make-fixtures.sh (sample audiobooks with real speech), install-fixtures.sh, render-icon.swift
@@ -99,6 +101,10 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   (github.com/vanities/shelfkit), pinned with `exactVersion` in `project.yml`.
 - Heuristics live in `BookGrouper` and are unit-tested. When changing grouping rules, add a
   case to `BookGrouperTests` first.
+- **Keep the UI like Mango's.** Both apps share a look (Sources, a source's page, the Library's
+  toolbar and Continue row, Stats); the pieces drawn identically are ShelfKit views. A change
+  to one app's version of those screens goes to the other's too, and nothing either app can do
+  is dropped to make them match.
 - UI is native iOS 26 (Liquid Glass): `tabViewBottomAccessory` mini player,
   `glassProminent` primary buttons, SF Symbols. Keep hit targets ≥ 44pt — this is used in cars.
 - SwiftLint config in `.swiftlint.yml`; run `swiftlint` before committing.
