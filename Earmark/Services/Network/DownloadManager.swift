@@ -40,6 +40,8 @@ final class DownloadManager {
     @ObservationIgnored private var attempts: [String: Int] = [:]
     @ObservationIgnored private var observers: [any NSObjectProtocol] = []
     @ObservationIgnored private var backgroundTask: BGProcessingTask?
+    @ObservationIgnored private var queueGeneration = 0
+    @ObservationIgnored private let writtenGeneration = OSAllocatedUnfairLock(initialState: 0)
 
     init(library: LibraryModel) {
         self.library = library
@@ -57,12 +59,20 @@ final class DownloadManager {
 
     private static let queueFile = "transfers.json"
 
+    /// Saves run off the main actor and can finish out of order. An older snapshot landing on a
+    /// newer one brought a finished download back as pending on the next launch, and it fetched
+    /// the book again — even one the user had since removed. Each save carries its generation,
+    /// and only a newer one than what's on disk is written.
     private func persistQueue() {
         guard !restoring else { return }
-        let snapshot = jobs
-        let store = self.store
+        queueGeneration += 1
+        let generation = queueGeneration, snapshot = jobs, store = self.store, written = writtenGeneration
         Task.detached(priority: .utility) {
-            try? store.saveJSON(snapshot, named: DownloadManager.queueFile)
+            written.withLock { newest in
+                guard generation > newest else { return }
+                newest = generation
+                try? store.saveJSON(snapshot, named: DownloadManager.queueFile)
+            }
         }
     }
 

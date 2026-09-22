@@ -128,6 +128,14 @@ downloading it.
 Two useful patterns: keep the NAS as the master library and download only what you're about
 to listen to, or point the phone's NAS folder at the same tree you already curate.
 
+**Done with a download? Give the space back.** A downloaded book's menu has **Remove Download**:
+it deletes the copy in On My iPhone › Earmark and the book plays from the NAS again, with its
+place and bookmarks intact. **Select** on a folder's page picks several books at once — on the
+NAS to download them or remove their downloads, on this iPhone to upload them to the NAS or
+remove downloads — with the count and size on each button. Only ever a download whose book is
+still on the NAS: a book that exists only on the phone, or in a folder you picked, is never
+deleted this way.
+
 Transfers run one at a time and keep going while Earmark is open or a book is playing (the screen
 stays awake). If iOS suspends the app they pause, survive termination, and resume from partial
 files on the next launch; a background processing task also picks them up while the phone is idle.

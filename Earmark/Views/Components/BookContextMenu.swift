@@ -32,7 +32,16 @@ struct BookContextMenu: View {
             }
         }
         Divider()
-        if library.isRemote(book) {
+        if let copy = library.downloadedCopy(of: book) {
+            // Listened to it, done with it: give the space back; it plays from the NAS again.
+            // Not while it's playing — a book that's only loaded (finished, paused) can go.
+            if !(player.isPlaying && player.book?.id == copy.id) {
+                Button("Remove Download (\(copy.totalBytes.byteCountString))", systemImage: "trash") {
+                    if player.book?.id == copy.id { player.unload() }
+                    library.removeDownload(of: book)
+                }
+            }
+        } else if library.isRemote(book) {
             Button("Download to iPhone", systemImage: "arrow.down.circle") { downloads.download(book) }
         } else if library.source(for: book)?.kind == .folder {
             Button("Move into Earmark", systemImage: "arrow.right.doc.on.clipboard") { downloads.move(book) }

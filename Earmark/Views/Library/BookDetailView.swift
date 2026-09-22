@@ -14,8 +14,9 @@ struct BookDetailView: View {
     @State private var showEditDetails = false
     @State private var showMarkFinished = false
 
-    /// Always render the library's live copy so rescans show up.
-    private var current: Book { library.book(id: book.id) ?? book }
+    /// Always render the library's live copy so rescans show up — and once a download is removed,
+    /// the NAS copy it came from.
+    private var current: Book { library.book(id: book.id) ?? library.nasCopy(of: book) ?? book }
     private var isCurrent: Bool { player.book?.id == book.id }
 
     var body: some View {
@@ -139,7 +140,8 @@ struct BookDetailView: View {
                     if library.hasCustomCover(book) {
                         Button("Use Original Cover", systemImage: "arrow.uturn.backward") { library.useOriginalCover(for: book) }
                     }
-                    if !library.isRemote(book) {
+                    // A download is removed above (it's still on the NAS); this is for books only here.
+                    if !library.isRemote(book), library.downloadedCopy(of: book) == nil {
                         Divider()
                         Button("Delete Files…", systemImage: "trash", role: .destructive) { confirmDelete = true }
                     }

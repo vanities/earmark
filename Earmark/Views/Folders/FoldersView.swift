@@ -238,7 +238,9 @@ struct TipRow: View {
 struct SourceDetailView: View {
     @Environment(LibraryModel.self) private var library
     @Environment(AppSettings.self) private var settings
+    @Environment(DownloadManager.self) private var downloads
     let source: LibrarySource
+    @State private var selecting = false
 
     var body: some View {
         let books = library.books(inSource: source.id)
@@ -294,7 +296,16 @@ struct SourceDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Rescan", systemImage: "arrow.clockwise") { library.rescan(source.id) }
             }
+            // Several at once: download them, or remove downloads and play from the NAS again.
+            // (Counted from every book here: once all of a NAS is downloaded, `books` is empty.)
+            if library.books.contains(where: { $0.sourceID == source.id }),
+               source.kind == .smb || downloads.mirrorServerID != nil || !library.downloadPairs().isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Select") { selecting = true }
+                }
+            }
         }
+        .sheet(isPresented: $selecting) { SelectBooksView(source: source) }
         .navigationDestination(for: Book.self) { book in
             BookDetailView(book: book, openPlayer: {})
         }

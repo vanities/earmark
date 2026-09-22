@@ -498,6 +498,26 @@ final class LibraryModel {
         }
     }
 
+    /// When a download is removed, the NAS copy picks up where it left off: the newer place, the
+    /// bookmarks, a picked cover or corrected details it lacks, hidden, "last played".
+    func returnDownloadState(from localID: String, to remoteID: String) {
+        progress[remoteID] = DownloadRemoval.place(from: progress[localID], onto: progress[remoteID])
+        if let marks = bookmarks[localID] { bookmarks[remoteID] = DownloadRemoval.bookmarks(from: marks, onto: bookmarks[remoteID] ?? []) }
+        if metadataOverrides[remoteID] == nil, let override = metadataOverrides[localID] { metadataOverrides[remoteID] = override }
+        if let art = customArtwork.removeValue(forKey: localID) {
+            if customArtwork[remoteID] == nil { customArtwork[remoteID] = art; setArtworkID(art, forBook: remoteID) } else { ArtworkStore.shared.remove(id: art) }
+        }
+        if hiddenBookIDs.remove(localID) != nil { hiddenBookIDs.insert(remoteID) }
+        if lastBookID == localID { lastBookID = remoteID }
+        progress[localID] = nil
+        bookmarks[localID] = nil
+        metadataOverrides[localID] = nil
+        writtenCovers[localID] = nil
+        ArtworkStore.shared.remove(id: ArtworkStore.shared.id(for: localID))
+        applyMetadataOverrides()
+        save()
+    }
+
     // MARK: - Progress
 
     func progress(for bookID: String) -> PlaybackProgress {
