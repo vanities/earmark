@@ -55,7 +55,7 @@ final class PlaybackAudioProcessor {
     }
 
     /// Called on the main actor when the rate should change (fast during silence, back to base after).
-    var onRateChange: (@MainActor (Float) -> Void)?
+    var onRateChange: (@MainActor @Sendable (Float) -> Void)?
 
     private let config = OSAllocatedUnfairLock(initialState: Config())
     private weak var activeContext: TapContext?
@@ -103,14 +103,14 @@ final class PlaybackAudioProcessor {
 /// released in the finalize callback).
 final class TapContext {
     private let config: OSAllocatedUnfairLock<PlaybackAudioProcessor.Config>
-    private let onRateChange: (@MainActor (Float) -> Void)?
+    private let onRateChange: (@MainActor @Sendable (Float) -> Void)?
     var sampleRate: Double = 0
     var isFloat = false
     // silence state (touched only on the audio thread)
     private var gate = SilenceGate()
     var compEnv: Float = 0          // smoothed envelope for upward compression
 
-    init(config: PlaybackAudioProcessor.Config, onRateChange: (@MainActor (Float) -> Void)?) {
+    init(config: PlaybackAudioProcessor.Config, onRateChange: (@MainActor @Sendable (Float) -> Void)?) {
         self.config = OSAllocatedUnfairLock(initialState: config)
         self.onRateChange = onRateChange
     }

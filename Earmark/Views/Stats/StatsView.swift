@@ -297,7 +297,7 @@ struct StatsView: View {
         .presentationDetents([.height(220)])
     }
 
-    private func handleImport(_ result: Result<URL, Error>) {
+    private func handleImport(_ result: Result<URL, any Error>) {
         guard case .success(let url) = result else { return }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }

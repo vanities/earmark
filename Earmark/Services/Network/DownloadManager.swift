@@ -58,7 +58,8 @@ final class DownloadManager {
 
     // MARK: Persistence
 
-    private static let queueFile = "transfers.json"
+    /// `nonisolated`: the save that writes it runs off the main actor.
+    private nonisolated static let queueFile = "transfers.json"
 
     /// Saves run off the main actor and can finish out of order. An older snapshot landing on a
     /// newer one brought a finished download back as pending on the next launch, and it fetched
