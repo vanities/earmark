@@ -95,115 +95,127 @@ struct LibraryView: View {
                     ScanBanner().padding(.bottom, 12)
                 }
             }
+            // Pull to rescan, as in Mango; the spinner stays until the folders have been read
+            // (or half a minute, for a NAS that's slow to answer).
+            .refreshable {
+                library.rescanAll(reason: "pull to refresh")
+                for _ in 0..<150 where library.isScanning {
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+            }
         }
     }
 
+    /// The same two buttons as Mango's Library: the lists, and one menu for how the shelf looks
+    /// and for bringing books in. Group By and Sort By are submenus, so the menu stays short.
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
+            Button("Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Picker("Group By", selection: Bindable(settings).libraryGrouping) {
+                Picker("Group By", systemImage: "rectangle.3.group", selection: Bindable(settings).libraryGrouping) {
                     ForEach(LibraryGrouping.allCases, id: \.self) { grouping in
                         Label(grouping.title, systemImage: grouping.systemImage).tag(grouping)
                     }
                 }
-                Picker("Sort By", selection: Bindable(settings).librarySort) {
+                .pickerStyle(.menu)
+                Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: Bindable(settings).librarySort) {
                     ForEach(LibrarySort.allCases, id: \.self) { sort in
                         Text(sort.title).tag(sort)
                     }
                 }
+                .pickerStyle(.menu)
                 Picker("Layout", selection: Bindable(settings).libraryLayout) {
                     Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
                     Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
                 }
                 Toggle("Show Finished", isOn: Bindable(settings).showFinishedBooks)
+                Divider()
+                Button("Rescan", systemImage: "arrow.clockwise") { library.rescanAll(reason: "library menu") }
+                Button("Add Folder…", systemImage: "folder.badge.plus") { showImporter = true }
             } label: {
-                Label("View Options", systemImage: "line.3.horizontal.decrease")
+                Label("More", systemImage: "ellipsis")
             }
-        }
-        // Its own button: at the foot of View Options it sat below the fold of a long menu.
-        ToolbarItem(placement: .topBarTrailing) {
-            Button("Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button("Add Folder", systemImage: "plus") { showImporter = true }
         }
     }
 }
 
 // MARK: - Sections
 
+/// The books under way, as Mango's Continue Reading shows comics: a row of cover tiles with how
+/// far along each is. A tap plays (or pauses) right there, as the cards before them did.
 struct ContinueListeningSection: View {
-    @Environment(LibraryModel.self) private var library
-    @Environment(PlayerEngine.self) private var player
     let books: [Book]
     let openPlayer: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader("Continue Listening")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Continue Listening")
+                .font(.headline)
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 14) {
                     ForEach(books.prefix(12)) { book in
-                        ContinueCard(book: book, openPlayer: openPlayer)
+                        ContinueTile(book: book, openPlayer: openPlayer)
+                            .frame(width: 110)
                     }
                 }
-                .scrollTargetLayout()
             }
-            .scrollTargetBehavior(.viewAligned)
+            .scrollIndicators(.hidden)
             .scrollClipDisabled()
         }
     }
 }
 
-struct ContinueCard: View {
+/// Cover, progress and where you are — Mango's `ComicThumbnail`, for a book, with a play/pause
+/// badge because a tap here plays it.
+struct ContinueTile: View {
     @Environment(LibraryModel.self) private var library
     @Environment(PlayerEngine.self) private var player
     let book: Book
     let openPlayer: () -> Void
 
-    private var isCurrent: Bool { player.book?.id == book.id }
+    private var isPlaying: Bool { player.book?.id == book.id && player.isPlaying }
 
     var body: some View {
         let progress = library.progress(for: book.id)
-        let chapter = book.chapter(at: progress.trackIndex, time: progress.time)
         Button {
-            if isCurrent && player.isPlaying {
+            if isPlaying {
                 player.pause()
             } else {
                 player.load(book, autoplay: true)
                 openPlayer()
             }
         } label: {
-            HStack(spacing: 12) {
-                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 10)
-                    .frame(width: 84, height: 84)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(book.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    Text(chapter?.title ?? book.displayAuthor)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    ProgressBar(fraction: progress.fraction(of: book))
-                        .padding(.top, 2)
-                    Text("\(progress.remaining(in: book).shortDurationString) left")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: isCurrent && player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 34))
-                    .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 6) {
+                ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 8)
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay(alignment: .bottom) {
+                        ProgressBar(fraction: progress.fraction(of: book), height: 3)
+                            .padding(.horizontal, 6)
+                            .padding(.bottom, 6)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white, Color.accentColor)
+                            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+                            .padding(5)
+                    }
+                Text(book.title)
+                    .font(.caption)
+                    .lineLimit(1)
+                Text("\(progress.remaining(in: book).shortDurationString) left")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
-            .padding(12)
-            .frame(width: 320, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
         .contextMenu { BookContextMenu(book: book) }
+        .accessibilityLabel("\(book.title), \(progress.remaining(in: book).shortDurationString) left")
+        .accessibilityHint(isPlaying ? "Pauses" : "Plays")
     }
 }
 
