@@ -36,57 +36,18 @@ enum BookLookup {
         let sw = Stopwatch()
         let terms = query.trimmingCharacters(in: .whitespaces)
         guard !terms.isEmpty else { return [] }
-        async let apple = fetch(appleURL(terms), parse: parseApple)
-        async let openLibrary = fetch(openLibraryURL(terms), parse: parseOpenLibrary)
-        let matches = relevant((await apple) + (await openLibrary), to: terms)
+        async let apple = Catalogs.get(Catalogs.appleURL(term: terms, media: "audiobook", limit: 15))
+        async let openLibrary = Catalogs.get(Catalogs.openLibraryURL([URLQueryItem(name: "q", value: terms)], limit: 10))
+        let found = ((await apple).map(parseApple) ?? []) + ((await openLibrary).map(parseOpenLibrary) ?? [])
+        let matches = relevant(found, to: terms)
         Logger.library.info("[lookup] \(matches.count) match(es) for \(terms, privacy: .public) in \(sw.ms, format: .fixed(precision: 0))ms")
         return matches
     }
 
-    // MARK: Requests
-
-    static func appleURL(_ terms: String) -> URL? {
-        var components = URLComponents(string: "https://itunes.apple.com/search")
-        components?.queryItems = [URLQueryItem(name: "term", value: terms), URLQueryItem(name: "media", value: "audiobook"),
-                                  URLQueryItem(name: "limit", value: "15")]
-        return components?.url
-    }
-
-    static func openLibraryURL(_ terms: String) -> URL? {
-        var components = URLComponents(string: "https://openlibrary.org/search.json")
-        components?.queryItems = [URLQueryItem(name: "q", value: terms), URLQueryItem(name: "limit", value: "10"),
-                                  URLQueryItem(name: "fields", value: "key,title,author_name,first_publish_year,cover_i")]
-        return components?.url
-    }
-
-    private static func fetch(_ url: URL?, parse: @Sendable (Data) -> [BookMatch]) async -> [BookMatch] {
-        guard let url else { return [] }
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? false else { return [] }
-            return parse(data)
-        } catch {
-            Logger.library.error("[lookup] \(url.host() ?? "?", privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
-    }
-
     // MARK: Parsing
 
-    private struct AppleResponse: Decodable {
-        struct Item: Decodable {
-            let collectionId: Int?
-            let collectionName: String?
-            let artistName: String?
-            let releaseDate: String?
-            let artworkUrl100: String?
-        }
-        let results: [Item]
-    }
-
     static func parseApple(_ data: Data) -> [BookMatch] {
-        guard let response = try? JSONDecoder().decode(AppleResponse.self, from: data) else { return [] }
-        return response.results.compactMap { item in
+        Catalogs.appleItems(data).compactMap { item in
             guard let name = item.collectionName else { return nil }
             let parts = splitTitle(name)
             return BookMatch(id: "apple-\(item.collectionId ?? name.hashValue)", title: parts.title, author: item.artistName,
@@ -96,24 +57,12 @@ enum BookLookup {
         }
     }
 
-    private struct OpenLibraryResponse: Decodable {
-        struct Doc: Decodable {
-            let key: String?
-            let title: String?
-            let author_name: [String]?   // swiftlint:disable:this identifier_name
-            let first_publish_year: Int? // swiftlint:disable:this identifier_name
-            let cover_i: Int?            // swiftlint:disable:this identifier_name
-        }
-        let docs: [Doc]
-    }
-
     static func parseOpenLibrary(_ data: Data) -> [BookMatch] {
-        guard let response = try? JSONDecoder().decode(OpenLibraryResponse.self, from: data) else { return [] }
-        return response.docs.compactMap { doc in
+        Catalogs.openLibraryDocs(data).compactMap { doc in
             guard let title = doc.title else { return nil }
-            return BookMatch(id: "openlibrary-\(doc.key ?? title)", title: title, author: doc.author_name?.first,
-                             series: nil, seriesIndex: nil, year: doc.first_publish_year,
-                             artworkURL: doc.cover_i.flatMap { URL(string: "https://covers.openlibrary.org/b/id/\($0)-S.jpg") },
+            return BookMatch(id: "openlibrary-\(doc.key ?? title)", title: title, author: doc.authorNames?.first,
+                             series: nil, seriesIndex: nil, year: doc.firstPublishYear,
+                             artworkURL: doc.coverID.flatMap { Catalogs.openLibraryCoverURL(id: $0, size: "S") },
                              source: "Open Library")
         }
     }

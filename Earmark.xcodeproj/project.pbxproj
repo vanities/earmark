@@ -16,6 +16,7 @@
 		1C21AD7FFD57A485A68FFE00 /* ProgressSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E40164280CA9E44346EE942 /* ProgressSyncTests.swift */; };
 		1D1422326630D00939B9F27D /* LibraryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E958126C9019EBE21E1F84 /* LibraryState.swift */; };
 		1D772E61C16FC56AC9A17635 /* SMBResourceLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E4D363B49AD5CFC7F0AFE9 /* SMBResourceLoader.swift */; };
+		1DA07ABA7DEE99727DD475A6 /* CoverSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB8115FE155C26E428267EA0 /* CoverSearchTests.swift */; };
 		2268B189466027ABFCEB1438 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBDEE3EE28DD74DBB044B5D /* PlayerView.swift */; };
 		2452A42928A096BC12775122 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEB16F753EB29D72187857F1 /* AppSettings.swift */; };
 		2FC49A0262FEA03223CF383D /* CloudProgressSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = DED77F24493E6E912E2FF488 /* CloudProgressSync.swift */; };
@@ -40,6 +41,7 @@
 		5D0244837C62F5C0525249F8 /* PlayerSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE056FF40D4D5AE2F9BDC5B6 /* PlayerSheets.swift */; };
 		5DEB6B9E1B8DCCBDDBB6B28F /* SilenceGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ED8B718298C42A17D2AA118 /* SilenceGateTests.swift */; };
 		60DC9D02A81506644F84A748 /* UpNextCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850A8717F7274C2801872150 /* UpNextCard.swift */; };
+		62E420B72979581A2823B28E /* Catalogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200A0959C024E3F96999E492 /* Catalogs.swift */; };
 		6367566AE08DE934C145A0F4 /* ReadingStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C67FE77ED8F4C2421D74B73 /* ReadingStatsTests.swift */; };
 		65C9A86A975FA7473EA82951 /* BookLookupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A5E6A4F0F6906FCD6BE290 /* BookLookupTests.swift */; };
 		667D28B426ECD4C26731841A /* BookGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4318C49E54FDB7B284984534 /* BookGrouper.swift */; };
@@ -171,6 +173,7 @@
 		12BAAFAF14A3482B36D846E6 /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
 		1BD632FF90D5B26691454004 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		1C7DE4A5CA938E53610AB05B /* Earmark.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Earmark.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200A0959C024E3F96999E492 /* Catalogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Catalogs.swift; sourceTree = "<group>"; };
 		21A5E6A4F0F6906FCD6BE290 /* BookLookupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookLookupTests.swift; sourceTree = "<group>"; };
 		227D66FF20A1A98227B445B2 /* SelectBooksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectBooksView.swift; sourceTree = "<group>"; };
 		22E324682D9AA6260811DB36 /* CoverSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSync.swift; sourceTree = "<group>"; };
@@ -273,6 +276,7 @@
 		EE056FF40D4D5AE2F9BDC5B6 /* PlayerSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSheets.swift; sourceTree = "<group>"; };
 		EE95BB380E4FD3C19A12CC7C /* DownloadRemovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRemovalTests.swift; sourceTree = "<group>"; };
 		EFB9C9B02A68EA1886195C96 /* QuickTagReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTagReader.swift; sourceTree = "<group>"; };
+		FB8115FE155C26E428267EA0 /* CoverSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearchTests.swift; sourceTree = "<group>"; };
 		FC544E097532D4DDACF9FADF /* ProgressSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressSync.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -531,6 +535,7 @@
 				37A3712B6BBC374281EF3C06 /* AudioFileTypes.swift */,
 				4318C49E54FDB7B284984534 /* BookGrouper.swift */,
 				E3CE3A9E5DC60CD92088209F /* BookLookup.swift */,
+				200A0959C024E3F96999E492 /* Catalogs.swift */,
 				DED77F24493E6E912E2FF488 /* CloudProgressSync.swift */,
 				4AD10DCC92BBCA42CE790F14 /* CoverSearch.swift */,
 				22E324682D9AA6260811DB36 /* CoverSync.swift */,
@@ -583,6 +588,7 @@
 				28065A28B64CBEDF3065F454 /* BookmarkSyncTests.swift */,
 				2FABB7AC9A1EE5EBEAFE35BD /* BookMetadataOverrideTests.swift */,
 				862DC9C49B6D67781476C544 /* BookPositionTests.swift */,
+				FB8115FE155C26E428267EA0 /* CoverSearchTests.swift */,
 				B9286881105751BAB5361070 /* CoverSyncTests.swift */,
 				EE95BB380E4FD3C19A12CC7C /* DownloadRemovalTests.swift */,
 				50F910FC61A13485FCB738C2 /* DuplicateFinderTests.swift */,
@@ -744,6 +750,7 @@
 				880D77B866EB135454DA72C2 /* BookMetadataOverrideTests.swift in Sources */,
 				C8EC46FF05F7D82EF6AB9FAB /* BookPositionTests.swift in Sources */,
 				445E53611B5B96BFC6B23410 /* BookmarkSyncTests.swift in Sources */,
+				1DA07ABA7DEE99727DD475A6 /* CoverSearchTests.swift in Sources */,
 				792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */,
 				D5F042ABE818494360F7D3E4 /* DownloadRemovalTests.swift in Sources */,
 				AB6F08EFFEA0C2C4B16D6C7B /* DuplicateFinderTests.swift in Sources */,
@@ -792,6 +799,7 @@
 				B8CFFEDA9D238934A4A6AE95 /* Bookmark.swift in Sources */,
 				0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */,
 				A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */,
+				62E420B72979581A2823B28E /* Catalogs.swift in Sources */,
 				7205A4C695AD46E64DE1FEBE /* Chapter.swift in Sources */,
 				2FC49A0262FEA03223CF383D /* CloudProgressSync.swift in Sources */,
 				31A2FABD9C0AC14289040FEE /* CoverChoice.swift in Sources */,
