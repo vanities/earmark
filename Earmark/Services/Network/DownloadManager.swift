@@ -270,6 +270,17 @@ final class DownloadManager {
         jobs.removeAll { !$0.isActive }
     }
 
+    /// Tries a failed transfer again, as Mango's Retry does; a download resumes from its partial file.
+    func retry(_ jobID: UUID) {
+        guard let index = jobs.firstIndex(where: { $0.id == jobID }), !jobs[index].isActive else { return }
+        attempts[jobs[index].bookID] = 0
+        cancelled.withLock { _ = $0.remove(jobID) }
+        jobs[index].state = .queued
+        jobs[index].error = nil
+        Logger.downloads.info("[downloads] retry \(self.jobs[index].title, privacy: .public)")
+        runNext()
+    }
+
     private func runNext() {
         defer { updateIdleTimer() }
         guard runner == nil, let index = jobs.firstIndex(where: { $0.state == .queued }) else {

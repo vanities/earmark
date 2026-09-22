@@ -1,8 +1,15 @@
 import SwiftUI
 import ShelfKit
 
+/// What a screen deep in a tab can ask of the root's chrome — for now, putting the mini player
+/// away while a source's bottom bar is out (select mode), as Mango's has nothing under it.
+@MainActor @Observable
+final class RootChrome {
+    var hidesMiniPlayer = false
+}
+
 struct RootView: View {
-    enum AppTab: Hashable { case library, stats, folders, settings }
+    enum AppTab: Hashable { case library, stats, sources, settings }
 
     @Environment(PlayerEngine.self) private var player
     @Environment(AppLock.self) private var lock
@@ -10,10 +17,16 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .library
     @State private var showPlayer = false
+    @State private var chrome = RootChrome()
 
     var body: some View {
         Group {
-            if player.hasBook {
+            if #available(iOS 26.1, *) {
+                // One TabView with or without a book: switching the accessory keeps each tab's place.
+                tabs.tabViewBottomAccessory(isEnabled: player.hasBook && !chrome.hidesMiniPlayer) {
+                    MiniPlayerView { showPlayer = true }
+                }
+            } else if player.hasBook {
                 tabs.tabViewBottomAccessory {
                     MiniPlayerView { showPlayer = true }
                 }
@@ -21,6 +34,7 @@ struct RootView: View {
                 tabs
             }
         }
+        .environment(chrome)
         .sheet(isPresented: $showPlayer) {
             PlayerView()
         }
@@ -39,8 +53,8 @@ struct RootView: View {
             Tab("Stats", systemImage: "chart.bar.fill", value: .stats) {
                 StatsView()
             }
-            Tab("Folders", systemImage: "folder.fill", value: .folders) {
-                FoldersView()
+            Tab("Sources", systemImage: "folder.fill", value: .sources) {
+                SourcesView()
             }
             Tab("Settings", systemImage: "gearshape.fill", value: .settings) {
                 SettingsView()

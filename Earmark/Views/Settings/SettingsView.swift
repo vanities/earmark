@@ -171,6 +171,12 @@ struct SettingsView: View {
                 ForEach(LockMode.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .disabled(!AppLock.canLock)
+            // Beside the lock, as in Mango.
+            NavigationLink {
+                HiddenBooksView()
+            } label: {
+                LabeledContent("Hidden", value: "\(library.hiddenBooks.count)")
+            }
         } header: {
             Text("Privacy")
         } footer: {
