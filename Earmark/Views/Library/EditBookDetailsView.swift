@@ -14,6 +14,7 @@ struct EditBookDetailsView: View {
     @State private var narrator = ""
     @State private var year = ""
     @State private var thinking = false
+    @State private var lookingUp = false
 
     /// Live copy so the form reflects any correction already in place.
     private var current: Book { library.book(id: book.id) ?? book }
@@ -22,6 +23,11 @@ struct EditBookDetailsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Button("Look Up Book…", systemImage: "magnifyingglass") { lookingUp = true }
+                } footer: {
+                    Text("Finds the book in Apple Books and Open Library; pick the right one to fill these in. Review before saving.")
+                }
                 if MetadataAI.isAvailable {
                     Section {
                         Button { Task { await suggestWithAI() } } label: {
@@ -66,7 +72,26 @@ struct EditBookDetailsView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.fontWeight(.semibold) }
             }
             .onAppear(perform: load)
+            .sheet(isPresented: $lookingUp) {
+                BookLookupView(initialQuery: [title, author].filter { !$0.isEmpty }.joined(separator: " "), onPick: apply)
+            }
         }
+    }
+
+    /// A catalog's match into the form — only what it knows, so nothing typed here is blanked.
+    private func apply(_ match: BookMatch) {
+        withAnimation(.snappy) {
+            title = match.title
+            if let a = match.author {
+                let split = BookLookup.splitArtist(a, knownAuthor: author)
+                author = split.author
+                if let n = split.narrator { narrator = n }
+            }
+            if let se = match.series { series = se }
+            if let i = match.seriesIndex { seriesIndex = BookDetailView.format(i) }
+            if let y = match.year { year = String(y) }
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     @ViewBuilder

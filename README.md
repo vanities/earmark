@@ -69,6 +69,10 @@ chronological order (years come from tags or `[Y=1998]`-style folder names), wit
 after. Series, Folders, and a flat "All Books" grid are one tap away in the view menu, and search
 always shows a flat result list.
 
+**Edit Details › Look Up Book** finds a book in Apple Books and Open Library and fills its title,
+author, narrator (split from Apple's "Author & Narrator"), series and year from the match you
+pick — only when you tap it, and nothing is saved until you do.
+
 **Lists** (the list button in the Library's top bar) are your own: "Up next", "Road trip". Add a
 book from its menu (Add to List…), drag to reorder, swipe to remove. A listed book stays listed
 through downloads and rescans — lists hold books by their path.

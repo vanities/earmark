@@ -101,7 +101,11 @@ struct BookListView: View {
     private func row(_ entry: LibraryModel.ListEntry) -> some View {
         switch entry {
         case .book(let book):
-            NavigationLink(value: book) {
+            // A value link here went nowhere: this list is pushed by a view link, and the stack's
+            // Book destination didn't reach it. A view link always does.
+            NavigationLink {
+                BookDetailView(book: book, openPlayer: {})
+            } label: {
                 HStack(spacing: 12) {
                     ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 5)
                         .frame(width: 40, height: 40)
