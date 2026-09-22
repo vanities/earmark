@@ -325,7 +325,7 @@ struct MoveButton: View {
                 if let error = job?.error {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
-                Text("Moves the files from \(library.sourceName(for: book.sourceID)) into On My iPhone › Earmark (\(book.totalBytes.byteCountString)); progress carries over.")
+                Text("Moves the files from \(library.sourceName(for: book.sourceID)) into On My iPhone › Earmark (\(book.totalBytes.byteCountString)); your place, bookmarks and corrections go with it.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)

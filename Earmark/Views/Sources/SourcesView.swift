@@ -408,7 +408,7 @@ private struct MoveConfirmationModifier: ViewModifier {
             .disabled(books.isEmpty)
             Button("Cancel", role: .cancel) { source = nil }
         } message: {
-            Text("Each book is copied into On My iPhone › Earmark and verified before its original is deleted from \(source?.displayName ?? "the folder"). Listening progress carries over. Keep Earmark open while it runs.")
+            Text("Each book is copied into On My iPhone › Earmark and verified before its original is deleted from \(source?.displayName ?? "the folder"). Your place, bookmarks and corrections go with it; a different file already in Earmark's folder is never replaced. Keep Earmark open while it runs.")
         }
     }
 }
