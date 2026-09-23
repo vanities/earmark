@@ -45,6 +45,23 @@ final class LibraryScannerTests: XCTestCase {
         return try await scanner.scan(source: source, root: root) { _ in }
     }
 
+    /// "Open With Earmark" on one audio file makes a source of just that file: its root *is* the
+    /// file. Reading its tags at root + name ("Loomings.wav/Loomings.wav") failed, so it was listed
+    /// as Unknown Author, 0m, with no cover.
+    func testAFileOpenedOnItsOwnIsRead() async throws {
+        try writeSilence("Moby-Dick/Loomings.wav", seconds: 2.0)
+        let file = root.appending(path: "Moby-Dick/Loomings.wav")
+        let store = LibraryStore(directory: storeDir)
+        let scanner = LibraryScanner(cache: MetadataCache(store: store), artwork: ArtworkStore(directory: storeDir.appending(path: "art")))
+        let source = LibrarySource(id: UUID(), kind: .file, displayName: "Loomings.wav", bookmark: nil, addedAt: .now)
+
+        let result = try await scanner.scan(source: source, root: file) { _ in }
+        let book = try XCTUnwrap(result.books.first)
+        XCTAssertEqual(result.books.count, 1)
+        XCTAssertEqual(book.title, "Loomings")
+        XCTAssertEqual(book.totalDuration, 2.0, accuracy: 0.15, "the file's own length, read from the file itself")
+    }
+
     func testScanGroupsRealFilesAndReadsDurations() async throws {
         try writeSilence("Jane Austen/Emma/01 - Chapter 1.wav", seconds: 1.0)
         try writeSilence("Jane Austen/Emma/02 - Chapter 2.wav", seconds: 1.5)

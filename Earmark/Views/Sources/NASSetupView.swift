@@ -10,7 +10,7 @@ struct NASSetupView: View {
     var body: some View {
         NASSetupForm(
             folderPlaceholder: "audiobooks",
-            footer: "Earmark indexes this folder over SMB. Books stream from the NAS when you're on its network, and any book can be downloaded to this iPhone."
+            footer: "Earmark indexes this folder over SMB. Books stream from the NAS when you're on its network, and any book can be downloaded to this \(DeviceStorage.device)."
         ) { server, password in
             try await library.addNAS(server, password: password)
         }

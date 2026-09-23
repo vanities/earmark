@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 import UniformTypeIdentifiers
 import os
 
@@ -71,7 +72,13 @@ struct LibraryView: View {
                     Text("Reading your folders…")
                 }
             } else {
-                EmptyLibraryView(addFolder: { showImporter = true })
+                // Pull to look again, as the full shelf can: before this, a shelf left empty by
+                // books added while Earmark was open stayed empty until a relaunch.
+                ScrollView {
+                    EmptyLibraryView(addFolder: { showImporter = true })
+                        .containerRelativeFrame(.vertical)
+                }
+                .refreshable { await refresh() }
             }
         } else {
             ScrollView {
@@ -95,14 +102,16 @@ struct LibraryView: View {
                     ScanBanner().padding(.bottom, 12)
                 }
             }
-            // Pull to rescan, as in Mango; the spinner stays until the folders have been read
-            // (or half a minute, for a NAS that's slow to answer).
-            .refreshable {
-                library.rescanAll(reason: "pull to refresh")
-                for _ in 0..<150 where library.isScanning {
-                    try? await Task.sleep(for: .milliseconds(200))
-                }
-            }
+            .refreshable { await refresh() }
+        }
+    }
+
+    /// Pull to rescan, as in Mango; the spinner stays until the folders have been read (or half
+    /// a minute, for a NAS that's slow to answer).
+    private func refresh() async {
+        library.rescanAll(reason: "pull to refresh")
+        for _ in 0..<150 where library.isScanning {
+            try? await Task.sleep(for: .milliseconds(200))
         }
     }
 
@@ -344,7 +353,7 @@ struct EmptyLibraryView: View {
         ContentUnavailableView {
             Label("Your Shelf Is Empty", systemImage: "books.vertical")
         } description: {
-            Text("Add a folder of audiobooks. Earmark plays them right where they are — nothing gets copied.\n\nOr move files into **On My iPhone › Earmark** in the Files app.")
+            Text("Add a folder of audiobooks. Earmark plays them right where they are — nothing gets copied.\n\nOr move files into **\(DeviceStorage.earmarkFolder)** in the Files app, or open one with Earmark.")
         } actions: {
             Button("Add a Folder", systemImage: "folder.badge.plus", action: addFolder)
                 .buttonStyle(.borderedProminent)

@@ -140,7 +140,7 @@ struct SettingsView: View {
         let onDevice = library.downloadsOnDevice
         let finished = library.finishedDownloads
         return Section {
-            LabeledContent("On this iPhone", value: onDevice.isEmpty ? "None"
+            LabeledContent("On this \(DeviceStorage.device)", value: onDevice.isEmpty ? "None"
                            : "\(onDevice.count) book\(onDevice.count == 1 ? "" : "s") · \(Self.bytes(onDevice))")
             Toggle("Remove When Finished", isOn: $settings.removeFinishedDownloads)
             Button(finished.isEmpty ? "Remove Finished Downloads"
@@ -153,7 +153,7 @@ struct SettingsView: View {
         } header: {
             Text("Downloads")
         } footer: {
-            Text("A removed download plays from your NAS again, with your place and bookmarks. Only books still on a NAS count here — nothing that exists only on this iPhone is removed. With Remove When Finished on, a book you finish goes once you start another.")
+            Text("A removed download plays from your NAS again, with your place and bookmarks. Only books still on a NAS count here — nothing that exists only on this \(DeviceStorage.device) is removed. With Remove When Finished on, a book you finish goes once you start another.")
         }
     }
 
@@ -182,7 +182,7 @@ struct SettingsView: View {
         } footer: {
             Text(AppLock.canLock
                  ? "With the lock on, Earmark asks for Face ID when it opens, covers itself in the app switcher, hides Hidden Books behind Face ID, and the widget stops showing what you're listening to. Playback controls on the Lock Screen and in CarPlay keep working."
-                 : "Set a passcode for this iPhone to use the lock.")
+                 : "Set a passcode for this \(DeviceStorage.device) to use the lock.")
         }
     }
 

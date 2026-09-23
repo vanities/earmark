@@ -32,7 +32,7 @@ struct SourceBrowserView: View {
             Section { summary(books, status) }
             if books.isEmpty {
                 ContentUnavailableView("No Books Here", systemImage: "folder", description: Text(source.kind == .appDocuments
-                    ? "Move audiobooks into On My iPhone › Earmark using the Files app."
+                    ? "Move audiobooks into \(DeviceStorage.earmarkFolder) using the Files app."
                     : "No playable audio files were found here."))
             }
             ForEach(blocks(books)) { block in
@@ -82,12 +82,12 @@ struct SourceBrowserView: View {
         ) { books in
             Button("Move \(books.count) (\(Self.bytes(books)))") { move(books) }
         } message: { _ in
-            Text("Each is copied into On My iPhone › Earmark, checked, and only then removed from \(source.displayName). Your place, bookmarks and corrections go with them. A different file already in Earmark's folder is never replaced.")
+            Text("Each is copied into \(DeviceStorage.earmarkFolder), checked, and only then removed from \(source.displayName). Your place, bookmarks and corrections go with them. A different file already in Earmark's folder is never replaced.")
         }
     }
 
     private var title: String {
-        source.kind == .appDocuments ? "On My iPhone" : source.displayName
+        source.kind == .appDocuments ? DeviceStorage.name : source.displayName
     }
 
     /// Every book here, downloads included: the library shows a download in place of its NAS
@@ -233,7 +233,7 @@ struct SourceBrowserView: View {
         let tracksNAS = source.kind == .smb || !status.onNAS.isEmpty || downloads.mirrorServerID != nil
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(!tracksNAS ? "\(books.count) book\(books.count == 1 ? "" : "s")" : source.kind == .smb ? "On this iPhone" : "On the NAS")
+                Text(!tracksNAS ? "\(books.count) book\(books.count == 1 ? "" : "s")" : source.kind == .smb ? "On this \(DeviceStorage.device)" : "On the NAS")
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(!tracksNAS ? total
@@ -245,8 +245,8 @@ struct SourceBrowserView: View {
             if tracksNAS {
                 StorageBar(fraction: bothFraction(books, status))
                 HStack(spacing: 14) {
-                    PlaceLegend(.both, source.kind == .smb ? "On this iPhone" : "Also on the NAS")
-                    PlaceLegend(source.kind == .smb ? .remote : .deviceOnly, source.kind == .smb ? "Only on the NAS" : "Only on this iPhone")
+                    PlaceLegend(.both, source.kind == .smb ? "On this \(DeviceStorage.device)" : "Also on the NAS")
+                    PlaceLegend(source.kind == .smb ? .remote : .deviceOnly, source.kind == .smb ? "Only on the NAS" : "Only on this \(DeviceStorage.device)")
                 }
             }
             if let location {
@@ -318,7 +318,7 @@ struct SourceBrowserView: View {
         var parts: [String] = []
         switch place {
         case .transferring(let fraction): parts.append("\(source.kind == .smb ? "Downloading" : "Uploading") \(Int(fraction * 100))%")
-        case .both where source.kind == .smb: parts.append("On this iPhone")
+        case .both where source.kind == .smb: parts.append("On this \(DeviceStorage.device)")
         default: break
         }
         if showsAuthor { parts.append(book.displayAuthor) }
@@ -352,7 +352,7 @@ struct SourceBrowserView: View {
         } else if place == .both {
             TransferRing(fraction: 1, upward: false, isMoving: false, isComplete: true)
                 .frame(width: 36, height: 36)
-                .accessibilityLabel(source.kind == .smb ? "On this iPhone" : "Also on the NAS")
+                .accessibilityLabel(source.kind == .smb ? "On this \(DeviceStorage.device)" : "Also on the NAS")
         }
     }
 
@@ -443,7 +443,7 @@ struct SourceBrowserView: View {
             Button("Rescan", systemImage: "arrow.clockwise") { library.rescan(source.id) }
             if source.kind == .smb {
                 let pending = downloads.pendingSync(for: source)
-                Button(pending.isEmpty ? "Everything Is on This iPhone" : "Download \(pending.count) Missing (\(Self.bytes(pending)))",
+                Button(pending.isEmpty ? "Everything Is on This \(DeviceStorage.device)" : "Download \(pending.count) Missing (\(Self.bytes(pending)))",
                        systemImage: "arrow.down.circle") { syncing = source }
                     .disabled(pending.isEmpty)
             }

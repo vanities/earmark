@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/vanities/shelfkit.git",
       "state" : {
-        "revision" : "510dcc6b6d6dc921363a93c3b59fc03e5b168724",
-        "version" : "0.9.0"
+        "revision" : "fc42a585d8ce8a432dc2cc188672e4a1375ce2fe",
+        "version" : "0.10.0"
       }
     }
   ],

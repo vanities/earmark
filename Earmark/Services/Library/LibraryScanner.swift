@@ -46,7 +46,8 @@ struct LibraryScanner: Sendable {
         Logger.scan.info("[scan] start source=\(source.displayName, privacy: .public) kind=\(source.kind.rawValue, privacy: .public)")
         progress(ScanProgress(phase: .enumerating, processed: 0, total: 0))
 
-        let walk = try walkTree(root: root, isSingleFile: source.kind == .file)
+        let singleFile = source.kind == .file
+        let walk = try walkTree(root: root, isSingleFile: singleFile)
         try Task.checkCancellation()
         Logger.scan.info("[scan] enumerated audio=\(walk.audio.count) images=\(walk.imageCount) unsupported=\(walk.unsupported.count) in \(sw.ms, format: .fixed(precision: 0))ms")
 
@@ -60,7 +61,7 @@ struct LibraryScanner: Sendable {
         try await withThrowingTaskGroup(of: (Int, AudioMetadata?, Bool).self) { group in
             var next = 0
             for _ in 0..<min(maxConcurrentReads, files.count) {
-                enqueue(files[next], index: next, sourceID: source.id, root: root, into: &group)
+                enqueue(files[next], index: next, sourceID: source.id, root: root, singleFile: singleFile, into: &group)
                 next += 1
             }
             while let (index, metadata, fromCache) = try await group.next() {
@@ -73,7 +74,7 @@ struct LibraryScanner: Sendable {
                 }
                 if processed % 25 == 0 { await cache.flush() } // resumable: a crash mid-scan keeps what was read
                 if next < files.count {
-                    enqueue(files[next], index: next, sourceID: source.id, root: root, into: &group)
+                    enqueue(files[next], index: next, sourceID: source.id, root: root, singleFile: singleFile, into: &group)
                     next += 1
                 }
             }
@@ -94,7 +95,7 @@ struct LibraryScanner: Sendable {
         for (index, draft) in drafts.enumerated() {
             try Task.checkCancellation()
             var book = draft.book
-            book.artworkID = await resolveArtwork(for: draft, root: root)
+            book.artworkID = await resolveArtwork(for: draft, root: root, singleFile: singleFile)
             books.append(book)
             progress(ScanProgress(phase: .artwork, processed: index + 1, total: drafts.count))
         }
@@ -279,8 +280,9 @@ struct LibraryScanner: Sendable {
 
     // MARK: - Metadata
 
-    private func enqueue(_ file: ScannedFile, index: Int, sourceID: UUID, root: URL, into group: inout ThrowingTaskGroup<(Int, AudioMetadata?, Bool), any Error>) {
-        let url = root.appending(path: file.relativePath)
+    private func enqueue(_ file: ScannedFile, index: Int, sourceID: UUID, root: URL, singleFile: Bool,
+                         into group: inout ThrowingTaskGroup<(Int, AudioMetadata?, Bool), any Error>) {
+        let url = Self.fileURL(file.relativePath, root: root, singleFile: singleFile)
         let key = "\(sourceID.uuidString)|\(file.relativePath)"
         let cache = cache
         let reader = reader
@@ -375,13 +377,20 @@ struct LibraryScanner: Sendable {
         return relative.isEmpty ? url.lastPathComponent : relative
     }
 
+    /// A file's URL: under the source's folder, or — for one file opened on its own ("Open With
+    /// Earmark") — the root itself, which *is* the file. The player resolves tracks the same way
+    /// (`LibraryModel.url(forTrack:in:)`).
+    static func fileURL(_ relativePath: String, root: URL, singleFile: Bool) -> URL {
+        singleFile ? root : root.appending(path: relativePath)
+    }
+
     // MARK: - Artwork
 
-    private func resolveArtwork(for draft: BookDraft, root: URL) async -> String? {
+    private func resolveArtwork(for draft: BookDraft, root: URL, singleFile: Bool) async -> String? {
         let id = artwork.id(for: draft.book.id)
         if artwork.hasImage(id: id) { return id }
         for candidate in draft.artworkCandidates {
-            let url = root.appending(path: candidate.relativePath)
+            let url = Self.fileURL(candidate.relativePath, root: root, singleFile: singleFile)
             let data: Data?
             switch candidate.kind {
             case .embedded: data = await reader.artworkData(url: url)

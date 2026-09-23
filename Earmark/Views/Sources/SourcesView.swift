@@ -92,7 +92,7 @@ struct SourcesView: View {
 
                 Section("Tips") {
                     TipRowView(systemImage: "iphone", title: "Keep books on this phone",
-                               detail: "In the Files app, move audiobooks into On My iPhone › Earmark. They stay put and show up here automatically.")
+                               detail: "In the Files app, move audiobooks into \(DeviceStorage.earmarkFolder). They stay put and show up here automatically.")
                     TipRowView(systemImage: "externaldrive.connected.to.line.below", title: "Play from a NAS",
                                detail: "Add NAS Share… streams books straight from an SMB share on your network, and downloads any you want to keep.")
                     TipRowView(systemImage: "folder", title: "Folder layout that just works",
@@ -130,7 +130,7 @@ struct SourcesView: View {
                     .disabled(uploadable.isEmpty)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Each book is uploaded to \(serverName), one at a time. Your copies stay on this iPhone; books already on the NAS are skipped. Keep Earmark open while it runs.")
+                Text("Each book is uploaded to \(serverName), one at a time. Your copies stay on this \(DeviceStorage.device); books already on the NAS are skipped. Keep Earmark open while it runs.")
             }
             .confirmationDialog(
                 "Remove \(sourceToRemove?.displayName ?? "folder")?",
@@ -143,7 +143,7 @@ struct SourcesView: View {
                 }
             } message: {
                 Text(sourceToRemove?.isRemote == true
-                    ? "Disconnects from this NAS and forgets its login. Books you downloaded stay on this iPhone."
+                    ? "Disconnects from this NAS and forgets its login. Books you downloaded stay on this \(DeviceStorage.device)."
                     : "The files stay on disk. Only Earmark's link to this folder is removed; listening progress is kept in case you add it back.")
             }
         }
@@ -187,7 +187,7 @@ struct SourcesView: View {
             } header: {
                 Text("Sync")
             } footer: {
-                Text("Books on a NAS stream while you're on its network. Download any of them to keep a copy on this iPhone; files you already have are skipped.")
+                Text("Books on a NAS stream while you're on its network. Download any of them to keep a copy on this \(DeviceStorage.device); files you already have are skipped.")
             }
         }
     }
@@ -200,7 +200,7 @@ struct SourceRow: View {
 
     var body: some View {
         SourceRowView(systemImage: source.systemImage,
-                      name: source.kind == .appDocuments ? "On My iPhone › Earmark" : source.displayName,
+                      name: source.kind == .appDocuments ? DeviceStorage.earmarkFolder : source.displayName,
                       location: source.serverID.flatMap { library.server(id: $0)?.displayLocation },
                       status: statusLine, isError: hasError, isScanning: isScanning)
     }
@@ -367,7 +367,7 @@ private struct SyncConfirmationModifier: ViewModifier {
         let pending = source.map { downloads.pendingSync(for: $0) } ?? []
         let bytes = pending.reduce(Int64(0)) { $0 + $1.totalBytes }
         content.confirmationDialog(
-            "Download \(pending.count) book\(pending.count == 1 ? "" : "s") (\(bytes.byteCountString)) to this iPhone?",
+            "Download \(pending.count) book\(pending.count == 1 ? "" : "s") (\(bytes.byteCountString)) to this \(DeviceStorage.device)?",
             isPresented: Binding(get: { source != nil }, set: { if !$0 { source = nil } }),
             titleVisibility: .visible
         ) {
@@ -378,7 +378,7 @@ private struct SyncConfirmationModifier: ViewModifier {
             .disabled(pending.isEmpty)
             Button("Cancel", role: .cancel) { source = nil }
         } message: {
-            Text("Copies go to On My iPhone › Earmark with the same folder layout. Keep Earmark open, or keep listening, while it downloads; files you already have are skipped.")
+            Text("Copies go to \(DeviceStorage.earmarkFolder) with the same folder layout. Keep Earmark open, or keep listening, while it downloads; files you already have are skipped.")
         }
     }
 }
@@ -408,7 +408,7 @@ private struct MoveConfirmationModifier: ViewModifier {
             .disabled(books.isEmpty)
             Button("Cancel", role: .cancel) { source = nil }
         } message: {
-            Text("Each book is copied into On My iPhone › Earmark and verified before its original is deleted from \(source?.displayName ?? "the folder"). Your place, bookmarks and corrections go with it; a different file already in Earmark's folder is never replaced. Keep Earmark open while it runs.")
+            Text("Each book is copied into \(DeviceStorage.earmarkFolder) and verified before its original is deleted from \(source?.displayName ?? "the folder"). Your place, bookmarks and corrections go with it; a different file already in Earmark's folder is never replaced. Keep Earmark open while it runs.")
         }
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 struct BookDetailView: View {
     @Environment(LibraryModel.self) private var library
@@ -263,7 +264,7 @@ struct DownloadButton: View {
             if let job, job.isActive {
                 ProgressView(value: job.fraction) {
                     HStack {
-                        Text(job.state == .queued ? "Waiting to download…" : "Downloading to this iPhone…")
+                        Text(job.state == .queued ? "Waiting to download…" : "Downloading to this \(DeviceStorage.device)…")
                         Spacer()
                         Text("\(Int(job.fraction * 100))%").monospacedDigit()
                     }
@@ -276,7 +277,7 @@ struct DownloadButton: View {
                 Button {
                     downloads.download(book)
                 } label: {
-                    Label(job?.state == .failed ? "Retry Download" : "Download to iPhone", systemImage: "arrow.down.circle")
+                    Label(job?.state == .failed ? "Retry Download" : "Download to \(DeviceStorage.device)", systemImage: "arrow.down.circle")
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
                 }
@@ -285,7 +286,7 @@ struct DownloadButton: View {
                 if let error = job?.error {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
-                Text("Keeps a copy in On My iPhone › Earmark (\(book.totalBytes.byteCountString)) so it plays without the NAS.")
+                Text("Keeps a copy in \(DeviceStorage.earmarkFolder) (\(book.totalBytes.byteCountString)) so it plays without the NAS.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
@@ -325,7 +326,7 @@ struct MoveButton: View {
                 if let error = job?.error {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
-                Text("Moves the files from \(library.sourceName(for: book.sourceID)) into On My iPhone › Earmark (\(book.totalBytes.byteCountString)); your place, bookmarks and corrections go with it.")
+                Text("Moves the files from \(library.sourceName(for: book.sourceID)) into \(DeviceStorage.earmarkFolder) (\(book.totalBytes.byteCountString)); your place, bookmarks and corrections go with it.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)

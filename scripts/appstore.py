@@ -96,11 +96,17 @@ AGE_RATING = {
     "koreaAgeRatingOverride": "NONE",
 }
 
-REVIEW_NOTES = """Earmark is a local audiobook player. It has no accounts.
+REVIEW_NOTES = """Earmark is an audiobook player for the user's MP3, M4B and other supported audio files. No account or sign-in is required.
 
-To test: on the device, open the Files app and copy any MP3 or M4B files into On My iPhone > Earmark, or tap + in the Library tab and pick any folder containing audio. Books appear on the shelf; tap one and press Play. Speed, chapters, sleep timer, and skips are in the player.
+This build addresses the empty-library/no-playback issue reported on September 23 for build 26. The library now detects files added to the app's folder while running, refreshes local sources when returning from Files, and correctly scans and plays individual files opened with Earmark. On iPad, an opened file is handled by the active window.
 
-The NAS feature (Folders > Add NAS…) connects to the user's own SMB server on their local network; it is optional and can be skipped during review. The app never contacts servers operated by us."""
+To test on a physical iPhone or iPad:
+1. In Files, copy an MP3 or M4B into On My iPhone > Earmark or On My iPad > Earmark.
+2. Return to Earmark. The book appears in Library. Tap it and press Play.
+3. Alternatively, use Library > More (...) > Add Folder to select a folder containing audio, or Files > Open With > Earmark to open a single audio file.
+4. While audio is playing, navigate to the Home Screen. Playback continues and the system's Now Playing controls remain available. Background audio is a core audiobook-listening feature and is intentionally declared in UIBackgroundModes.
+
+Speed, chapters, sleep timer and skip controls are in the player. Sources can optionally connect to the reviewer's SMB server; a NAS is not required. The app has no developer-operated backend."""
 
 
 class Store(tf.ASC):

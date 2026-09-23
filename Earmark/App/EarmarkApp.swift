@@ -17,6 +17,9 @@ struct EarmarkApp: App {
                 .environment(environment.downloads)
                 .environment(environment.lock)
                 .environment(listPicking)
+                // An opened file goes to the window already open, rather than iPadOS opening a
+                // second Earmark window for it each time.
+                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
                 .onOpenURL { url in
                     if url.scheme == "earmark" {
                         Logger.library.info("[app] deep link \(url.absoluteString, privacy: .public)")

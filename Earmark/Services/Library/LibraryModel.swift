@@ -50,6 +50,13 @@ final class LibraryModel {
     @ObservationIgnored let cloudSync = CloudProgressSync()
     /// One-shot message for the UI (e.g. a folder was refused). Cleared by the view.
     var notice: String?
+    /// A file just opened with Earmark, for the root view to play: set only by
+    /// LibraryModel+Arrivals, cleared by RootView once it's playing.
+    var openedBook: Book?
+    @ObservationIgnored var openedBookAt = Date.distantPast
+    /// Changed only by LibraryModel+Arrivals.
+    @ObservationIgnored var pendingOpen: PendingOpen?
+    @ObservationIgnored var ownFolderWatcher: FolderWatcher?
 
     /// Called after any scan changes `books` (the player refreshes its copy).
     @ObservationIgnored var onBooksChanged: (() -> Void)?
@@ -100,6 +107,7 @@ final class LibraryModel {
         readingLog = state.readingLog
         sessions = state.sessions
         ensureAppDocumentsSource()
+        watchOwnFolder()
         cloudSync.onExternalChange = { [weak self] in self?.mergeCloudProgress() }
         cloudSync.start()
         mergeCloudProgress()
@@ -108,6 +116,7 @@ final class LibraryModel {
         }
         hasLoaded = true
         Logger.library.info("[library] bootstrap sources=\(self.sources.count) books=\(self.books.count) progress=\(self.progress.count) in \(sw.ms, format: .fixed(precision: 1))ms")
+        Logger.library.info("[library] device \(UIDevice.current.model, privacy: .public) idiom=\(UIDevice.current.userInterfaceIdiom.rawValue) folder=\(DeviceStorage.earmarkFolder, privacy: .public)")
 
         backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.save() }
@@ -172,17 +181,16 @@ final class LibraryModel {
         }
     }
 
-    func addOpenedFile(_ url: URL) {
-        addSource(url: url, kind: .file)
-    }
-
-    private func addSource(url: URL, kind: LibrarySource.Kind) {
+    /// Adds a picked folder or an opened file as a source and scans it. Returns the new source's
+    /// ID; nil when it was already there (rescanned instead), refused, or couldn't be bookmarked.
+    @discardableResult
+    func addSource(url: URL, kind: LibrarySource.Kind) -> UUID? {
         let standardized = url.standardizedFileURL
         if let existing = sources.first(where: { resolvedRoots[$0.id]?.standardizedFileURL == standardized }) {
             Logger.library.notice("[library] \(url.lastPathComponent, privacy: .public) already added — rescanning")
             notice = "\(url.lastPathComponent) is already in your library. Rescanning it."
             rescan(existing.id)
-            return
+            return nil
         }
         // A folder nested inside (or enclosing) an existing one would list the same files twice
         // and make them look like duplicates of themselves.
@@ -192,8 +200,8 @@ final class LibraryModel {
             let existingPath = Self.directoryPath(root.standardizedFileURL)
             if newPath.hasPrefix(existingPath) {
                 Logger.library.notice("[library] refused \(url.lastPathComponent, privacy: .public): inside existing source \(source.displayName, privacy: .public)")
-                notice = "\(url.lastPathComponent) is already covered by \(source.kind == .appDocuments ? "On My iPhone › Earmark" : source.displayName), so it wasn't added again."
-                return
+                notice = "\(url.lastPathComponent) is already covered by \(source.kind == .appDocuments ? DeviceStorage.earmarkFolder : source.displayName), so it wasn't added again."
+                return nil
             }
             if existingPath.hasPrefix(newPath), source.isRemovable {
                 Logger.library.notice("[library] \(url.lastPathComponent, privacy: .public) encloses \(source.displayName, privacy: .public) — replacing the smaller source")
@@ -210,9 +218,11 @@ final class LibraryModel {
             Logger.library.info("[library] added source \(url.lastPathComponent, privacy: .public) kind=\(kind.rawValue, privacy: .public) scoped=\(started)")
             save()
             scan(source)
+            return source.id
         } catch {
             if started { url.stopAccessingSecurityScopedResource() }
             Logger.library.error("[library] add source failed for \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return nil
         }
     }
 
@@ -350,6 +360,7 @@ final class LibraryModel {
         save()
         onBooksChanged?()
         reconcileCovers()   // new books, or custom covers lost with the art cache
+        resolvePendingOpen(in: sourceID, books: updated)
     }
 
     private func scanRemote(_ source: LibrarySource) {

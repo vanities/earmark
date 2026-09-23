@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// Shared actions for a book: play, finish/reset, reveal, hide.
 struct BookContextMenu: View {
@@ -43,7 +44,7 @@ struct BookContextMenu: View {
                 }
             }
         } else if library.isRemote(book) {
-            Button("Download to iPhone", systemImage: "arrow.down.circle") { downloads.download(book) }
+            Button("Download to \(DeviceStorage.device)", systemImage: "arrow.down.circle") { downloads.download(book) }
         } else if library.source(for: book)?.kind == .folder {
             Button("Move into Earmark", systemImage: "arrow.right.doc.on.clipboard") { downloads.move(book) }
         }

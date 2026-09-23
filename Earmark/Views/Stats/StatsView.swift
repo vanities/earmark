@@ -291,7 +291,7 @@ struct StatsView: View {
         let remote = library.books.filter { library.isRemote($0) }.reduce(Int64(0)) { $0 + $1.totalBytes }
         return StatCard("Where it lives") {
             HStack(spacing: 16) {
-                storageStat("On this iPhone", local, "iphone")
+                storageStat("On this \(DeviceStorage.device)", local, DeviceStorage.device == "iPad" ? "ipad" : "iphone")
                 storageStat("On the NAS", remote, "externaldrive.connected.to.line.below")
             }
         }

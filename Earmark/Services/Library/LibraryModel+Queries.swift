@@ -200,7 +200,9 @@ extension LibraryModel {
     }
 
     func sourceName(for id: UUID) -> String {
-        sources.first { $0.id == id }?.displayName ?? "Unknown"
+        guard let source = sources.first(where: { $0.id == id }) else { return "Unknown" }
+        // Stored as "On My iPhone" when it was created; on an iPad, Files calls it On My iPad.
+        return source.kind == .appDocuments ? DeviceStorage.name : source.displayName
     }
 
     func source(for book: Book) -> LibrarySource? {
