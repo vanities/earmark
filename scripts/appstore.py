@@ -36,7 +36,7 @@ COPY = {
     "description": """Earmark is an audiobook player for people with folders full of MP3s and M4Bs.
 
 PLAYS YOUR FILES WHERE THEY ARE
-Point Earmark at a folder in Files, iCloud Drive, or another app and it plays from there. Nothing is copied, nothing is moved, nothing is uploaded. Your library stays yours.
+Point Earmark at a folder in Files, iCloud Drive, or another app and it plays from there. Listening leaves your original files in place. Downloads, moves into Earmark and uploads to your NAS happen only when you request them. Your library stays yours.
 
 ORGANIZED AUTOMATICALLY
 A folder of MP3s is a book, every M4B is a book with its chapters, Disc 1 and Disc 2 folders merge, and Author / Series / Book folder names or tags fill in the rest. Browse by author, series, or folder, or search everything.
