@@ -175,7 +175,14 @@ final class PlayerEngine {
         player.defaultRate = speed
         library.setCurrentBook(newBook.id)
 
-        let position = startAt ?? BookPosition(trackIndex: saved.trackIndex, time: saved.time)
+        var position = startAt ?? BookPosition(trackIndex: saved.trackIndex, time: saved.time)
+        if startAt == nil, settings.smartRewind, let lastPlayed = saved.lastPlayedAt {
+            if autoplay {
+                position = Self.resumePosition(in: newBook, from: position, pausedFor: Date().timeIntervalSince(lastPlayed))
+            } else {
+                pausedAt = lastPlayed
+            }
+        }
         let index = min(max(0, position.trackIndex), max(0, newBook.tracks.count - 1))
         loadTrack(index: index, startAt: position.time, autoplay: autoplay)
         // Only now, with the new book's file in the player, can the finished one's go.
@@ -343,10 +350,6 @@ final class PlayerEngine {
             _ = book
             return
         }
-        if isLoading {
-            playWhenReady = true
-            return
-        }
         if didFinishCurrentBook {
             // Play on a finished book starts it over, as opening it from the Library does. AVPlayer
             // can't play on from the end, so without this the button did nothing.
@@ -361,10 +364,21 @@ final class PlayerEngine {
             if rewind > 0 {
                 Logger.player.info("[player] smart rewind \(rewind, format: .fixed(precision: 0))s after \(gap, format: .fixed(precision: 0))s pause")
                 self.pausedAt = nil
-                performSeek(max(0, currentTime - rewind), thenPlay: true)
+                if let book {
+                    let target = Self.resumePosition(in: book, from: BookPosition(trackIndex: trackIndex, time: currentTime), pausedFor: gap)
+                    if target.trackIndex != trackIndex {
+                        loadTrack(index: target.trackIndex, startAt: target.time, autoplay: true)
+                    } else {
+                        performSeek(target.time, thenPlay: true)
+                    }
+                }
                 notify()
                 return
             }
+        }
+        if isLoading {
+            playWhenReady = true
+            return
         }
         startPlayback()
         notify()
@@ -404,6 +418,13 @@ final class PlayerEngine {
     /// pause lands on the boundary instead of a few seconds into the next chapter.
     nonisolated static func shouldStartChapterFade(remaining: TimeInterval, speed: Float) -> Bool {
         remaining <= sleepFadeDuration * Double(max(speed, 0.5))
+    }
+
+    nonisolated static func resumePosition(in book: Book, from position: BookPosition, pausedFor gap: TimeInterval) -> BookPosition {
+        let rewind = smartRewindAmount(pausedFor: gap)
+        guard rewind > 0 else { return position }
+        let offset = book.absoluteOffset(trackIndex: position.trackIndex, time: position.time)
+        return book.position(atAbsoluteOffset: max(0, offset - rewind))
     }
 
     nonisolated static func smartRewindAmount(pausedFor gap: TimeInterval) -> TimeInterval {
@@ -829,8 +850,7 @@ final class PlayerEngine {
         case .ended:
             Logger.player.info("[player] interruption ended shouldResume=\(options.contains(.shouldResume))")
             if wasPlayingBeforeInterruption, options.contains(.shouldResume) {
-                startPlayback()
-                notify()
+                play()
             }
             wasPlayingBeforeInterruption = false
         default:

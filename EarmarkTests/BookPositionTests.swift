@@ -49,6 +49,18 @@ final class BookPositionTests: XCTestCase {
         XCTAssertEqual(progress.remaining(in: book), 0)
     }
 
+    func testResumeRewindCrossesTrackBoundaryAndClampsAtBookStart() {
+        let book = makeBook()
+        let target = PlayerEngine.resumePosition(in: book, from: BookPosition(trackIndex: 1, time: 2), pausedFor: 3600)
+        XCTAssertEqual(target.trackIndex, 0)
+        XCTAssertEqual(target.time, 87)
+        let start = PlayerEngine.resumePosition(in: book, from: BookPosition(trackIndex: 0, time: 5), pausedFor: 86400)
+        XCTAssertEqual(start.time, 0)
+        let quick = PlayerEngine.resumePosition(in: book, from: BookPosition(trackIndex: 1, time: 2), pausedFor: 10)
+        XCTAssertEqual(quick.trackIndex, 1)
+        XCTAssertEqual(quick.time, 2)
+    }
+
     func testSmartRewindTiers() {
         XCTAssertEqual(PlayerEngine.smartRewindAmount(pausedFor: 10), 0)
         XCTAssertEqual(PlayerEngine.smartRewindAmount(pausedFor: 120), 3)

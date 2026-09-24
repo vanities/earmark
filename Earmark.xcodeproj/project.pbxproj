@@ -49,6 +49,7 @@
 		60DC9D02A81506644F84A748 /* UpNextCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850A8717F7274C2801872150 /* UpNextCard.swift */; };
 		62E420B72979581A2823B28E /* Catalogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200A0959C024E3F96999E492 /* Catalogs.swift */; };
 		6367566AE08DE934C145A0F4 /* ReadingStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C67FE77ED8F4C2421D74B73 /* ReadingStatsTests.swift */; };
+		65C4CF129E0211EEFDA54411 /* OfflineLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69440013FA8DA6B07FE61D13 /* OfflineLibraryView.swift */; };
 		65C9A86A975FA7473EA82951 /* BookLookupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A5E6A4F0F6906FCD6BE290 /* BookLookupTests.swift */; };
 		667D28B426ECD4C26731841A /* BookGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4318C49E54FDB7B284984534 /* BookGrouper.swift */; };
 		67AF8363E35C4258A2B4FB4C /* EarmarkWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADA1B2535F3AD13F219B8B7 /* EarmarkWidgetBundle.swift */; };
@@ -75,6 +76,7 @@
 		974A9AF22EAB95E8A846C0E2 /* EditBookDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF5B4DC8D23973CFE456A9AA /* EditBookDetailsView.swift */; };
 		992591671542F4EE7F99A70D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E039F76BC4094453B23E6C1E /* Assets.xcassets */; };
 		9A150893EE91E002D6D1BC39 /* Book.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA9C1B59012131A51DF6716 /* Book.swift */; };
+		9AB728EBD44A8AE5FFF635A8 /* BookmarkSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CADCFF6B5AFCC3D37ECB59D8 /* BookmarkSearchView.swift */; };
 		9DCC4B9247F1D29079AB50E8 /* ReadingLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E769569E89D398ACA2E97FA0 /* ReadingLogEntry.swift */; };
 		9DD0D41C4F266ECFE170B009 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF1C494AE7F0A4EC67C96742 /* KeychainStore.swift */; };
 		9F10FFB852BDE94C20DB7B41 /* LibraryModel+Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = E15FA6944A3C0DD1ED9B4307 /* LibraryModel+Downloads.swift */; };
@@ -241,6 +243,7 @@
 		674F8D5E4C4B3AF55D400BAB /* ContinueListeningWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinueListeningWidget.swift; sourceTree = "<group>"; };
 		68ED0586B8828A3827986D3E /* BookList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookList.swift; sourceTree = "<group>"; };
 		692A485EFDE03BB1D9D10A80 /* BookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailView.swift; sourceTree = "<group>"; };
+		69440013FA8DA6B07FE61D13 /* OfflineLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineLibraryView.swift; sourceTree = "<group>"; };
 		733FE2BA19BAE04E429DD74D /* NameParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameParserTests.swift; sourceTree = "<group>"; };
 		737CD7532933F770716B7DF7 /* EarmarkWidgets-Device.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "EarmarkWidgets-Device.entitlements"; sourceTree = "<group>"; };
 		765166563772C00B922D84CE /* LibraryModel+NAS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+NAS.swift"; sourceTree = "<group>"; };
@@ -280,6 +283,7 @@
 		C5450C0C927711EAF2A80272 /* Logger+Earmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Logger+Earmark.swift"; sourceTree = "<group>"; };
 		C857A89D8BE3D958EA4DB4BD /* BookGrouperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookGrouperTests.swift; sourceTree = "<group>"; };
 		C9E181EC730C19488655A75C /* NASSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASSetupView.swift; sourceTree = "<group>"; };
+		CADCFF6B5AFCC3D37ECB59D8 /* BookmarkSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkSearchView.swift; sourceTree = "<group>"; };
 		CD89F1372BCDEC869661AF28 /* MetadataReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataReader.swift; sourceTree = "<group>"; };
 		CF5B4DC8D23973CFE456A9AA /* EditBookDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditBookDetailsView.swift; sourceTree = "<group>"; };
 		D10A619A7B7DD9D628D7CF41 /* CoverChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverChoice.swift; sourceTree = "<group>"; };
@@ -507,10 +511,12 @@
 				94D6CF1F3D54A0E4772BA746 /* BookCardView.swift */,
 				692A485EFDE03BB1D9D10A80 /* BookDetailView.swift */,
 				DC0F2842DE201D524D59A8EC /* BookLookupView.swift */,
+				CADCFF6B5AFCC3D37ECB59D8 /* BookmarkSearchView.swift */,
 				55737A1219DD9B7F7846B451 /* CoverPickerView.swift */,
 				CF5B4DC8D23973CFE456A9AA /* EditBookDetailsView.swift */,
 				C266E3FFEA78B55E971D7D96 /* LibraryView.swift */,
 				804E4D4D93B0A9265FECDB1A /* ListsViews.swift */,
+				69440013FA8DA6B07FE61D13 /* OfflineLibraryView.swift */,
 				5240AAA669523BD4266514F8 /* ShelfPageViews.swift */,
 			);
 			path = Library;
@@ -847,6 +853,7 @@
 				DB4086137F09CEFAA17EFF73 /* BookLookupView.swift in Sources */,
 				B6CBFF04A05D4520855BA824 /* BookMetadataOverride.swift in Sources */,
 				B8CFFEDA9D238934A4A6AE95 /* Bookmark.swift in Sources */,
+				9AB728EBD44A8AE5FFF635A8 /* BookmarkSearchView.swift in Sources */,
 				0507EF1BC8D1FFD27DFB766F /* CarPlayInterface.swift in Sources */,
 				A090EB4D2C4E79F02C2AF5FA /* CarPlaySceneDelegate.swift in Sources */,
 				62E420B72979581A2823B28E /* Catalogs.swift in Sources */,
@@ -897,6 +904,7 @@
 				96452920141A5BF5A62DB5E3 /* NameParser.swift in Sources */,
 				460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */,
 				C06D1B9DEA6935CEBD606DF7 /* NowPlayingSnapshot.swift in Sources */,
+				65C4CF129E0211EEFDA54411 /* OfflineLibraryView.swift in Sources */,
 				52B95B9DFF6E6BEAC1EFC712 /* PlaybackAudioProcessor.swift in Sources */,
 				89C8384597C8D3CE0D5A588C /* PlaybackProgress.swift in Sources */,
 				D5CE1A01B633A8DE08F66D1D /* PlayerEngine.swift in Sources */,
@@ -1249,7 +1257,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.11.0;
+				version = 0.12.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
