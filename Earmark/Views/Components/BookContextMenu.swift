@@ -14,6 +14,8 @@ struct BookContextMenu: View {
         Button(progress.hasStarted && !progress.isFinished ? "Resume" : "Play", systemImage: "play.fill") {
             player.load(book, autoplay: true)
         }
+        Button("Add to listening queue", systemImage: "text.badge.plus") { player.enqueue(book) }
+            .disabled(player.queueKeys.contains(book.syncKey) || player.book?.syncKey == book.syncKey)
         if progress.isFinished {
             Button("Start Over", systemImage: "arrow.counterclockwise") {
                 library.resetProgress(book.id)

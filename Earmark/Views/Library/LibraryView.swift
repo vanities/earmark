@@ -12,6 +12,7 @@ struct LibraryView: View {
     @State private var searchText = ""
     @State private var showImporter = false
     @State private var showingLists = false
+    @State private var showingQueue = false
     @State private var importError: String?
 
     private var filteredBooks: [Book] {
@@ -29,6 +30,7 @@ struct LibraryView: View {
                 .navigationTitle("Library")
                 .searchable(text: $searchText, prompt: "Books, authors, series")
                 .toolbar { toolbar }
+                .sheet(isPresented: $showingQueue) { ListeningQueueSheet() }
                 .navigationDestination(for: Book.self) { book in
                     BookDetailView(book: book, openPlayer: openPlayer)
                 }
@@ -124,6 +126,8 @@ struct LibraryView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
+                Button("Listening queue…", systemImage: "list.bullet") { showingQueue = true }
+                Divider()
                 Picker("Group By", systemImage: "rectangle.3.group", selection: Bindable(settings).libraryGrouping) {
                     ForEach(LibraryGrouping.allCases, id: \.self) { grouping in
                         Label(grouping.title, systemImage: grouping.systemImage).tag(grouping)

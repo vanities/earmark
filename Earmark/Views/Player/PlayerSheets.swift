@@ -61,6 +61,7 @@ struct SpeedSheet: View {
 }
 
 struct SleepTimerSheet: View {
+    @Environment(AppSettings.self) private var settings
     @Environment(PlayerEngine.self) private var player
     @Environment(\.dismiss) private var dismiss
 
@@ -92,6 +93,17 @@ struct SleepTimerSheet: View {
                     Section {
                         Label("Pausing at the end of this chapter", systemImage: "moon.zzz.fill")
                     }
+                }
+                Section {
+                    Toggle("Save bedtime starting point", isOn: Bindable(settings).bedtimeBookmarks)
+                    if let mark = player.bedtimeBookmark {
+                        Button("Return to bedtime start · \(mark.offset.shortDurationString)", systemImage: "moon") {
+                            player.seek(toBookOffset: mark.offset)
+                            dismiss()
+                        }
+                    }
+                } footer: {
+                    Text("Saves one bookmark per book each night when you start a sleep timer. Find it later in Bookmarks.")
                 }
                 Section {
                     ForEach(options, id: \.self) { option in
@@ -234,6 +246,62 @@ struct BookmarksSheet: View {
                 if book.chapters.count > 1, let chapter { Text(chapter.title).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             }
             if !mark.note.isEmpty { Text(mark.note).font(.footnote).foregroundStyle(.secondary) }
+        }
+    }
+}
+
+struct ListeningQueueSheet: View {
+    @Environment(PlayerEngine.self) private var player
+    @Environment(LibraryModel.self) private var library
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.dismiss) private var dismiss
+    @State private var adding = false
+    @State private var search = ""
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Toggle("Play queued books automatically", isOn: Bindable(settings).autoplayQueue)
+                } footer: { Text("A sleep timer stops playback before another book starts.") }
+                Section("Up next") {
+                    if player.queueKeys.isEmpty { Text("Your queue is empty").foregroundStyle(.secondary) }
+                    ForEach(player.queueKeys, id: \.self) { key in
+                        if let book = player.queuedBook(for: key) {
+                            Button { player.load(book, autoplay: true); dismiss() } label: {
+                                VStack(alignment: .leading) {
+                                    Text(book.title).foregroundStyle(.primary)
+                                    Text(book.displayAuthor).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        } else { Label("Book unavailable · remove or reconnect its source", systemImage: "exclamationmark.triangle") }
+                    }
+                    .onDelete { player.removeQueued(at: $0) }
+                    .onMove { player.moveQueued(from: $0, to: $1) }
+                }
+            }
+            .navigationTitle("Listening queue")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { EditButton() }
+                ToolbarItem(placement: .primaryAction) { Button("Add", systemImage: "plus") { adding = true } }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .sheet(isPresented: $adding) {
+                NavigationStack {
+                    List(library.visibleBooks.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }) { book in
+                        Button { player.enqueue(book) } label: {
+                            HStack {
+                                Text(book.title)
+                                Spacer()
+                                if player.queueKeys.contains(book.syncKey) { Image(systemName: "checkmark") }
+                            }
+                        }.disabled(player.queueKeys.contains(book.syncKey) || player.book?.syncKey == book.syncKey)
+                    }
+                    .searchable(text: $search)
+                    .navigationTitle("Add to queue")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { adding = false } } }
+                }
+            }
         }
     }
 }

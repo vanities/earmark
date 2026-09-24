@@ -106,11 +106,38 @@ final class PlayerEngine {
     var bookFraction: Double { bookDuration > 0 ? min(1, bookElapsed / bookDuration) : 0 }
     var hasBook: Bool { book != nil }
 
+    var queueKeys: [String] { settings.queueKeys }
+    func queuedBook(for key: String) -> Book? { library.visibleBooks.first { $0.syncKey == key } }
+    func enqueue(_ book: Book) {
+        guard self.book?.syncKey != book.syncKey, !settings.queueKeys.contains(book.syncKey) else { return }
+        settings.queueKeys.append(book.syncKey)
+        refreshQueueOffer()
+    }
+    func removeQueued(at offsets: IndexSet) {
+        settings.queueKeys.remove(atOffsets: offsets)
+        refreshQueueOffer()
+    }
+    func moveQueued(from offsets: IndexSet, to destination: Int) {
+        settings.queueKeys.move(fromOffsets: offsets, toOffset: destination)
+        refreshQueueOffer()
+    }
+    private func refreshQueueOffer() {
+        guard didFinishCurrentBook, let book else { return }
+        upNext = settings.queueKeys.first.flatMap { queuedBook(for: $0) }
+            ?? (settings.queueKeys.isEmpty ? library.nextInSeries(after: book) : nil)
+    }
+
+    var bedtimeBookmark: Bookmark? {
+        guard let book else { return nil }
+        return library.bookmarks(for: book).filter { $0.note.hasPrefix("Bedtime · ") }.max { $0.createdAt < $1.createdAt }
+    }
+
     // MARK: - Loading
 
     /// Loads a book at its saved position (or `startAt`). Reloading the current book just
     /// resumes it, or jumps to `startAt` when given.
     func load(_ newBook: Book, autoplay: Bool, startAt: BookPosition? = nil) {
+        settings.queueKeys.removeAll { $0 == newBook.syncKey }
         if book?.id == newBook.id {
             if let startAt {
                 pausedAt = nil   // a chosen spot (a chapter tap): don't smart-rewind back out of it
@@ -585,6 +612,12 @@ final class PlayerEngine {
     // MARK: - Sleep timer
 
     func setSleepTimer(_ mode: SleepTimerMode) {
+        if mode != .off, sleepTimer == .off, settings.bedtimeBookmarks, let book {
+            let note = "Bedtime · " + Date.now.formatted(.dateTime.year().month().day())
+            if !library.bookmarks(for: book).contains(where: { $0.note == note }) {
+                _ = library.addBookmark(for: book, offset: bookElapsed, note: note)
+            }
+        }
         cancelSleepTimer(notify: false)
         sleepTimer = mode
         switch mode {
@@ -687,12 +720,15 @@ final class PlayerEngine {
                 finishedDownloadIDs.insert(book.id)
                 Logger.downloads.info("[downloads] \(book.title, privacy: .public) finished — removing its download when another book starts")
             }
-            upNext = library.nextInSeries(after: book)
+            let continueQueue = settings.autoplayQueue && sleepTimer == .off
+            let queued = settings.queueKeys.first.flatMap { queuedBook(for: $0) }
+            upNext = queued ?? (settings.queueKeys.isEmpty ? library.nextInSeries(after: book) : nil)
             if upNext != nil { Logger.player.info("[player] up next: \(self.upNext?.title ?? "-", privacy: .public)") }
             cancelSleepTimer(notify: false)
             AudioSessionManager.deactivate()
             Logger.player.info("[player] finished \(book.title, privacy: .public)")
             notify()
+            if continueQueue, let queued { load(queued, autoplay: true) }
         }
     }
 

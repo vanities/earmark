@@ -22,11 +22,12 @@ struct StatsView: View {
             let stats = library.readingStats
             let activity = library.activityStats
             ScrollView {
-                if stats.isEmpty {
+                if stats.isEmpty && !activity.hasActivity {
                     emptyState.frame(maxWidth: .infinity, minHeight: 460)
                 } else {
                     VStack(alignment: .leading, spacing: 24) {
                         headline(stats, activity)
+                        ListeningInsightsView()
                         goalCard(stats)
                         if activity.hasActivity {
                             StatCard("Time listening") {

@@ -39,6 +39,9 @@ final class AppSettings {
 
     var skipBackInterval: TimeInterval { didSet { defaults.set(skipBackInterval, forKey: Key.skipBack) } }
     var skipForwardInterval: TimeInterval { didSet { defaults.set(skipForwardInterval, forKey: Key.skipForward) } }
+    var bedtimeBookmarks: Bool { didSet { defaults.set(bedtimeBookmarks, forKey: "playback.bedtimeBookmarks") } }
+    var autoplayQueue: Bool { didSet { defaults.set(autoplayQueue, forKey: "playback.autoplayQueue") } }
+    var queueKeys: [String] { didSet { defaults.set(queueKeys, forKey: "playback.queue") } }
     var defaultSpeed: Float { didSet { defaults.set(defaultSpeed, forKey: Key.defaultSpeed) } }
     var rememberSpeedPerBook: Bool { didSet { defaults.set(rememberSpeedPerBook, forKey: Key.rememberSpeed) } }
     /// Rewind a little on resume, scaled by how long playback was paused.
@@ -70,6 +73,9 @@ final class AppSettings {
         self.defaults = defaults
         skipBackInterval = defaults.object(forKey: Key.skipBack) as? TimeInterval ?? 15
         skipForwardInterval = defaults.object(forKey: Key.skipForward) as? TimeInterval ?? 30
+        bedtimeBookmarks = defaults.object(forKey: "playback.bedtimeBookmarks") as? Bool ?? true
+        autoplayQueue = defaults.object(forKey: "playback.autoplayQueue") as? Bool ?? false
+        queueKeys = defaults.stringArray(forKey: "playback.queue") ?? []
         defaultSpeed = defaults.object(forKey: Key.defaultSpeed) as? Float ?? 1.0
         rememberSpeedPerBook = defaults.object(forKey: Key.rememberSpeed) as? Bool ?? true
         smartRewind = defaults.object(forKey: Key.smartRewind) as? Bool ?? true

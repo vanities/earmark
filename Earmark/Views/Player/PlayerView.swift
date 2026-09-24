@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PlayerView: View {
     enum Sheet: Identifiable {
-        case speed, sleep, chapters, bookmarks
+        case speed, sleep, chapters, bookmarks, queue
         var id: Self { self }
     }
 
@@ -32,6 +32,7 @@ struct PlayerView: View {
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                             }
                             Button("Bookmarks\u{2026}", systemImage: "bookmark.fill") { sheet = .bookmarks }
+                            Button("Listening queue…", systemImage: "list.bullet") { sheet = .queue }
                             Divider()
                             BookContextMenu(book: book)
                         } label: {
@@ -47,6 +48,7 @@ struct PlayerView: View {
             case .speed: SpeedSheet().presentationDetents([.height(360)])
             case .sleep: SleepTimerSheet().presentationDetents([.medium, .large])
             case .chapters: ChapterListSheet().presentationDetents([.medium, .large])
+            case .queue: ListeningQueueSheet()
             case .bookmarks: BookmarksSheet().presentationDetents([.medium, .large])
             }
         }
