@@ -74,6 +74,12 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Open to Now Playing", isOn: $settings.openToNowPlaying)
+                } footer: {
+                    Text("When you've been listening in the last couple of hours, opening Earmark goes straight to Now Playing with your book ready to play. Turn off to open where you left off.")
+                }
+
+                Section {
                     Toggle("Smart Rewind", isOn: $settings.smartRewind)
                 } footer: {
                     Text("After a pause, back up a little so you catch the thread again: 3 seconds after a minute, up to 30 seconds after a couple of hours.")

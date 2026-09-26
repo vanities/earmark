@@ -60,6 +60,10 @@ final class AppSettings {
     var boostQuietVoices: Bool { didSet { defaults.set(boostQuietVoices, forKey: Key.boostQuiet) } }
     /// Color the Now Playing background from the book's cover. Default on.
     var ambientPlayerBackground: Bool { didSet { defaults.set(ambientPlayerBackground, forKey: Key.ambientBg) } }
+    /// Opening the app (or coming back to it) in the middle of listening — the book playing, or
+    /// played in the last couple of hours (`PlayerEngine.isRecentlyPlayed`) — shows Now Playing.
+    /// Default on.
+    var openToNowPlaying: Bool { didSet { defaults.set(openToNowPlaying, forKey: Key.openToNowPlaying) } }
     /// Books-per-year target shown on the Stats ring. 0 = no goal.
     var yearlyBookGoal: Int { didSet { defaults.set(yearlyBookGoal, forKey: Key.yearlyGoal) } }
     /// When Earmark asks for Face ID again (ShelfKit's AppLock reads it here). Default off.
@@ -89,6 +93,7 @@ final class AppSettings {
         skipSilence = defaults.object(forKey: Key.skipSilence) as? Bool ?? false
         boostQuietVoices = defaults.object(forKey: Key.boostQuiet) as? Bool ?? false
         ambientPlayerBackground = defaults.object(forKey: Key.ambientBg) as? Bool ?? true
+        openToNowPlaying = defaults.object(forKey: Key.openToNowPlaying) as? Bool ?? true
         yearlyBookGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 12
         removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
         lockMode = LockMode(rawValue: defaults.string(forKey: Key.lockMode) ?? "") ?? .off
@@ -117,6 +122,7 @@ final class AppSettings {
         static let skipSilence = "playback.skipSilence"
         static let boostQuiet = "playback.boostQuietVoices"
         static let ambientBg = "appearance.ambientPlayerBackground"
+        static let openToNowPlaying = "appearance.openToNowPlaying"
         static let yearlyGoal = "stats.yearlyBookGoal"
         static let removeFinished = "downloads.removeFinished"
         static let lockMode = "privacy.lockMode"

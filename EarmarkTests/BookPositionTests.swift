@@ -69,6 +69,25 @@ final class BookPositionTests: XCTestCase {
         XCTAssertEqual(PlayerEngine.smartRewindAmount(pausedFor: 86400), 30)
     }
 
+    /// What decides whether opening Earmark goes to Now Playing.
+    func testRecentlyPlayedIsPlayingOrPlayedInTheLastCoupleOfHours() {
+        let now = Date()
+        func recent(_ progress: PlaybackProgress, playing: Bool = false, upNext: Bool = false) -> Bool {
+            PlayerEngine.isRecentlyPlayed(isPlaying: playing, progress: progress, hasUpNext: upNext, now: now)
+        }
+        var progress = PlaybackProgress(trackIndex: 0, time: 30)
+        XCTAssertTrue(recent(progress, playing: true))
+        XCTAssertFalse(recent(progress), "never played")
+        progress.lastPlayedAt = now.addingTimeInterval(-10 * 60)
+        XCTAssertTrue(recent(progress), "paused ten minutes ago")
+        progress.lastPlayedAt = now.addingTimeInterval(-3 * 3600)
+        XCTAssertFalse(recent(progress), "last played this morning")
+        progress.lastPlayedAt = now.addingTimeInterval(-10 * 60)
+        progress.isFinished = true
+        XCTAssertFalse(recent(progress), "finished, with nothing to play next")
+        XCTAssertTrue(recent(progress, upNext: true), "finished, with Up Next waiting")
+    }
+
     func testOnlyLongJumpsOfferUndo() {
         XCTAssertFalse(PlayerEngine.isUndoableJump(from: 600, to: 629), "a small scrub isn't worth an undo")
         XCTAssertTrue(PlayerEngine.isUndoableJump(from: 600, to: 1_800), "a chapter tap forward")

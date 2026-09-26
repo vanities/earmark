@@ -84,27 +84,28 @@ struct ContinueListeningView: View {
                 Image(systemName: snap.isPlaying ? "pause.fill" : "play.fill").foregroundStyle(Color.accentColor)
             }
         }
-        .padding(12)
     }
 
     private func medium(_ snap: NowPlayingSnapshot) -> some View {
         HStack(spacing: 14) {
-            cover(96)
+            cover(108)   // as tall as Mango's medium cover (74 × 1.45)
             VStack(alignment: .leading, spacing: 6) {
                 Text(snap.title).font(.headline).lineLimit(2)
                 Text(snap.author).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 0)
                 ProgressView(value: snap.fraction).tint(.accentColor)
-                HStack {
+                HStack(spacing: 6) {
                     Text(snap.remaining).font(.caption).foregroundStyle(.secondary)
-                    Spacer()
+                        .lineLimit(1).minimumScaleFactor(0.75)
+                    Spacer(minLength: 0)
+                    // Never squeezed to "Resu…": a long time left gives way first.
                     Label(snap.isPlaying ? "Playing" : "Resume", systemImage: snap.isPlaying ? "pause.fill" : "play.fill")
                         .font(.caption.bold()).padding(.horizontal, 10).padding(.vertical, 5)
                         .background(.tint, in: Capsule()).foregroundStyle(.white)
+                        .fixedSize()
                 }
             }
         }
-        .padding(14)
     }
 
     private var empty: some View {

@@ -53,4 +53,14 @@ final class ListeningToolsTests: XCTestCase {
         XCTAssertTrue(library.bookmarks(for: other).isEmpty)
         player.setSleepTimer(.off)
     }
+
+    func testOpenToNowPlayingIsOnUntilTurnedOff() throws {
+        let suite = "ListeningToolsTests." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertTrue(settings.openToNowPlaying)
+        settings.openToNowPlaying = false
+        XCTAssertFalse(AppSettings(defaults: defaults).openToNowPlaying, "survives a relaunch")
+    }
 }

@@ -105,6 +105,13 @@ final class PlayerEngine {
     var bookRemaining: TimeInterval { max(0, bookDuration - bookElapsed) }
     var bookFraction: Double { bookDuration > 0 ? min(1, bookElapsed / bookDuration) : 0 }
     var hasBook: Bool { book != nil }
+    /// The book in the player is playing, or was played recently enough to pick up again — see
+    /// `isRecentlyPlayed`. Opening Earmark then goes to Now Playing.
+    var wasRecentlyPlayed: Bool {
+        guard let book else { return false }
+        return Self.isRecentlyPlayed(isPlaying: isPlaying, progress: library.progress(for: book.id),
+                                     hasUpNext: upNext != nil, now: .now)
+    }
 
     var queueKeys: [String] { settings.queueKeys }
     func queuedBook(for key: String) -> Book? { library.visibleBooks.first { $0.syncKey == key } }
@@ -435,6 +442,17 @@ final class PlayerEngine {
         case ..<7200: 15
         default: 30
         }
+    }
+
+    /// How long after listening a book still counts as the one you're in the middle of.
+    nonisolated static let recentListeningWindow: TimeInterval = 2 * 60 * 60
+
+    /// Playing, or last played within `recentListeningWindow` with more to hear — or finished with
+    /// an Up Next offer waiting. A finished book with nothing next isn't one to press play on.
+    nonisolated static func isRecentlyPlayed(isPlaying: Bool, progress: PlaybackProgress, hasUpNext: Bool, now: Date) -> Bool {
+        if isPlaying { return true }
+        guard let last = progress.lastPlayedAt, now.timeIntervalSince(last) < recentListeningWindow else { return false }
+        return !progress.isFinished || hasUpNext
     }
 
     // MARK: - Seeking

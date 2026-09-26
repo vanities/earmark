@@ -29,7 +29,8 @@ own sandbox, and interrupt you with donation screens. Earmark does none of that:
   books or stray copies so you can reclaim space — deletion always asks first.
 - **A player that just works.** Big skip back/forward (configurable), 0.5–3× speed with
   natural pitch, chapters, sleep timer (including "end of chapter"), smart rewind after a
-  pause, per-book speed memory, lock screen and Control Center controls.
+  pause, per-book speed memory, lock screen and Control Center controls. Open Earmark within a
+  couple of hours of listening and it's on Now Playing, ready to play (a setting, on by default).
 - **NAS support.** Add an SMB share (Unraid, Synology, any file server) as a library folder.
   Remote books show a **Remote** badge, stream while you're on the NAS's network, and can be
   downloaded to the phone with one tap; the local copy then takes over automatically.
