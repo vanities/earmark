@@ -119,3 +119,12 @@ testers, with notes attached. Earmark cloud builds 51 and 52 compiled/exported b
 App Store Connect preparation. Direct upload of cloud-signed build 52 exposed the actual
 validation error: approved version 0.1.0's pre-release train is closed (90062/90186). The
 feature release now uses marketing version 0.2.0 for both app and widget.
+
+## App Review submission
+
+Earmark 0.2.0 build 53 (runtime source `b973a2d`) was processed as VALID, attached to
+the 0.2.0 App Store version, and submitted on 2026-09-27 at 19:38:15 UTC. App Store
+Connect confirmed both submission and version are WAITING_FOR_REVIEW. Existing three
+screenshots and review contact were retained, What's New was updated, and the existing
+AFTER_APPROVAL release policy was preserved. This is submission confirmation, not approval.
+Evidence: `/tmp/earmark-020-submission-result.json`, `/tmp/earmark-020-submission.log`.

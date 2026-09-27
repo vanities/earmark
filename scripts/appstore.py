@@ -26,7 +26,7 @@ spec = importlib.util.spec_from_file_location("tf", ROOT / "testflight.py")
 tf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tf)  # type: ignore[union-attr]
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 LOCALE = "en-US"
 SITE = "https://am2.biz/earmark"
 
@@ -58,7 +58,7 @@ No accounts, no analytics, no ads, no donation screens. Earmark is free and open
 
 Supported formats: MP3, M4A, M4B, AAC, WAV, AIFF, CAF, FLAC.""",
     "keywords": "audiobook,audiobooks,player,mp3,m4b,nas,smb,carplay,chapters,folders,offline,library,speed",
-    "whatsNew": "First release.",
+    "whatsNew": "Prepare books for offline listening, reconnect moved libraries, back up your library state, save smart lists, browse new arrivals, arrange book groupings, and apply listening presets. Also fixes a crash after a NAS network timeout.",
     "copyright": "2026 AM2 LLC",
     "supportUrl": f"{SITE}/support",
     "marketingUrl": SITE,
