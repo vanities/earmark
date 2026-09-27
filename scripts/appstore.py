@@ -31,34 +31,42 @@ LOCALE = "en-US"
 SITE = "https://am2.biz/earmark"
 
 COPY = {
-    "subtitle": "Your audiobooks, your files",
-    "promotionalText": "Plays the audiobooks you already have, right where they are. No accounts, no ads, no tip jar.",
-    "description": """Earmark is an audiobook player for people with folders full of MP3s and M4Bs.
+    "subtitle": "MP3, M4B & offline listening",
+    "promotionalText": "Your audiobook collection, ready for the next chapter. Listen from Files or your NAS, save books for offline trips, and make every book feel at home.",
+    "description": """Your audiobooks. Your files. Your place in the story.
 
-PLAYS YOUR FILES WHERE THEY ARE
-Point Earmark at a folder in Files, iCloud Drive, or another app and it plays from there. Listening leaves your original files in place. Downloads, moves into Earmark and uploads to your NAS happen only when you request them. Your library stays yours.
+Earmark brings your MP3s, M4Bs and other audio files into a personal audiobook library. Listen from folders in Files or iCloud Drive, stream from your NAS, or download books for offline listening. No account, subscription or ads.
 
-ORGANIZED AUTOMATICALLY
-A folder of MP3s is a book, every M4B is a book with its chapters, Disc 1 and Disc 2 folders merge, and Author / Series / Book folder names or tags fill in the rest. Browse by author, series, or folder, or search everything.
+SETTLE INTO A GOOD BOOK
+• Adjust playback from 0.5x to 3x with natural pitch and a speed remembered for each book.
+• Jump between chapters, skip back or forward, and save bookmarks.
+• Fall asleep with a timer, including an end-of-chapter option.
+• Pick up the thread with smart rewind after a pause.
+• Control playback from the lock screen and CarPlay's Now Playing screen.
+• Save listening presets for the way you like to listen.
 
-FIND DUPLICATES
-Every file is fingerprinted by content, so the same book sitting in two places is found even when the names differ. Nothing is deleted without asking.
+A SHELF THAT MAKES SENSE
+Browse by author, series or folder, and search your collection. Earmark uses file tags and folder names to group tracks into books, including multi-disc folders. Find duplicates, adjust book groupings, and put tracks in the right order. Save smart lists and see new arrivals without losing your place.
 
-A PLAYER BUILT FOR LONG BOOKS
-• 0.5x to 3x speed with natural pitch, remembered per book
-• Chapters, 15 and 30 second skips, sleep timer with end-of-chapter
-• Smart rewind: back up a few seconds after a pause so you catch the thread
-• Lock screen and CarPlay Now Playing controls
+AT HOME OR ON THE ROAD
+Connect an SMB share to browse your NAS alongside local books. Stream while your server is reachable, or prepare books for an offline trip. Reconnect a moved library and back up your library state to keep your organization and listening progress safe.
 
-YOUR NAS, ON YOUR SHELF
-Add an SMB share and its books appear alongside local ones with a Remote badge. Stream while you are on your home network, download a book to keep it on your phone, or Sync from NAS to fetch everything you do not have yet. If the server is unreachable, Earmark says so.
+YOUR COLLECTION STAYS YOURS
+Playing a book leaves its audio files where they are. Downloads, moves into Earmark and uploads to your NAS happen only when you request them. Bring your own audiobooks; no catalog or books are included.
 
-NO TIP JAR
-No accounts, no analytics, no ads, no donation screens. Earmark is free and open source (GPL-3.0). Read the code at github.com/vanities/earmark.
+Free and open source. No analytics, donation prompts or rating nags.
+Source code: github.com/vanities/earmark
 
-Supported formats: MP3, M4A, M4B, AAC, WAV, AIFF, CAF, FLAC.""",
-    "keywords": "audiobook,audiobooks,player,mp3,m4b,nas,smb,carplay,chapters,folders,offline,library,speed",
-    "whatsNew": "Prepare books for offline listening, reconnect moved libraries, back up your library state, save smart lists, browse new arrivals, arrange book groupings, and apply listening presets. Also fixes a crash after a NAS network timeout.",
+Supported audio: MP3, M4A, M4B, AAC, WAV, AIFF, CAF and FLAC.""",
+    "keywords": "player,nas,smb,carplay,chapters,sleep,timer,bookmarks,speed,folders,library,flac,wav,aac",
+    "whatsNew": """More ways to make your library your own:
+• Prepare books for offline trips.
+• Reconnect moved libraries and back up your library state.
+• Save smart lists and browse new arrivals.
+• Combine, split and reorder book groupings, with undo.
+• Save and apply listening presets.
+
+Also fixes a crash after a NAS network timeout.""",
     "copyright": "2026 AM2 LLC",
     "supportUrl": f"{SITE}/support",
     "marketingUrl": SITE,

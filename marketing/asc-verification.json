@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-09-27T23:21:16.865425+00:00",
+  "appID": "6808821106",
+  "version": "0.2.0",
+  "build": "53",
+  "state": "WAITING_FOR_REVIEW",
+  "releaseType": "AFTER_APPROVAL",
+  "locale": "en-US",
+  "copyMatchesSource": true,
+  "subtitle": "MP3, M4B & offline listening",
+  "screenshotSets": [
+    {
+      "displayType": "APP_IPHONE_67",
+      "screenshots": [
+        {
+          "file": "iphone/01-player.png",
+          "ascFileName": "2026-09-01-player.png",
+          "state": "COMPLETE",
+          "md5": "e8f3959d18397f77990a2943bca71bfd",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/02-chapters.png",
+          "ascFileName": "2026-09-02-chapters.png",
+          "state": "COMPLETE",
+          "md5": "889acba175ae208fafa602dda87a8dd4",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/03-sleep.png",
+          "ascFileName": "2026-09-03-sleep.png",
+          "state": "COMPLETE",
+          "md5": "adc7d4d31eed8e8e8db818852359580d",
+          "width": 1320,
+          "height": 2868
+        }
+      ]
+    }
+  ]
+}

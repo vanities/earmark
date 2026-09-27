@@ -1,0 +1,85 @@
+{
+  "brand": "Earmark",
+  "sets": {
+    "iphone": [
+      {
+        "raw": "player.png",
+        "headline": [
+          "A good book.",
+          "Your kind of player."
+        ],
+        "subtitle": [
+          "Chapters, speed and sleep timers."
+        ],
+        "tilt": 0,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      },
+      {
+        "raw": "chapters.png",
+        "headline": [
+          "Find your place.",
+          "Stay in the story."
+        ],
+        "subtitle": [
+          "Chapter navigation, made simple."
+        ],
+        "tilt": 0,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      },
+      {
+        "raw": "sleep.png",
+        "headline": [
+          "One more chapter.",
+          "Then goodnight."
+        ],
+        "subtitle": [
+          "A sleep timer for long stories."
+        ],
+        "tilt": 3,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      }
+    ]
+  }
+}
