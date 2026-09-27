@@ -101,3 +101,21 @@ The app stayed alive and playback advanced after restoration (`/tmp/earmark-netw
 Full app reruns with the dependency patch passed: Earmark 202 and Mango 293 tests
 (`/tmp/earmark-timeout-fix-tests.log`, `/tmp/mango-timeout-fix-tests.log`). The subsequent
 capture-only cleanup built without compiler warnings (`/tmp/earmark-capture-fix-build.log`).
+
+## Download recovery and release preparation
+
+Force-quit recovery passed in both simulator apps: Earmark resumed a 460,800,044-byte
+WAV and Mango a 367,061,310-byte CBZ from persisted running jobs and partial files.
+Both completed files matched the source SHA-256 hashes. Evidence:
+`/tmp/earmark-download-relaunch-result.json`, `/tmp/mango-download-relaunch-result.json`.
+
+The physical Earmark lifecycle harness could not activate its audio session. A follow-up
+native UI test was blocked at runner initialization by "Authentication canceled. Canceled
+by user." Physical background playback and real OS interruptions therefore remain unverified;
+the isolated device QA app and runner were removed.
+
+Mango build 71 (`bc88b30`) was confirmed VALID and IN_BETA_TESTING for internal and external
+testers, with notes attached. Earmark cloud builds 51 and 52 compiled/exported but failed
+App Store Connect preparation. Direct upload of cloud-signed build 52 exposed the actual
+validation error: approved version 0.1.0's pre-release train is closed (90062/90186). The
+feature release now uses marketing version 0.2.0 for both app and widget.

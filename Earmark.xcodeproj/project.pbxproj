@@ -1017,7 +1017,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Earmark/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark;
 				PRODUCT_NAME = Earmark;
 				SDKROOT = iphoneos;
@@ -1126,7 +1126,7 @@
 				INFOPLIST_FILE = EarmarkWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Earmark;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark.widgets;
 				PRODUCT_NAME = EarmarkWidgets;
 				SDKROOT = iphoneos;
@@ -1212,7 +1212,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Earmark/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark;
 				PRODUCT_NAME = Earmark;
 				SDKROOT = iphoneos;
@@ -1233,7 +1233,7 @@
 				INFOPLIST_FILE = EarmarkWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Earmark;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark.widgets;
 				PRODUCT_NAME = EarmarkWidgets;
 				SDKROOT = iphoneos;
