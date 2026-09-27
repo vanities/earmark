@@ -10,13 +10,13 @@ options:
 
 packages:
   AMSMB2:
-    url: https://github.com/amosavian/AMSMB2.git
-    from: 4.0.3
+    url: https://github.com/vanities/AMSMB2.git
+    exactVersion: 4.0.4
   # Plumbing shared with Mango (github.com/vanities/shelfkit). Pinned: move to a new tag
   # when it's been tested here, never automatically.
   ShelfKit:
     url: https://github.com/vanities/shelfkit.git
-    exactVersion: 0.13.0
+    exactVersion: 0.13.1
 
 settings:
   base:

@@ -75,3 +75,29 @@ The paired phone required its passcode during this follow-through. Physical back
 audio, actual OS interruptions, network-loss streaming and force-quit download recovery
 remain unverified in this run. Earlier physical Live Text/highlight results above remain
 valid. This limitation does not block preparing beta builds for further testing.
+
+## Endurance follow-up and SMB timeout regression
+
+Generated audio continued in the simulator background: 54 seconds of playback advancement
+across 57 seconds on the Home screen (`/tmp/earmark-background-result.json`). This is a
+simulator result, not physical-device background evidence.
+
+Pausing the disposable SMB fixture server during playback, then restoring it, crashed the
+old dependency in `SMB2Client.generic_handler`. A focused macOS test reproduced the crash
+before the fix. AMSMB2 retained a callback pointer beyond the lifetime of the Swift stack
+storage after a timeout. The maintenance fork keeps the pointer valid throughout the wait
+and destroys failed contexts before that storage expires. Both echo and file-open timeout
+regressions pass in Debug and Release, with reconnect, directory listing and ranged-read
+checks (`/tmp/amsmb2-timeout-red.log`, `/tmp/amsmb2-timeout-green4.log`,
+`/tmp/amsmb2-timeout-release.log`). Both apps pin this shared fix. ShelfKit's full 78-test suite also passed against the
+460.8 MB SMB fixture with the patched dependency (`/tmp/shelfkit-timeout-fix-tests.log`).
+
+Dependency patch and repeatable Docker test instructions:
+https://github.com/vanities/AMSMB2/blob/4.0.4/PATCHES.md
+
+The original simulator streaming interruption was repeated with AMSMB2 4.0.4: pause
+server, skip forward, leave it unavailable beyond the 15-second timeout, restore server.
+The app stayed alive and playback advanced after restoration (`/tmp/earmark-network-fixed-ui.txt`).
+Full app reruns with the dependency patch passed: Earmark 202 and Mango 293 tests
+(`/tmp/earmark-timeout-fix-tests.log`, `/tmp/mango-timeout-fix-tests.log`). The subsequent
+capture-only cleanup built without compiler warnings (`/tmp/earmark-capture-fix-build.log`).
