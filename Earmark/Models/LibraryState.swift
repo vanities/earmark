@@ -8,6 +8,8 @@ import ShelfKit
 /// (Synthesized `Codable` does *not* do this — a missing key fails the whole document, and
 /// that once cost a test library its NAS server and progress.)
 struct LibraryState: Codable, Sendable {
+    var manualGroupings: [ManualGrouping] = []
+    var tools = LibraryToolsState()
     var schemaVersion = 1
     var sources: [LibrarySource] = []
     var books: [Book] = []
@@ -54,7 +56,8 @@ struct LibraryState: Codable, Sendable {
 
     /// User state worth protecting: anything beyond the always-present Documents source.
     var hasUserData: Bool {
-        !progress.isEmpty || !nasServers.isEmpty || !customArtwork.isEmpty || !coverChoices.isEmpty
+        !tools.smartShelves.isEmpty || !bookmarks.isEmpty || !bookLists.isEmpty || !manualGroupings.isEmpty
+            || !progress.isEmpty || !nasServers.isEmpty || !customArtwork.isEmpty || !coverChoices.isEmpty
             || sources.contains { $0.kind != .appDocuments }
     }
 
@@ -64,6 +67,11 @@ struct LibraryState: Codable, Sendable {
     /// progress, hidden flags, chosen covers. Books are intentionally not merged: they are rederived
     /// by the next scan once their source is back.
     mutating func merge(restoring old: LibraryState) {
+        let shelfIDs = Set(tools.smartShelves.map(\.id))
+        tools.smartShelves.append(contentsOf: old.tools.smartShelves.filter { !shelfIDs.contains($0.id) })
+        let groupedSources = Set(manualGroupings.map(\.sourceID))
+        manualGroupings.append(contentsOf: old.manualGroupings.filter { !groupedSources.contains($0.sourceID) })
+
         // The Documents source is a singleton created fresh on each install (its id differs), so it is
         // never restored — only real added sources (a folder or a NAS share) can go missing.
         let sourceIDs = Set(sources.map(\.id))
@@ -93,7 +101,7 @@ struct LibraryState: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks, bookLists, sessions
+        case manualGroupings, tools, schemaVersion, sources, books, progress, hiddenBookIDs, lastBookID, nasServers, customArtwork, coverChoices, writtenCovers, metadataOverrides, bookmarks, readingLog, deletedBookmarks, bookLists, sessions
     }
 
     /// Fields older builds wrote that now live elsewhere; read once, never written.
@@ -104,6 +112,8 @@ struct LibraryState: Codable, Sendable {
 
     init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        manualGroupings = try c.decodeIfPresent([ManualGrouping].self, forKey: .manualGroupings) ?? []
+        tools = try c.decodeIfPresent(LibraryToolsState.self, forKey: .tools) ?? LibraryToolsState()
         schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         sources = try c.decodeIfPresent([LibrarySource].self, forKey: .sources) ?? []
         books = try c.decodeIfPresent([Book].self, forKey: .books) ?? []

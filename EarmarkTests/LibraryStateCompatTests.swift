@@ -1,9 +1,21 @@
 import XCTest
+import ShelfKit
 @testable import Earmark
 
 /// Old library files must keep decoding when a build adds fields — and a file an older build
 /// moved aside as "corrupt" must be recovered once the decoder understands it again.
 final class LibraryStateCompatTests: XCTestCase {
+    func testLibraryToolsDecodeOlderStateAndRoundTrip() throws {
+        let old = try JSONDecoder().decode(LibraryState.self, from: Data("{}".utf8))
+        XCTAssertTrue(old.tools.smartShelves.isEmpty)
+        XCTAssertTrue(old.tools.arrivals.isEmpty)
+        var state = old
+        state.tools.smartShelves = [SmartShelf(name: "Trip", rule: .downloadedUnfinished)]
+        let decoded = try JSONDecoder().decode(LibraryState.self, from: JSONEncoder().encode(state))
+        XCTAssertEqual(decoded.tools.smartShelves.first?.name, "Trip")
+        XCTAssertTrue(old.manualGroupings.isEmpty)
+    }
+
     /// A library.json as written before `customArtwork` (and, earlier, `nasServers`) existed.
     private let legacyJSON = """
     {"books":[],"hiddenBookIDs":[],"progress":{"src|Book|k":{"isFinished":false,"time":42.5,"trackIndex":1}},

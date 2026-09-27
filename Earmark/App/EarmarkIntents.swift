@@ -77,6 +77,9 @@ struct PlayBookIntent: AudioPlaybackIntent {
 
 struct EarmarkShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: BookmarkListeningIntent(), phrases: ["Bookmark this in \(.applicationName)"], shortTitle: "Bookmark This Spot", systemImageName: "bookmark")
+        AppShortcut(intent: ListeningSleepIntent(), phrases: ["Set a sleep timer in \(.applicationName)"], shortTitle: "Sleep Timer", systemImageName: "moon")
+        AppShortcut(intent: ApplyListeningPresetIntent(), phrases: ["Apply a listening preset in \(.applicationName)"], shortTitle: "Listening Preset", systemImageName: "slider.horizontal.3")
         AppShortcut(
             intent: ResumeListeningIntent(),
             phrases: [
@@ -95,5 +98,48 @@ struct EarmarkShortcuts: AppShortcutsProvider {
             shortTitle: "Play Audiobook",
             systemImageName: "book.fill"
         )
+    }
+}
+
+enum ListeningPresetChoice: String, AppEnum {
+    case driving, bedtime
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Listening preset"
+    static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [.driving: "Driving", .bedtime: "Bedtime"]
+}
+
+struct ApplyListeningPresetIntent: AppIntent {
+    static let title: LocalizedStringResource = "Apply Listening Preset"
+    @Parameter(title: "Preset") var preset: ListeningPresetChoice
+    @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        let env = AppEnvironment.shared
+        guard env.player.book != nil else { return .result(dialog: "Open an audiobook first.") }
+        guard let value = env.settings.listeningPresets.first(where: { $0.id == preset.rawValue }) else {
+            return .result(dialog: "That preset is unavailable.")
+        }
+        env.player.applyPreset(value)
+        return .result(dialog: "Applied \(value.name).")
+    }
+}
+
+struct BookmarkListeningIntent: AppIntent {
+    static let title: LocalizedStringResource = "Bookmark This Spot"
+    @Parameter(title: "Note", default: "") var note: String
+    @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        let env = AppEnvironment.shared
+        guard let book = env.player.book else { return .result(dialog: "Open an audiobook first.") }
+        env.library.addBookmark(for: book, offset: env.player.bookElapsed, note: note)
+        return .result(dialog: "Bookmark saved.")
+    }
+}
+
+struct ListeningSleepIntent: AppIntent {
+    static let title: LocalizedStringResource = "Set Sleep Timer"
+    @Parameter(title: "Minutes", default: 20) var minutes: Int
+    @MainActor func perform() async throws -> some IntentResult & ProvidesDialog {
+        let player = AppEnvironment.shared.player
+        guard player.book != nil else { return .result(dialog: "Open an audiobook first.") }
+        guard (1...180).contains(minutes) else { throw $minutes.needsValueError("Choose 1 to 180 minutes.") }
+        player.setSleepTimer(.duration(Double(minutes * 60)))
+        return .result(dialog: "Sleep timer set for \(minutes) minutes.")
     }
 }

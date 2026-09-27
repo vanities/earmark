@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PlayerView: View {
     enum Sheet: Identifiable {
-        case speed, sleep, chapters, bookmarks, queue
+        case speed, sleep, chapters, bookmarks, queue, presets
         var id: Self { self }
     }
 
@@ -27,6 +27,7 @@ struct PlayerView: View {
                 if let book = player.book {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
+                            Button("Listening presets…", systemImage: "slider.horizontal.3") { sheet = .presets }
                             Button("Add Bookmark", systemImage: "bookmark") {
                                 _ = library.addBookmark(for: book, offset: player.bookElapsed)
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -45,6 +46,7 @@ struct PlayerView: View {
         }
         .sheet(item: $sheet) { which in
             switch which {
+            case .presets: NavigationStack { ListeningPresetsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { sheet = nil } } } }
             case .speed: SpeedSheet().presentationDetents([.height(360)])
             case .sleep: SleepTimerSheet().presentationDetents([.medium, .large])
             case .chapters: ChapterListSheet().presentationDetents([.medium, .large])

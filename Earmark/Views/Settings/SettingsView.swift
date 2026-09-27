@@ -12,6 +12,8 @@ struct SettingsView: View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
+                Section("Library tools") { NavigationLink("Library tools") { LibraryToolsView() } }
+                Section("Presets") { NavigationLink("Listening presets") { ListeningPresetsView() } }
                 Section("Skip") {
                     Picker("Skip Back", selection: $settings.skipBackInterval) {
                         ForEach(AppSettings.skipIntervalChoices, id: \.self) { seconds in

@@ -39,6 +39,9 @@ final class AppSettings {
 
     var skipBackInterval: TimeInterval { didSet { defaults.set(skipBackInterval, forKey: Key.skipBack) } }
     var skipForwardInterval: TimeInterval { didSet { defaults.set(skipForwardInterval, forKey: Key.skipForward) } }
+    var listeningPresets: [ListeningPreset] {
+        didSet { if let data = try? JSONEncoder().encode(listeningPresets) { defaults.set(data, forKey: "playback.presets") } }
+    }
     var bedtimeBookmarks: Bool { didSet { defaults.set(bedtimeBookmarks, forKey: "playback.bedtimeBookmarks") } }
     var autoplayQueue: Bool { didSet { defaults.set(autoplayQueue, forKey: "playback.autoplayQueue") } }
     var queueKeys: [String] { didSet { defaults.set(queueKeys, forKey: "playback.queue") } }
@@ -75,6 +78,7 @@ final class AppSettings {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        listeningPresets = defaults.data(forKey: "playback.presets").flatMap { try? JSONDecoder().decode([ListeningPreset].self, from: $0) } ?? ListeningPreset.defaults
         skipBackInterval = defaults.object(forKey: Key.skipBack) as? TimeInterval ?? 15
         skipForwardInterval = defaults.object(forKey: Key.skipForward) as? TimeInterval ?? 30
         bedtimeBookmarks = defaults.object(forKey: "playback.bedtimeBookmarks") as? Bool ?? true

@@ -12,6 +12,7 @@ struct LibraryView: View {
     @State private var searchText = ""
     @State private var showImporter = false
     @State private var showingLists = false
+    @State private var showingTools = false
     @State private var showingOffline = false
     @State private var showingBookmarks = false
     @State private var showingQueue = false
@@ -36,7 +37,8 @@ struct LibraryView: View {
                 .navigationDestination(for: Book.self) { book in
                     BookDetailView(book: book, openPlayer: openPlayer)
                 }
-                .sheet(isPresented: $showingOffline) { OfflineLibraryView() }
+                .sheet(isPresented: $showingTools) { NavigationStack { LibraryToolsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingTools = false } } } } }
+            .sheet(isPresented: $showingOffline) { OfflineLibraryView() }
                 .sheet(isPresented: $showingBookmarks) { BookmarkSearchView() }
                 .navigationDestination(isPresented: $showingLists) { ListsView() }
                 .navigationDestination(for: LibraryGroup.self) { group in
@@ -131,7 +133,8 @@ struct LibraryView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
-                Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
+                Button("Library tools…", systemImage: "suitcase") { showingTools = true }
+                        Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
                 Divider()
                 Button("Listening queue…", systemImage: "list.bullet") { showingQueue = true }
                 Divider()

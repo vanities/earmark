@@ -183,12 +183,42 @@ copy `.env.appstore-connect.example` to `.env.appstore-connect`, point it at an 
 API key, and use `scripts/testflight.py` (`status`, `ensure-group`, `wait`, `notes`). Internal
 testers in a group with "all builds" access get each upload automatically.
 
+## Library tools
+
+Library's menu and Settings open the same tools:
+
+- **Prepare for a trip:** select books, a saved list, Continue Listening or the playback queue,
+  review the total size, download the selection, then verify its files after transfers finish.
+- **Smart lists:** saved rules for downloaded unfinished books, books untouched for 30 days,
+  and books with under two hours remaining at their playback speed.
+- **New arrivals:** books found after a source's initial scan, with selected downloads and
+  Mark All Seen. An existing book's downloaded copy is not a new arrival.
+- **Backup and restore:** a portable JSON file with progress, bookmarks, notes, lists,
+  corrections and chosen cover images. Restore previews path/size matches, keeps current
+  values on conflicts, and skips unmatched books. Add media sources first on a new device;
+  audio, security-scoped folder permissions and NAS passwords are not restored.
+  Saved book arrangements are recovered before matching progress when the receiving
+  library has matching files and no conflicting arrangement or listener state.
+- **Reconnect a folder:** choose an existing source and its new folder in Files. Preview
+  relative filenames and sizes before reconnecting with the same source identity. Every
+  known item must match; this is not a content-hash comparison. A NAS source reconnected
+  through Files becomes a Files-managed folder.
+  Native NAS reconnect also changes the host, share or root folder with the saved login,
+  previews remote directory listings, and preserves SMB streaming and downloads.
+- **Arrange books and tracks:** combine selected books, reorder tracks, or split before a
+  track. Apply the preview to save a device-local arrangement; Undo restores the previous
+  arrangement. Positions, bookmarks, corrections and lists follow track identity. Files and
+  tags stay untouched. Playback unloads before applying, and transfers/scans must finish first.
+
+**Listening presets** in Settings and Now Playing's menu customize Driving and Bedtime:
+playback speed, quiet-voice boost, volume boost, silence skipping and sleep timer. Applying
+one changes the loaded book without starting playback. Shortcuts also exposes Apply Listening
+Preset, Bookmark This Spot (with an optional note), and Set Sleep Timer.
+
 ## Roadmap
 
-- Bonjour discovery of SMB servers and per-server "download everything new".
-- Per-folder overrides ("treat as one book" / "split by album") for messy folders.
+- Bonjour discovery of SMB servers and per-server opt-in downloads of new books.
 - iCloud Drive download management for not-yet-downloaded books.
-- Bookmarks and notes within a book.
 - Import listening progress from other players.
 
 ## Architecture in one paragraph

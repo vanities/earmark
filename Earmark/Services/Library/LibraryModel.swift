@@ -15,11 +15,11 @@ final class LibraryModel {
         case failed(String)
     }
 
-    private(set) var sources: [LibrarySource] = []
-    private(set) var books: [Book] = []
-    private(set) var progress: [String: PlaybackProgress] = [:]
-    private(set) var hiddenBookIDs: Set<String> = []
-    private(set) var lastBookID: String?
+    var sources: [LibrarySource] = []
+    var books: [Book] = []
+    var progress: [String: PlaybackProgress] = [:]
+    var hiddenBookIDs: Set<String> = []
+    var lastBookID: String?
     private(set) var scanStatus: [UUID: ScanStatus] = [:]
     private(set) var unsupportedFiles: [UUID: [String]] = [:]
     // Duplicate state is changed only by LibraryModel+Duplicates (and `removeSource`), NAS state
@@ -36,12 +36,14 @@ final class LibraryModel {
     @ObservationIgnored var writtenCovers: [String: String] = [:]
     /// "bookID|artworkID" cover downloads tried this launch, so a dead URL isn't retried on every scan.
     @ObservationIgnored var coverDownloadsAttempted: Set<String> = []
-    private(set) var metadataOverrides: [String: BookMetadataOverride] = [:]
-    private(set) var bookmarks: [String: [Bookmark]] = [:]
-    @ObservationIgnored private(set) var deletedBookmarks = Tombstones()
+    var metadataOverrides: [String: BookMetadataOverride] = [:]
+    var bookmarks: [String: [Bookmark]] = [:]
+    @ObservationIgnored var deletedBookmarks = Tombstones()
     /// NAS books whose download just finished, until the scan that finds the download (`noteDownloaded`).
     @ObservationIgnored private var justDownloaded: Set<String> = []
     /// The user's own lists (LibraryModel+Lists).
+    var manualGroupings: [ManualGrouping] = []
+    var tools = LibraryToolsState()
     var bookLists: [BookList] = []
     /// Books finished outside the app: changed only by LibraryModel+History and the iCloud merge.
     var readingLog: [ReadingLogEntry] = []
@@ -67,9 +69,10 @@ final class LibraryModel {
     @ObservationIgnored let store: LibraryStore
     @ObservationIgnored let settings: AppSettings
     @ObservationIgnored private let scanner: LibraryScanner
-    @ObservationIgnored private var resolvedRoots: [UUID: URL] = [:]
+    @ObservationIgnored var resolvedRoots: [UUID: URL] = [:]
     @ObservationIgnored private var scanTasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var persistenceTask: Task<Void, Never>?
     /// LibraryModel+Duplicates' cache of file fingerprints, loaded on first use.
     @ObservationIgnored var fingerprints: [String: FileFingerprint] = [:]
     @ObservationIgnored var fingerprintsLoaded = false
@@ -103,6 +106,8 @@ final class LibraryModel {
         metadataOverrides = state.metadataOverrides
         bookmarks = state.bookmarks
         deletedBookmarks = state.deletedBookmarks
+        manualGroupings = state.manualGroupings
+        tools = state.tools
         bookLists = state.bookLists
         readingLog = state.readingLog
         sessions = state.sessions
@@ -140,7 +145,7 @@ final class LibraryModel {
             break // no local root; see `client(forServer:)`
         case .folder, .file:
             guard let data = source.bookmark else {
-                setSourceError(source.id, "Missing bookmark. Remove this folder and add it again.")
+                setSourceError(source.id, "Missing bookmark. Reconnect this folder in Library tools.")
                 return
             }
             do {
@@ -155,7 +160,7 @@ final class LibraryModel {
                 }
             } catch {
                 Logger.bookmarks.error("[bookmark] resolve failed for \(source.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
-                setSourceError(source.id, "This folder isn't reachable anymore. Remove it and add it again.")
+                setSourceError(source.id, "This folder isn't reachable anymore. Reconnect it in Library tools.")
             }
         }
     }
@@ -251,6 +256,7 @@ final class LibraryModel {
         }
         books.removeAll { $0.sourceID == id }
         sources.removeAll { $0.id == id }
+        rehomeGroupings(removing: id)
         scanStatus[id] = nil
         unsupportedFiles[id] = nil
         duplicateGroups = []
@@ -320,7 +326,8 @@ final class LibraryModel {
 
     private func apply(_ result: ScanResult, for sourceID: UUID) {
         let existing = Dictionary(books.filter { $0.sourceID == sourceID }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let updated = result.books.map { book -> Book in
+        let grouped = manualGroupings.filter { $0.applies(to: sourceID) }.reduce(result.books) { $1.applied(to: $0, source: sourceID) }
+        let updated = grouped.map { book -> Book in
             var book = book
             if let custom = customArtwork[book.id], ArtworkStore.shared.hasImage(id: custom) {
                 book.artworkID = custom
@@ -334,6 +341,8 @@ final class LibraryModel {
             }
             return book
         }
+        tools.recordScan(source: sourceID, keys: Set(updated.map(\.syncKey)), previousKeys: Set(books.map(\.syncKey)),
+                         hadPreviousScan: sources.first(where: { $0.id == sourceID })?.lastScanAt != nil)
         let added = updated.filter { existing[$0.id] == nil }.count
         let removed = existing.count - (updated.count - added)
         if sources.first(where: { $0.id == sourceID })?.kind == .appDocuments {
@@ -551,21 +560,19 @@ final class LibraryModel {
     // MARK: - Persistence
 
     func save() { persist(pushCloud: true) }
-
     private func persist(pushCloud: Bool) {
         saveTask?.cancel()
         saveTask = nil
-        var state = LibraryState(sources: sources, books: books, progress: progress, hiddenBookIDs: hiddenBookIDs, lastBookID: lastBookID, nasServers: nasServers, customArtwork: customArtwork, coverChoices: coverChoices, writtenCovers: writtenCovers, metadataOverrides: metadataOverrides, bookmarks: bookmarks, readingLog: readingLog)
-        state.deletedBookmarks = deletedBookmarks
-        state.bookLists = bookLists
-        state.sessions = sessions
+        let state = snapshot()
         let store = self.store
-        Task.detached(priority: .utility) {
-            do {
-                try store.saveLibrary(state)
-            } catch {
-                Logger.store.error("[store] save failed: \(error.localizedDescription, privacy: .public)")
-            }
+        let previous = persistenceTask
+        persistenceTask = Task {
+            await previous?.value
+            await Task.detached(priority: .utility) {
+                do { try store.saveLibrary(state) } catch {
+                    Logger.store.error("[store] save failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }.value
         }
         if pushCloud { pushToCloud() }
     }
@@ -618,7 +625,7 @@ final class LibraryModel {
 
     /// Overlays the user's saved corrections onto every book in place. Called after each scan so
     /// corrections win over detection but never fight the metadata cache.
-    private func applyMetadataOverrides() {
+    func applyMetadataOverrides() {
         guard !metadataOverrides.isEmpty else { return }
         for index in books.indices {
             if let override = metadataOverrides[books[index].id] {

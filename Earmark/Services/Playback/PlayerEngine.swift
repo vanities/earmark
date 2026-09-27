@@ -628,6 +628,17 @@ final class PlayerEngine {
         notify()
     }
 
+    func applyPreset(_ preset: ListeningPreset) {
+        guard book != nil else { return }
+        settings.boostQuietVoices = preset.boostQuiet
+        settings.volumeBoost = preset.volumeBoost
+        settings.skipSilence = preset.skipSilence
+        setSpeed(preset.speed)
+        applyPlaybackEffects()
+        setSleepTimer(preset.sleepMinutes > 0 ? .duration(TimeInterval(preset.sleepMinutes * 60)) : .off)
+        Logger.player.info("[preset] applied \(preset.name, privacy: .public)")
+    }
+
     func setSpeed(_ value: Float) {
         let range = AppSettings.speedRange
         let clamped = (min(max(value, range.lowerBound), range.upperBound) * 100).rounded() / 100
