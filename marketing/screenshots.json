@@ -29,6 +29,32 @@
         ]
       },
       {
+        "raw": "library.png",
+        "headline": [
+          "Your books.",
+          "Beautifully organized."
+        ],
+        "subtitle": [
+          "Browse by author, series or title."
+        ],
+        "tilt": -2,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      },
+      {
         "raw": "chapters.png",
         "headline": [
           "Find your place.",
@@ -55,6 +81,58 @@
         ]
       },
       {
+        "raw": "bookmarks.png",
+        "headline": [
+          "Keep the moments",
+          "worth coming back to."
+        ],
+        "subtitle": [
+          "Save your place. Add a note."
+        ],
+        "tilt": 0,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      },
+      {
+        "raw": "speed.png",
+        "headline": [
+          "Set the pace.",
+          "Keep the voice."
+        ],
+        "subtitle": [
+          "Fine-tune speed with natural pitch."
+        ],
+        "tilt": -2,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      },
+      {
         "raw": "sleep.png",
         "headline": [
           "One more chapter.",
@@ -64,6 +142,32 @@
           "A sleep timer for long stories."
         ],
         "tilt": 3,
+        "top": [
+          30,
+          22,
+          14
+        ],
+        "bottom": [
+          83,
+          46,
+          24
+        ],
+        "accent": [
+          255,
+          194,
+          113
+        ]
+      },
+      {
+        "raw": "presets.png",
+        "headline": [
+          "From the commute",
+          "to the bedside."
+        ],
+        "subtitle": [
+          "Save your favorite listening settings."
+        ],
+        "tilt": 0,
         "top": [
           30,
           22,

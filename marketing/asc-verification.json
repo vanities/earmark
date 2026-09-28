@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-09-27T23:21:16.865425+00:00",
+  "verifiedAt": "2026-09-28T00:29:14.531240+00:00",
   "appID": "6808821106",
   "version": "0.2.0",
   "build": "53",
@@ -21,18 +21,50 @@
           "height": 2868
         },
         {
-          "file": "iphone/02-chapters.png",
-          "ascFileName": "2026-09-02-chapters.png",
+          "file": "iphone/02-library.png",
+          "ascFileName": "2026-09-02-library.png",
+          "state": "COMPLETE",
+          "md5": "bb6dfae6fbb81bc093b95ddb59d34bf1",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/03-chapters.png",
+          "ascFileName": "2026-09-03-chapters.png",
           "state": "COMPLETE",
           "md5": "889acba175ae208fafa602dda87a8dd4",
           "width": 1320,
           "height": 2868
         },
         {
-          "file": "iphone/03-sleep.png",
-          "ascFileName": "2026-09-03-sleep.png",
+          "file": "iphone/04-bookmarks.png",
+          "ascFileName": "2026-09-04-bookmarks.png",
+          "state": "COMPLETE",
+          "md5": "67a1baa6bdba7634473f55eeb4cc9590",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/05-speed.png",
+          "ascFileName": "2026-09-05-speed.png",
+          "state": "COMPLETE",
+          "md5": "8bcb2354adf106483223380b54fa781f",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/06-sleep.png",
+          "ascFileName": "2026-09-06-sleep.png",
           "state": "COMPLETE",
           "md5": "adc7d4d31eed8e8e8db818852359580d",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/07-presets.png",
+          "ascFileName": "2026-09-07-presets.png",
+          "state": "COMPLETE",
+          "md5": "6d0fd03ea9b0c836d0a0f1daa6028d21",
           "width": 1320,
           "height": 2868
         }

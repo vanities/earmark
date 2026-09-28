@@ -42,3 +42,18 @@ Apple blocks screenshot creation while waiting for review, so the existing
 submission was removed and resubmitted with the same 0.2.0 build 53. Automatic
 release after approval was preserved. See `asc-verification.json` for the final
 readback; Waiting for Review is not approval or public availability.
+
+## Expanded feature tour
+
+Seven iPhone frames now cover the player, organized library, chapters, named
+bookmarks, playback speed, sleep timer and listening presets. Light and dark mode
+captures show the app's native appearance. Additional demo audio uses silent AAC
+fixtures; no personal audio or library was used.
+
+Additional original artwork generated with the built-in image generation tool:
+
+`assets/time-machine-cover.png`:
+
+> Square original audiobook cover for the public domain novel with exact readable typography THE TIME MACHINE and H. G. WELLS. An intricate brass clock with concentric celestial rings, glowing amber light, deep midnight blue background, distant futuristic towers and stars. Elegant vintage scientific engraving and painterly poster style, detailed and beautiful. Flat full bleed cover, no device, no physical book mockup, no logos.
+
+Preview the complete sequence: [iPhone](previews/iphone.jpg).
