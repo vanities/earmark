@@ -43,6 +43,9 @@ submission was removed and resubmitted with the same 0.2.0 build 53. Automatic
 release after approval was preserved. See `asc-verification.json` for the final
 readback; Waiting for Review is not approval or public availability.
 
+Version 0.2.0 went live on the App Store on 2026-09-28:
+https://apps.apple.com/us/app/earmark-audiobooks/id6808821106 (app ID `6808821106`).
+
 ## Expanded feature tour
 
 Seven iPhone frames now cover the player, organized library, chapters, named
