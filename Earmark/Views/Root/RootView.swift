@@ -42,9 +42,7 @@ struct RootView: View {
             }
         }
         .environment(chrome)
-        .sheet(isPresented: $showPlayer) {
-            PlayerView()
-        }
+        .modifier(PlayerPresentation(isPresented: $showPlayer))
         // Add to List… from any book's menu, wherever it was opened.
         .sheet(item: Bindable(listPicking).book) { ListPickerView(book: $0) }
         // The phone's own scene phase, not the app's (CarPlay keeps that active). The lock draws
@@ -135,5 +133,22 @@ struct RootView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+    }
+}
+
+private struct PlayerPresentation: ViewModifier {
+    @Binding var isPresented: Bool
+
+    func body(content: Content) -> some View {
+#if IPHONE_DUO_LAYOUTS
+        if #available(iOS 27.1, *) {
+            // The player expands with the device instead of remaining in a phone-sized sheet.
+            content.fullScreenCover(isPresented: $isPresented) { PlayerView() }
+        } else {
+            content.sheet(isPresented: $isPresented) { PlayerView() }
+        }
+#else
+        content.sheet(isPresented: $isPresented) { PlayerView() }
+#endif
     }
 }

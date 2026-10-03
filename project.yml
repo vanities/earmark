@@ -59,6 +59,10 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Earmark
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.1]": "$(inherited) IPHONE_DUO_LAYOUTS"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]": "$(inherited) IPHONE_DUO_LAYOUTS"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]": "$(inherited) IPHONE_DUO_LAYOUTS"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]": "$(inherited) IPHONE_DUO_LAYOUTS"
         PRODUCT_BUNDLE_IDENTIFIER: com.vanities.earmark
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Earmark/Resources/Info.plist

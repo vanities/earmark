@@ -57,14 +57,10 @@ struct StatsView: View {
             .navigationTitle("Stats")
             // The same ••• menu as Mango's Stats, and the import only Earmark has.
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Log a Book Read Elsewhere", systemImage: "plus") { showLogPast = true }
-                        Button("Change Yearly Goal…", systemImage: "target") { showGoalEditor = true }
-                        Button("Import Reading History…", systemImage: "square.and.arrow.down") { importing = true }
-                    } label: {
-                        Label("More", systemImage: "ellipsis")
-                    }
+                OverflowToolbar {
+                    Button("Log a Book Read Elsewhere", systemImage: "plus") { showLogPast = true }
+                    Button("Change Yearly Goal…", systemImage: "target") { showGoalEditor = true }
+                    Button("Import Reading History…", systemImage: "square.and.arrow.down") { importing = true }
                 }
             }
             .sheet(isPresented: $showLogPast) { LogPastBookView(entry: nil) }

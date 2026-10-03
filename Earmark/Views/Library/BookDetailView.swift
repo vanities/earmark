@@ -95,6 +95,7 @@ struct BookDetailView: View {
                         .padding(.vertical, 6)
                 }
                 .buttonStyle(.glassProminent)
+                .accessibilityIdentifier("BookDetailPlayButton")
                 .controlSize(.large)
                 .padding(.horizontal, 24)
 
@@ -132,22 +133,18 @@ struct BookDetailView: View {
             MarkFinishedSheet(book: book)
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    BookContextMenu(book: book)
-                    Button("Edit Details…", systemImage: "pencil") { showEditDetails = true }
-                    Button("Finished Date & Rating…", systemImage: "checkmark.seal") { showMarkFinished = true }
-                    Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { showCoverPicker = true }
-                    if library.hasCustomCover(book) {
-                        Button("Use Original Cover", systemImage: "arrow.uturn.backward") { library.useOriginalCover(for: book) }
-                    }
-                    // A download is removed above (it's still on the NAS); this is for books only here.
-                    if !library.isRemote(book), library.downloadedCopy(of: book) == nil {
-                        Divider()
-                        Button("Delete Files…", systemImage: "trash", role: .destructive) { confirmDelete = true }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+            OverflowToolbar {
+                BookContextMenu(book: book)
+                Button("Edit Details…", systemImage: "pencil") { showEditDetails = true }
+                Button("Finished Date & Rating…", systemImage: "checkmark.seal") { showMarkFinished = true }
+                Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { showCoverPicker = true }
+                if library.hasCustomCover(book) {
+                    Button("Use Original Cover", systemImage: "arrow.uturn.backward") { library.useOriginalCover(for: book) }
+                }
+                // A download is removed above (it's still on the NAS); this is for books only here.
+                if !library.isRemote(book), library.downloadedCopy(of: book) == nil {
+                    Divider()
+                    Button("Delete Files…", systemImage: "trash", role: .destructive) { confirmDelete = true }
                 }
             }
         }

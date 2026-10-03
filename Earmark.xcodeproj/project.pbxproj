@@ -69,6 +69,7 @@
 		77ADF8C366265AFAA1738EEB /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4229B5CB748E2100ABBD21 /* LibraryModel.swift */; };
 		792512DA8A34496DCE1411E2 /* CoverSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9286881105751BAB5361070 /* CoverSyncTests.swift */; };
 		7ABE4EE7DFAF5F052383B91E /* ListeningToolsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096A35C8054F45EEFA0F990D /* ListeningToolsTests.swift */; };
+		7CB1D444A4A9E27A72491945 /* OverflowToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05F2648E563E2F937A2CA73 /* OverflowToolbar.swift */; };
 		7D104AE357D798ADF398A74B /* CoverSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E324682D9AA6260811DB36 /* CoverSync.swift */; };
 		80B01F391CBFCD77A2027599 /* LibraryModel+Covers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47AE9F138750432E3DA4E7FF /* LibraryModel+Covers.swift */; };
 		87AF4C2B6C9C0D019E45DC6E /* QuickTagReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB9C9B02A68EA1886195C96 /* QuickTagReader.swift */; };
@@ -335,6 +336,7 @@
 		EE056FF40D4D5AE2F9BDC5B6 /* PlayerSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSheets.swift; sourceTree = "<group>"; };
 		EE95BB380E4FD3C19A12CC7C /* DownloadRemovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRemovalTests.swift; sourceTree = "<group>"; };
 		EFB9C9B02A68EA1886195C96 /* QuickTagReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTagReader.swift; sourceTree = "<group>"; };
+		F05F2648E563E2F937A2CA73 /* OverflowToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverflowToolbar.swift; sourceTree = "<group>"; };
 		F18565FAECA3A7A42EF2241E /* LibraryBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackupView.swift; sourceTree = "<group>"; };
 		F6E5C69417482DCC76C7CA43 /* NextUpTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextUpTests.swift; sourceTree = "<group>"; };
 		FB8115FE155C26E428267EA0 /* CoverSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearchTests.swift; sourceTree = "<group>"; };
@@ -429,6 +431,7 @@
 			children = (
 				B2DBB1B328833BAC30AD5BC6 /* ArtworkView.swift */,
 				E81295036C4374E8D926BA71 /* BookContextMenu.swift */,
+				F05F2648E563E2F937A2CA73 /* OverflowToolbar.swift */,
 				3C57B260908E128DE2B07322 /* ProgressBar.swift */,
 			);
 			path = Components;
@@ -958,6 +961,7 @@
 				460B643196C72A94BA87B95F /* NowPlayingController.swift in Sources */,
 				C06D1B9DEA6935CEBD606DF7 /* NowPlayingSnapshot.swift in Sources */,
 				65C4CF129E0211EEFDA54411 /* OfflineLibraryView.swift in Sources */,
+				7CB1D444A4A9E27A72491945 /* OverflowToolbar.swift in Sources */,
 				52B95B9DFF6E6BEAC1EFC712 /* PlaybackAudioProcessor.swift in Sources */,
 				89C8384597C8D3CE0D5A588C /* PlaybackProgress.swift in Sources */,
 				D5CE1A01B633A8DE08F66D1D /* PlayerEngine.swift in Sources */,
@@ -1024,6 +1028,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -1219,6 +1227,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;

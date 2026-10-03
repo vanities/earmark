@@ -21,24 +21,20 @@ struct PlayerView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Close", systemImage: "chevron.down") { dismiss() }
                 }
                 if let book = player.book {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Button("Listening presets…", systemImage: "slider.horizontal.3") { sheet = .presets }
-                            Button("Add Bookmark", systemImage: "bookmark") {
-                                _ = library.addBookmark(for: book, offset: player.bookElapsed)
-                                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                            }
-                            Button("Bookmarks\u{2026}", systemImage: "bookmark.fill") { sheet = .bookmarks }
-                            Button("Listening queue…", systemImage: "list.bullet") { sheet = .queue }
-                            Divider()
-                            BookContextMenu(book: book)
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
+                    OverflowToolbar {
+                        Button("Listening presets…", systemImage: "slider.horizontal.3") { sheet = .presets }
+                        Button("Add Bookmark", systemImage: "bookmark") {
+                            _ = library.addBookmark(for: book, offset: player.bookElapsed)
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
                         }
+                        Button("Bookmarks\u{2026}", systemImage: "bookmark.fill") { sheet = .bookmarks }
+                        Button("Listening queue…", systemImage: "list.bullet") { sheet = .queue }
+                        Divider()
+                        BookContextMenu(book: book)
                     }
                 }
             }
@@ -47,7 +43,7 @@ struct PlayerView: View {
         .sheet(item: $sheet) { which in
             switch which {
             case .presets: NavigationStack { ListeningPresetsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { sheet = nil } } } }
-            case .speed: SpeedSheet().presentationDetents([.height(360)])
+            case .speed: SpeedSheet().presentationDetents([.height(420)])
             case .sleep: SleepTimerSheet().presentationDetents([.medium, .large])
             case .chapters: ChapterListSheet().presentationDetents([.medium, .large])
             case .queue: ListeningQueueSheet()
@@ -58,88 +54,38 @@ struct PlayerView: View {
     }
 
     private func content(for book: Book) -> some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 8)
-            ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 22, contentMode: .fit)
-                .frame(maxWidth: 300, maxHeight: 340)
-                .padding(.horizontal, 36)
-                .shadow(color: .black.opacity(0.28), radius: 24, y: 14)
-                .scaleEffect(player.isPlaying ? 1 : 0.92)
-                .animation(.spring(duration: 0.45, bounce: 0.25), value: player.isPlaying)
-            Spacer(minLength: 24)
-
-            VStack(spacing: 6) {
-                Text(book.title)
-                    .font(.title3.bold())
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                Text(book.displayAuthor)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if player.isRemote {
-                    RemoteBadge(serverName: player.remoteServerName ?? "NAS")
-                }
-                Button {
-                    sheet = .chapters
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "list.bullet")
-                        Text(player.currentChapter?.title ?? "Chapters")
-                            .lineLimit(1)
+        Group {
+#if IPHONE_DUO_LAYOUTS
+            if #available(iOS 27.1, *) {
+                ArrangementView {
+                    artwork(for: book)
+                        .frame(maxWidth: 300, maxHeight: 300)
+                        .padding(24)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } secondary: {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            bookHeading(for: book)
+                            playbackControls(for: book)
+                            routingControls(for: book)
+                            chapterShelf(for: book)
+                        }
+                        .padding(.vertical, 20)
+                        .frame(maxWidth: 460)
+                        .frame(maxWidth: .infinity)
                     }
-                    .font(.footnote.weight(.medium))
+                    .scrollIndicators(.hidden)
                 }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .controlSize(.small)
-                .padding(.top, 4)
+                .arrangementViewStyle(.split)
+                .splitArrangementLayoutRatio(0.42)
+            } else {
+                resizableContent(for: book)
             }
-            .padding(.horizontal, 24)
-            Spacer(minLength: 20)
-
-            ScrubberView()
-                .padding(.horizontal, 24)
-            Text(bookLine(for: book))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .padding(.top, 6)
-            Spacer(minLength: 18)
-
-            TransportControls(openSpeed: { sheet = .speed }, openSleep: { sheet = .sleep })
-                .padding(.horizontal, 12)
-            Spacer(minLength: 10)
-
-            HStack(alignment: .center) {
-                RoutePickerView()
-                    .frame(width: 44, height: 44)
-                if let error = player.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .lineLimit(2)
-                }
-                Spacer()
-                if let origin = player.jumpOrigin {
-                    Button {
-                        player.undoJump()
-                    } label: {
-                        Label("Back to \(jumpLabel(origin, in: book))", systemImage: "arrow.uturn.backward")
-                            .font(.footnote.weight(.medium))
-                            .lineLimit(1)
-                            .padding(.vertical, 6)   // 44 pt tall: this is tapped in the car
-                    }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .accessibilityLabel("Undo jump")
-                    .accessibilityValue("Back to \(jumpLabel(origin, in: book))")
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                }
-            }
-            .animation(.snappy, value: player.jumpOrigin)
-            .padding(.horizontal, 24)
-            .padding(.bottom, 8)
+#else
+            resizableContent(for: book)
+#endif
         }
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .bottom) {
             if let next = player.upNext {
                 UpNextCard(book: next,
                            onPlay: { withAnimation(.snappy) { player.playUpNext() } },
@@ -152,6 +98,167 @@ struct PlayerView: View {
         .animation(.spring(duration: 0.45, bounce: 0.2), value: player.upNext?.id)
         .background { PlayerBackdrop(artworkID: book.artworkID) }
     }
+
+    private func resizableContent(for book: Book) -> some View {
+        GeometryReader { geometry in
+            ScrollView {
+                if geometry.size.width >= 560 {
+                    HStack(spacing: 24) {
+                        artwork(for: book)
+                            .frame(width: min(300, geometry.size.width * 0.36))
+                        VStack(spacing: 20) {
+                            bookHeading(for: book)
+                            playbackControls(for: book)
+                            routingControls(for: book)
+                        }
+                        .frame(maxWidth: 460)
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                } else {
+                    VStack(spacing: 20) {
+                        artwork(for: book)
+                            .frame(width: min(300, max(120, geometry.size.height * 0.38),
+                                              max(120, geometry.size.width - 72)))
+                        bookHeading(for: book)
+                        playbackControls(for: book)
+                        routingControls(for: book)
+                    }
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func artwork(for book: Book) -> some View {
+        ArtworkView(artworkID: book.artworkID, title: book.title, cornerRadius: 22, contentMode: .fit)
+            .aspectRatio(1, contentMode: .fit)
+            .shadow(color: .black.opacity(0.28), radius: 24, y: 14)
+            .scaleEffect(player.isPlaying ? 1 : 0.92)
+            .animation(.spring(duration: 0.45, bounce: 0.25), value: player.isPlaying)
+    }
+
+    @ViewBuilder
+    private func chapterShelf(for book: Book) -> some View {
+        if book.chapters.count > 1 {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Chapters").font(.headline)
+                    Spacer()
+                    Button("See all") { sheet = .chapters }
+                        .font(.subheadline)
+                        .frame(minHeight: 44)
+                }
+                let current = player.currentChapterIndex ?? 0
+                ForEach(Array(book.chapters.enumerated()).filter { abs($0.offset - current) <= 1 }, id: \.element.id) { index, chapter in
+                    Button {
+                        player.jump(to: chapter)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: index == current ? "waveform" : "play.circle")
+                                .foregroundStyle(index == current ? Color.accentColor : .secondary)
+                            Text(chapter.title).lineLimit(1)
+                            Spacer()
+                            Text(chapter.duration.clockString)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.subheadline)
+                        .padding(12)
+                        .frame(minHeight: 44)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Play chapter \(index + 1): \(chapter.title)")
+                }
+            }
+            .padding(.horizontal, 24)
+            .accessibilityIdentifier("PlayerChapterShelf")
+        }
+    }
+
+    private func bookHeading(for book: Book) -> some View {
+        VStack(spacing: 6) {
+            Text(book.title)
+                .font(.title3.bold())
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+            Text(book.displayAuthor)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            if player.isRemote {
+                RemoteBadge(serverName: player.remoteServerName ?? "NAS")
+            }
+            Button {
+                sheet = .chapters
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "list.bullet")
+                    Text(player.currentChapter?.title ?? "Chapters")
+                        .lineLimit(1)
+                }
+                .font(.footnote.weight(.medium))
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
+            .padding(.top, 4)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func playbackControls(for book: Book) -> some View {
+        VStack(spacing: 0) {
+            ScrubberView()
+                .padding(.horizontal, 24)
+            Text(bookLine(for: book))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+            Color.clear.frame(height: 18)
+
+            TransportControls(openSpeed: { sheet = .speed }, openSleep: { sheet = .sleep })
+                .padding(.horizontal, 12)
+
+        }
+    }
+
+    private func routingControls(for book: Book) -> some View {
+        HStack(alignment: .center) {
+            RoutePickerView()
+                .frame(width: 44, height: 44)
+            if let error = player.errorMessage {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+            Spacer()
+            if let origin = player.jumpOrigin {
+                Button {
+                    player.undoJump()
+                } label: {
+                    Label("Back to \(jumpLabel(origin, in: book))", systemImage: "arrow.uturn.backward")
+                        .font(.footnote.weight(.medium))
+                        .lineLimit(1)
+                        .padding(.vertical, 6)   // 44 pt tall: this is tapped in the car
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .accessibilityLabel("Undo jump")
+                .accessibilityValue("Back to \(jumpLabel(origin, in: book))")
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
+        }
+        .animation(.snappy, value: player.jumpOrigin)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 8)
+    }
+
 
     /// "Ch. 3 · 4:12" — where Undo Jump goes back to (or the book time for a one-chapter book).
     private func jumpLabel(_ origin: BookPosition, in book: Book) -> String {

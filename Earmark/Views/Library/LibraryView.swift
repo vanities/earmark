@@ -130,37 +130,33 @@ struct LibraryView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Button("Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
-                Button("Library tools…", systemImage: "suitcase") { showingTools = true }
-                        Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
-                Divider()
-                Button("Listening queue…", systemImage: "list.bullet") { showingQueue = true }
-                Divider()
-                Picker("Group By", systemImage: "rectangle.3.group", selection: Bindable(settings).libraryGrouping) {
-                    ForEach(LibraryGrouping.allCases, id: \.self) { grouping in
-                        Label(grouping.title, systemImage: grouping.systemImage).tag(grouping)
-                    }
+        OverflowToolbar {
+            Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
+            Button("Library tools…", systemImage: "suitcase") { showingTools = true }
+                    Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
+            Divider()
+            Button("Listening queue…", systemImage: "list.bullet") { showingQueue = true }
+            Divider()
+            Picker("Group By", systemImage: "rectangle.3.group", selection: Bindable(settings).libraryGrouping) {
+                ForEach(LibraryGrouping.allCases, id: \.self) { grouping in
+                    Label(grouping.title, systemImage: grouping.systemImage).tag(grouping)
                 }
-                .pickerStyle(.menu)
-                Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: Bindable(settings).librarySort) {
-                    ForEach(LibrarySort.allCases, id: \.self) { sort in
-                        Text(sort.title).tag(sort)
-                    }
-                }
-                .pickerStyle(.menu)
-                Picker("Layout", selection: Bindable(settings).libraryLayout) {
-                    Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
-                    Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
-                }
-                Toggle("Show Finished", isOn: Bindable(settings).showFinishedBooks)
-                Divider()
-                Button("Rescan", systemImage: "arrow.clockwise") { library.rescanAll(reason: "library menu") }
-                Button("Add Folder…", systemImage: "folder.badge.plus") { showImporter = true }
-            } label: {
-                Label("More", systemImage: "ellipsis")
             }
+            .pickerStyle(.menu)
+            Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: Bindable(settings).librarySort) {
+                ForEach(LibrarySort.allCases, id: \.self) { sort in
+                    Text(sort.title).tag(sort)
+                }
+            }
+            .pickerStyle(.menu)
+            Picker("Layout", selection: Bindable(settings).libraryLayout) {
+                Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
+                Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
+            }
+            Toggle("Show Finished", isOn: Bindable(settings).showFinishedBooks)
+            Divider()
+            Button("Rescan", systemImage: "arrow.clockwise") { library.rescanAll(reason: "library menu") }
+            Button("Add Folder…", systemImage: "folder.badge.plus") { showImporter = true }
         }
     }
 }

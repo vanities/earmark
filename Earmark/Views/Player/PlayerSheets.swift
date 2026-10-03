@@ -2,11 +2,26 @@ import SwiftUI
 
 struct SpeedSheet: View {
     @Environment(PlayerEngine.self) private var player
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        NavigationStack {
+            ScrollView {
+                speedControls
+            }
+            .navigationTitle("Playback Speed")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    private var speedControls: some View {
         VStack(spacing: 22) {
-            Text("Playback Speed")
-                .font(.headline)
             Text(TransportControls.speedLabel(player.speed))
                 .font(.system(size: 48, weight: .bold, design: .rounded).monospacedDigit())
                 .contentTransition(.numericText())
@@ -56,7 +71,6 @@ struct SpeedSheet: View {
                 .multilineTextAlignment(.center)
         }
         .padding(24)
-        .presentationDragIndicator(.visible)
     }
 }
 
