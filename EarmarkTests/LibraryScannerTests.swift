@@ -2,7 +2,7 @@ import AVFoundation
 import XCTest
 @testable import Earmark
 
-/// End-to-end: real files on disk → walk → tags → books. Uses tiny generated AAC files.
+/// End-to-end: real files on disk → walk → tags → books. Uses tiny generated WAV files.
 final class LibraryScannerTests: XCTestCase {
     private var root: URL!
     private var storeDir: URL!
@@ -31,6 +31,7 @@ final class LibraryScannerTests: XCTestCase {
             AVLinearPCMIsBigEndianKey: false,
         ]
         let file = try AVAudioFile(forWriting: url, settings: settings)
+        defer { file.close() }
         let format = AVAudioFormat(standardFormatWithSampleRate: 22050, channels: 1)!
         let frames = AVAudioFrameCount(22050 * seconds)
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)!

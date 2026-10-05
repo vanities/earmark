@@ -1016,7 +1016,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Earmark/Resources/Earmark-Device.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Earmark/Resources/Earmark.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Earmark/Resources/Info.plist;
@@ -1032,7 +1032,7 @@
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1129,7 +1129,7 @@
 			buildSettings = {
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "EarmarkWidgets/EarmarkWidgets-Device.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = EarmarkWidgets/EarmarkWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EarmarkWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Earmark;
@@ -1138,7 +1138,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark.widgets;
 				PRODUCT_NAME = EarmarkWidgets;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1215,7 +1215,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Earmark/Resources/Earmark-Device.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Earmark/Resources/Earmark.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Earmark/Resources/Info.plist;
@@ -1231,7 +1231,7 @@
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1240,7 +1240,7 @@
 			buildSettings = {
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "EarmarkWidgets/EarmarkWidgets-Device.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = EarmarkWidgets/EarmarkWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EarmarkWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Earmark;
@@ -1249,7 +1249,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.vanities.earmark.widgets;
 				PRODUCT_NAME = EarmarkWidgets;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

@@ -30,7 +30,7 @@ struct AudioMetadata: Codable, Hashable, Sendable {
 /// Reads tags, duration, chapters, and artwork with AVFoundation's async loading APIs.
 struct MetadataReader: Sendable {
     func read(url: URL) async throws -> AudioMetadata {
-        try await read(asset: AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: false]), name: url.lastPathComponent)
+        try await read(asset: AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true]), name: url.lastPathComponent)
     }
 
     /// Reads from any asset, including SMB-backed ones built by `NASClient.makeAsset`.

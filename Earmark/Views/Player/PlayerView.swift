@@ -105,11 +105,12 @@ struct PlayerView: View {
                 if geometry.size.width >= 560 {
                     HStack(spacing: 24) {
                         artwork(for: book)
-                            .frame(width: min(300, geometry.size.width * 0.36))
+                            .frame(width: min(400, geometry.size.width * 0.36, geometry.size.height * 0.65))
                         VStack(spacing: 20) {
                             bookHeading(for: book)
                             playbackControls(for: book)
                             routingControls(for: book)
+                            chapterShelf(for: book)
                         }
                         .frame(maxWidth: 460)
                     }

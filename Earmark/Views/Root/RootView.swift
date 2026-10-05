@@ -138,6 +138,7 @@ struct RootView: View {
 
 private struct PlayerPresentation: ViewModifier {
     @Binding var isPresented: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     func body(content: Content) -> some View {
 #if IPHONE_DUO_LAYOUTS
@@ -145,10 +146,19 @@ private struct PlayerPresentation: ViewModifier {
             // The player expands with the device instead of remaining in a phone-sized sheet.
             content.fullScreenCover(isPresented: $isPresented) { PlayerView() }
         } else {
-            content.sheet(isPresented: $isPresented) { PlayerView() }
+            standardPresentation(content)
         }
 #else
-        content.sheet(isPresented: $isPresented) { PlayerView() }
+        standardPresentation(content)
 #endif
+    }
+
+    @ViewBuilder
+    private func standardPresentation(_ content: Content) -> some View {
+        if horizontalSizeClass == .regular {
+            content.fullScreenCover(isPresented: $isPresented) { PlayerView() }
+        } else {
+            content.sheet(isPresented: $isPresented) { PlayerView() }
+        }
     }
 }

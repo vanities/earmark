@@ -69,14 +69,14 @@ targets:
         # CarPlay entitlement only where it can be signed (see Earmark-Device.entitlements).
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Earmark/Resources/Earmark.entitlements
         "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Earmark/Resources/Earmark-Device.entitlements
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         MARKETING_VERSION: 0.3.0
-        CURRENT_PROJECT_VERSION: 2
+        CURRENT_PROJECT_VERSION: 3
         ENABLE_PREVIEWS: YES
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
 
@@ -96,10 +96,10 @@ targets:
         INFOPLIST_FILE: EarmarkWidgets/Info.plist
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": EarmarkWidgets/EarmarkWidgets.entitlements
         "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": EarmarkWidgets/EarmarkWidgets-Device.entitlements
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_CFBundleDisplayName: Earmark
         MARKETING_VERSION: 0.3.0
-        CURRENT_PROJECT_VERSION: 2
+        CURRENT_PROJECT_VERSION: 3
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
 
   EarmarkTests:
