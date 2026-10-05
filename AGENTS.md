@@ -136,9 +136,20 @@ Run it against a simulator that already has the NAS source configured.
 
 ## Releasing
 
-`make archive && make upload` (see README). `ExportOptions.plist` = automatic signing,
-`manageAppVersionAndBuildNumber`, team 8Q3RG3ULSU. `scripts/testflight.py` wraps the ASC API for
-status/groups/notes and reads `.env.appstore-connect` (gitignored, never commit the .p8).
+Pushing to `main` triggers Xcode Cloud to archive and upload to TestFlight. Prefer that
+release path; do not upload the same change manually as well. Set `MARKETING_VERSION`
+and `CURRENT_PROJECT_VERSION` for both the app and widgets in `project.yml`, then regenerate
+the committed project. Xcode Cloud assigns the uploaded build number.
+
+Use the App Store Connect API key for release metadata, build status, and review submissions.
+Before submitting, verify the uploaded build's marketing version and its Xcode Cloud source
+commit against the merged app code. TestFlight availability does not mean App Store review
+has been submitted; verify the review submission and version states separately.
+
+If Xcode Cloud is unavailable, `make archive && make upload` is the manual fallback (see README).
+`ExportOptions.plist` uses automatic signing, `manageAppVersionAndBuildNumber`, and team
+8Q3RG3ULSU. `scripts/testflight.py` wraps the ASC API for status/groups/notes and reads
+`.env.appstore-connect` (gitignored, never commit the .p8).
 The App Store Connect app record must exist before the first upload (`missingApp` error otherwise).
 
 ## Testing CarPlay
