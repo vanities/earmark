@@ -15,7 +15,7 @@ struct PlayerView: View {
         NavigationStack {
             Group {
                 if let book = player.book {
-                    content(for: book)
+                    PlayerContentView(book: book, sheet: $sheet)
                 } else {
                     ContentUnavailableView("Nothing Playing", systemImage: "play.slash")
                 }
@@ -52,6 +52,16 @@ struct PlayerView: View {
         }
         .presentationDragIndicator(.visible)
     }
+}
+
+/// The player workspace sizes itself to the space below navigation and safe areas.
+struct PlayerContentView: View {
+    let book: Book
+    @Binding var sheet: PlayerView.Sheet?
+    @Environment(PlayerEngine.self) private var player
+    @Environment(\.dynamicTypeSize) private var textSize
+
+    var body: some View { content(for: book) }
 
     private func content(for book: Book) -> some View {
         Group {
@@ -63,18 +73,9 @@ struct PlayerView: View {
                         .padding(24)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } secondary: {
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            bookHeading(for: book)
-                            playbackControls(for: book)
-                            routingControls(for: book)
-                            chapterShelf(for: book)
-                        }
+                    playbackColumn(for: book, showsHeading: true, showsChapters: true)
                         .padding(.vertical, 20)
-                        .frame(maxWidth: 460)
-                        .frame(maxWidth: .infinity)
-                    }
-                    .scrollIndicators(.hidden)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .arrangementViewStyle(.split)
                 .splitArrangementLayoutRatio(0.42)
@@ -101,22 +102,30 @@ struct PlayerView: View {
 
     private func resizableContent(for book: Book) -> some View {
         GeometryReader { geometry in
-            ScrollView {
-                if geometry.size.width >= 560 {
-                    HStack(spacing: 24) {
+            if geometry.size.width >= 560 {
+                let shortWindow = geometry.size.height < 500
+                HStack(spacing: 24) {
+                    VStack(spacing: 12) {
                         artwork(for: book)
-                            .frame(width: min(400, geometry.size.width * 0.36, geometry.size.height * 0.65))
-                        VStack(spacing: 20) {
-                            bookHeading(for: book)
-                            playbackControls(for: book)
-                            routingControls(for: book)
-                            chapterShelf(for: book)
+                            .frame(width: shortWindow
+                                   ? min(200, geometry.size.width * 0.3, geometry.size.height * 0.4)
+                                   : min(400, geometry.size.width * 0.36, geometry.size.height * 0.65))
+                        if shortWindow {
+                            ViewThatFits(in: .vertical) {
+                                bookHeading(for: book)
+                                ScrollView { bookHeading(for: book) }
+                                    .scrollBounceBehavior(.basedOnSize)
+                                    .scrollIndicators(.hidden)
+                            }
                         }
-                        .frame(maxWidth: 460)
                     }
-                    .padding(24)
-                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
-                } else {
+                    .frame(maxWidth: shortWindow ? 300 : 400)
+                    playbackColumn(for: book, showsHeading: !shortWindow, showsChapters: !shortWindow)
+                }
+                .padding(shortWindow ? 12 : 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
                     VStack(spacing: 20) {
                         artwork(for: book)
                             .frame(width: min(300, max(120, geometry.size.height * 0.38),
@@ -128,8 +137,49 @@ struct PlayerView: View {
                     .padding(.vertical, 16)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func playbackColumn(for book: Book, showsHeading: Bool, showsChapters: Bool) -> some View {
+        Group {
+            if showsChapters, !textSize.isAccessibilitySize {
+                fixedPlaybackColumn(for: book, showsHeading: showsHeading, showsChapters: true)
+            } else {
+                ViewThatFits(in: .vertical) {
+                    fixedPlaybackColumn(for: book, showsHeading: showsHeading, showsChapters: showsChapters)
+                    // Very large text can scroll this pane while the artwork stays put.
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            if showsHeading { bookHeading(for: book) }
+                            playbackControls(for: book)
+                            routingControls(for: book)
+                            if showsChapters { chapterShelf(for: book) }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
+                }
+            }
+        }
+        .frame(maxWidth: 460)
+    }
+
+    private func fixedPlaybackColumn(for book: Book, showsHeading: Bool, showsChapters: Bool) -> some View {
+        VStack(spacing: showsHeading ? 20 : 12) {
+            if showsHeading { bookHeading(for: book) }
+            playbackControls(for: book)
+            routingControls(for: book)
+            if showsChapters, book.chapters.count > 1 {
+                ScrollView { chapterShelf(for: book) }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(maxHeight: 240)
+                    .layoutPriority(-1)
+                    .accessibilityIdentifier("PlayerChapterScrollView")
+            }
         }
     }
 
@@ -259,7 +309,6 @@ struct PlayerView: View {
         .padding(.horizontal, 24)
         .padding(.bottom, 8)
     }
-
 
     /// "Ch. 3 · 4:12" — where Undo Jump goes back to (or the book time for a one-chapter book).
     private func jumpLabel(_ origin: BookPosition, in book: Book) -> String {
