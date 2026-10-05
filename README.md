@@ -168,9 +168,15 @@ files on the next launch; a background processing task also picks them up while 
 
 ## TestFlight / App Store Connect
 
-One-time: create the app in [App Store Connect](https://appstoreconnect.apple.com/apps) (iOS, name
-Earmark, bundle ID `com.vanities.earmark`, any SKU) and be signed into Xcode with the team in
-`Config/Signing.xcconfig`. Then:
+Releases from `main` are archived and uploaded to TestFlight by Xcode Cloud. Update the
+app and widget versions in `project.yml`, regenerate the project with `make gen`, and merge
+the change. Xcode Cloud assigns the uploaded build number; avoid a second manual upload.
+Use the App Store Connect API key to check the build and submit the matching version for
+App Store review. An uploaded TestFlight build still needs a separate App Store submission.
+
+For a fork, create the app in [App Store Connect](https://appstoreconnect.apple.com/apps) (iOS,
+bundle ID `com.vanities.earmark`, any SKU) and configure your team in `Config/Signing.xcconfig`.
+When Xcode Cloud is unavailable, the manual fallback is:
 
 ```bash
 make archive      # Release archive (build/Earmark.xcarchive)
