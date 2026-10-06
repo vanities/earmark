@@ -26,9 +26,13 @@ struct MiniPlayerView: View {
                         Text(book.title)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
+                        if placement == .inline, let narrator = book.narratorCredit {
+                            Text(narrator).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
                     if placement != .inline {
-                        Text(player.currentChapter?.title ?? book.displayAuthor)
+                        Text(AudiobookCredits.playbackDetail(author: book.displayAuthor, narrator: book.narrator,
+                                                            chapter: player.currentChapter?.title))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -64,7 +68,7 @@ struct MiniPlayerView: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onOpen)
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Now playing: \(book.title)")
+            .accessibilityLabel("Now playing: \(book.title), \(book.displayCredits)")
         }
     }
 }

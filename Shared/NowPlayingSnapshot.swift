@@ -6,10 +6,18 @@ struct NowPlayingSnapshot: Codable, Equatable {
     var bookID: String
     var title: String
     var author: String
+    var narrator: String?
     var fraction: Double
     var remaining: String
     var isPlaying: Bool
     var updatedAt: Date
+
+    var narratorCredit: String? { AudiobookCredits.narratorLine(narrator) }
+
+    /// Metadata edits must refresh the widget even when playback position hasn't changed.
+    var widgetUpdateKey: [AnyHashable] {
+        [bookID, title, author, narrator ?? "", isPlaying, Int(fraction * 100)]
+    }
 }
 
 /// Read/write the snapshot (and a small cover image) in the shared App Group container. Everything

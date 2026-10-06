@@ -54,8 +54,8 @@ struct BookDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(.tertiary)
                     }
-                    if let narrator = book.narrator {
-                        Text("Narrated by \(narrator)")
+                    if let narrator = book.narratorCredit {
+                        Text(narrator)
                             .font(.subheadline)
                             .foregroundStyle(.tertiary)
                     }

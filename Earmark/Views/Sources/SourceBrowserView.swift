@@ -286,6 +286,9 @@ struct SourceBrowserView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                if let narrator = book.narratorCredit {
+                    Text(narrator).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(selecting && picked ? [.isButton, .isSelected] : .isButton)

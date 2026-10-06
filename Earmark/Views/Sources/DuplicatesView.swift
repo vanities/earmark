@@ -108,6 +108,7 @@ struct DuplicateBookRow: View {
                 Text("\(library.sourceName(for: book.sourceID)) › \(book.relativePath)")
                     .font(.subheadline)
                     .lineLimit(2)
+                BookCreditsView(book: book)
                 Text("\(book.totalBytes.byteCountString) · \(book.tracks.count) file\(book.tracks.count == 1 ? "" : "s")\(progress.hasStarted ? " · has listening progress" : "")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -138,6 +139,7 @@ struct DuplicateFileRow: View {
             Text("\(file.bookTitle) · \(file.size.byteCountString)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if let book = library.book(id: file.bookID) { BookCreditsView(book: book) }
         }
         .swipeActions(edge: .trailing) {
             Button("Delete", systemImage: "trash", role: .destructive, action: delete)

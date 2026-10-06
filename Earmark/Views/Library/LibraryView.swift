@@ -225,6 +225,9 @@ struct ContinueTile: View {
                 Text(book.title)
                     .font(.caption)
                     .lineLimit(1)
+                if let narrator = book.narratorCredit {
+                    Text(narrator).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
                 Text("\(progress.remaining(in: book).shortDurationString) left")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -233,7 +236,7 @@ struct ContinueTile: View {
         }
         .buttonStyle(.plain)
         .contextMenu { BookContextMenu(book: book) }
-        .accessibilityLabel("\(book.title), \(progress.remaining(in: book).shortDurationString) left")
+        .accessibilityLabel("\(book.title), \(book.displayCredits), \(progress.remaining(in: book).shortDurationString) left")
         .accessibilityHint(isPlaying ? "Pauses" : "Plays")
     }
 }

@@ -5,7 +5,7 @@ extension LibraryModel {
     var toolItems: [LibraryToolItem] {
         visibleBooks.map { book in
             let entry = progress[book.id] ?? PlaybackProgress()
-            return LibraryToolItem(id: book.syncKey, title: book.title, detail: book.displayAuthor, bytes: book.totalBytes,
+            return LibraryToolItem(id: book.syncKey, title: book.title, detail: book.displayCredits, bytes: book.totalBytes,
                              isLocal: !isRemote(book), started: entry.hasStarted, finished: entry.isFinished,
                              lastOpened: entry.lastPlayedAt,
                              remainingSeconds: book.totalDuration > 0 ? entry.remaining(in: book) / Double(entry.speed ?? settings.defaultSpeed) : nil)

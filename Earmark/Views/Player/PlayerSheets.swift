@@ -285,7 +285,7 @@ struct ListeningQueueSheet: View {
                             Button { player.load(book, autoplay: true); dismiss() } label: {
                                 VStack(alignment: .leading) {
                                     Text(book.title).foregroundStyle(.primary)
-                                    Text(book.displayAuthor).font(.caption).foregroundStyle(.secondary)
+                                    BookCreditsView(book: book)
                                 }
                             }
                         } else { Label("Book unavailable · remove or reconnect its source", systemImage: "exclamationmark.triangle") }
@@ -302,10 +302,13 @@ struct ListeningQueueSheet: View {
             }
             .sheet(isPresented: $adding) {
                 NavigationStack {
-                    List(library.visibleBooks.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }) { book in
+                    List(library.search(search, in: library.visibleBooks)) { book in
                         Button { player.enqueue(book) } label: {
                             HStack {
-                                Text(book.title)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(book.title)
+                                    BookCreditsView(book: book)
+                                }
                                 Spacer()
                                 if player.queueKeys.contains(book.syncKey) { Image(systemName: "checkmark") }
                             }

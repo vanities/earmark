@@ -26,6 +26,7 @@ struct ListeningInsightsView: View {
                     let seconds = p.remaining(in: book) / speed
                     VStack(alignment: .leading, spacing: 3) {
                         Text(book.title).font(.subheadline)
+                        BookCreditsView(book: book)
                         Text("About \(Durations.short(seconds)) left at \(speed.formatted())×")
                             .font(.caption).foregroundStyle(.secondary)
                         if let days = insights.daysToFinish(remainingSeconds: seconds) {
@@ -54,7 +55,10 @@ private struct ListeningSessionHistory: View {
                         Button {
                             if let book { player.load(book, autoplay: true); dismiss() }
                         } label: {
-                            ActivitySessionRow(title: session.bookTitle, date: session.startedAt, seconds: session.activeSeconds)
+                            VStack(alignment: .leading, spacing: 4) {
+                                ActivitySessionRow(title: session.bookTitle, date: session.startedAt, seconds: session.activeSeconds)
+                                if let book { BookCreditsView(book: book) }
+                            }
                         }.disabled(book == nil)
                     }
                 } footer: { Text("Sessions from this device. Tap a book to resume listening at its current saved position.") }

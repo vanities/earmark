@@ -54,6 +54,8 @@ struct Book: Identifiable, Codable, Hashable, Sendable {
     var totalDuration: TimeInterval { tracks.reduce(0) { $0 + $1.duration } }
 
     var displayAuthor: String { author ?? "Unknown Author" }
+    var narratorCredit: String? { AudiobookCredits.narratorLine(narrator) }
+    var displayCredits: String { AudiobookCredits.summary(author: displayAuthor, narrator: narrator) }
 
     /// "MP3 · 12 files" / "M4B" — what the user actually has on disk.
     var formatLabel: String {

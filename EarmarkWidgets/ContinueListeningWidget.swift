@@ -73,9 +73,12 @@ struct ContinueListeningView: View {
     }
 
     private func small(_ snap: NowPlayingSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            cover(56)
+        VStack(alignment: .leading, spacing: snap.narratorCredit == nil ? 8 : 6) {
+            cover(snap.narratorCredit == nil ? 56 : 40)
             Text(snap.title).font(.caption.bold()).lineLimit(2)
+            if let narrator = snap.narratorCredit {
+                Text(narrator).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
             Spacer(minLength: 0)
             ProgressView(value: snap.fraction).tint(.accentColor)
             HStack {
@@ -89,9 +92,12 @@ struct ContinueListeningView: View {
     private func medium(_ snap: NowPlayingSnapshot) -> some View {
         HStack(spacing: 14) {
             cover(108)   // as tall as Mango's medium cover (74 × 1.45)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: snap.narratorCredit == nil ? 6 : 4) {
                 Text(snap.title).font(.headline).lineLimit(2)
                 Text(snap.author).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                if let narrator = snap.narratorCredit {
+                    Text(narrator).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
                 Spacer(minLength: 0)
                 ProgressView(value: snap.fraction).tint(.accentColor)
                 HStack(spacing: 6) {

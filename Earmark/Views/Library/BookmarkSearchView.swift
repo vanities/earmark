@@ -18,7 +18,7 @@ struct BookmarkSearchView: View {
         return library.visibleBooks.flatMap { book in
             library.bookmarks(for: book).map { Result(book: book, mark: $0) }
         }.filter { result in
-            let text = [result.book.title, result.book.series ?? "", result.book.author ?? "", result.mark.note, result.location].joined(separator: " ")
+            let text = [result.book.title, result.book.series ?? "", result.book.author ?? "", result.book.narrator ?? "", result.mark.note, result.location].joined(separator: " ")
             return words.allSatisfy { text.localizedStandardContains($0) }
         }.sorted { $0.mark.createdAt > $1.mark.createdAt }
     }
@@ -29,7 +29,10 @@ struct BookmarkSearchView: View {
                     player.load(result.book, autoplay: true, startAt: result.book.position(atAbsoluteOffset: result.mark.offset))
                     dismiss()
                 } label: {
-                    BookmarkSearchRow(title: result.book.title, note: result.mark.note, location: result.location)
+                    VStack(alignment: .leading, spacing: 4) {
+                        BookmarkSearchRow(title: result.book.title, note: result.mark.note, location: result.location)
+                        BookCreditsView(book: result.book)
+                    }
                 }
                 .buttonStyle(.plain)
             }

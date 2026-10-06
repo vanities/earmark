@@ -18,7 +18,7 @@ struct OfflineLibraryView: View {
         return library.visibleBooks.filter { !keys.contains($0.syncKey) }.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     }
     private func matching(_ items: [Book]) -> [Book] {
-        items.filter { query.isEmpty || $0.title.localizedStandardContains(query) }
+        library.search(query, in: items)
     }
     var body: some View {
         NavigationStack {
@@ -57,6 +57,7 @@ private struct OfflineBookRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             OfflineReadinessRow(title: book.title, status: status)
+            BookCreditsView(book: book)
             if let source = downloadSource, remote || status == .unavailable {
                 Button(active ? "Downloading…" : "Download", systemImage: "arrow.down.circle") { downloads.download(source) }
                     .disabled(active)
