@@ -239,6 +239,13 @@ struct PlayerContentView: View {
             Text(book.displayAuthor)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            if let narrator = book.narratorCredit {
+                Text(narrator)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
             if player.isRemote {
                 RemoteBadge(serverName: player.remoteServerName ?? "NAS")
             }

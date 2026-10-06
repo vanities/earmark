@@ -107,7 +107,7 @@ struct BookListView: View {
                         .frame(width: 40, height: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(book.title).lineLimit(1)
-                        Text(book.displayAuthor).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        BookCreditsView(book: book)
                     }
                 }
             }

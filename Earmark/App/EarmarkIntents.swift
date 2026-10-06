@@ -9,9 +9,10 @@ struct BookEntity: AppEntity, Identifiable {
     let id: String
     let title: String
     let author: String
+    var narrator: String?
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(title)", subtitle: "\(author)")
+        DisplayRepresentation(title: "\(title)", subtitle: "\(AudiobookCredits.summary(author: author, narrator: narrator))")
     }
 }
 
@@ -19,17 +20,16 @@ struct BookEntityQuery: EntityQuery, EntityStringQuery {
     @MainActor func entities(for identifiers: [String]) async throws -> [BookEntity] {
         let library = AppEnvironment.shared.library
         return identifiers.compactMap { id in
-            library.book(id: id).map { BookEntity(id: $0.id, title: $0.title, author: $0.displayAuthor) }
+            library.book(id: id).map { BookEntity(id: $0.id, title: $0.title, author: $0.displayAuthor, narrator: $0.narrator) }
         }
     }
 
     /// Match a spoken/typed title to library books.
     @MainActor func entities(matching string: String) async throws -> [BookEntity] {
-        let needle = string.lowercased()
-        return AppEnvironment.shared.library.visibleBooks
-            .filter { $0.title.lowercased().contains(needle) || ($0.author?.lowercased().contains(needle) ?? false) }
+        let library = AppEnvironment.shared.library
+        return library.search(string, in: library.visibleBooks)
             .prefix(20)
-            .map { BookEntity(id: $0.id, title: $0.title, author: $0.displayAuthor) }
+            .map { BookEntity(id: $0.id, title: $0.title, author: $0.displayAuthor, narrator: $0.narrator) }
     }
 
     /// Continue-listening books surface as suggestions in Shortcuts.
@@ -37,7 +37,7 @@ struct BookEntityQuery: EntityQuery, EntityStringQuery {
         let library = AppEnvironment.shared.library
         let inProgress = library.inProgressBooks
         let pool = inProgress.isEmpty ? library.sorted(library.visibleBooks, by: .recent) : inProgress
-        return pool.prefix(10).map { BookEntity(id: $0.id, title: $0.title, author: $0.displayAuthor) }
+        return pool.prefix(10).map { BookEntity(id: $0.id, title: $0.title, author: $0.displayAuthor, narrator: $0.narrator) }
     }
 }
 

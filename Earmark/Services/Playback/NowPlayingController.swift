@@ -169,8 +169,8 @@ final class NowPlayingController {
             MPNowPlayingInfoPropertyPlaybackRate: player.isPlaying ? Double(player.speed) : 0.0,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: Double(player.speed),
         ]
-        if let author = book.author {
-            info[MPMediaItemPropertyArtist] = author
+        if book.author != nil || book.narratorCredit != nil {
+            info[MPMediaItemPropertyArtist] = book.displayCredits
         }
         let elapsed: TimeInterval
         let duration: TimeInterval
@@ -214,17 +214,17 @@ final class NowPlayingController {
             bookID: book.id,
             title: locked ? "Continue listening" : book.title,
             author: locked ? "Earmark is locked" : book.displayAuthor,
+            narrator: locked ? nil : book.narrator,
             fraction: locked ? 0 : player.bookFraction,
             remaining: locked ? "" : player.bookRemaining.shortDurationString + " left",
             isPlaying: player.isPlaying,
             updatedAt: .now
         )
-        let coarse: (NowPlayingSnapshot) -> [AnyHashable] = { [$0.bookID, $0.title, $0.isPlaying, Int($0.fraction * 100)] }
         // Once the artwork has loaded, a new cover — or none, for a book without art — counts as a
         // change even when nothing else moved; otherwise the widget kept the previous book's cover.
         let cover: String? = locked ? "" : artworkLoading ? nil : (artworkImage == nil ? "" : artworkID ?? "")
         let coverChanged = cover != nil && cover != widgetCoverID
-        guard coverChanged || lastWidgetSnapshot.map(coarse) != coarse(snapshot) else { return }
+        guard coverChanged || lastWidgetSnapshot?.widgetUpdateKey != snapshot.widgetUpdateKey else { return }
         lastWidgetSnapshot = snapshot
         SharedNowPlaying.write(snapshot)
         if coverChanged, let cover {

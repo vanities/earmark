@@ -14,7 +14,7 @@ struct UpNextCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(seriesLine).font(.caption2.weight(.semibold)).foregroundStyle(.tint).textCase(.uppercase)
                 Text(book.title).font(.subheadline.weight(.semibold)).lineLimit(1)
-                Text(book.displayAuthor).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                BookCreditsView(book: book)
             }
             Spacer(minLength: 4)
             Button(action: onPlay) {

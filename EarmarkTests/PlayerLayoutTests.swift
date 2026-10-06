@@ -65,7 +65,17 @@ final class PlayerLayoutTests: XCTestCase {
         }
     }
 
+    func testLongNarratorOnlyScrollsWithinPanes() async throws {
+        try await checkLayout(size: CGSize(width: 668, height: 278), name: "long-narrator-landscape-phone",
+                              narrator: "Stephen Fry, Juliet Stevenson, Simon Vance, and a full cast") { scrolls in
+            for scroll in scrolls {
+                XCTAssertLessThan(scroll.bounds.width, 668, "Narrator credits must not make the whole player scroll")
+            }
+        }
+    }
+
     private func checkLayout(size: CGSize, name: String, textSize: DynamicTypeSize = .large,
+                             narrator: String? = "Samantha",
                              check: ([UIScrollView]) throws -> Void) async throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -79,7 +89,7 @@ final class PlayerLayoutTests: XCTestCase {
         let source = UUID()
         // No audio is played; use an empty track list so loading performs no filesystem/network IO.
         let book = Book(id: "layout-test", sourceID: source, relativePath: "test", kind: .folder,
-                        title: "Pride and Prejudice", author: "Jane Austen", tracks: [],
+                        title: "Pride and Prejudice", author: "Jane Austen", narrator: narrator, tracks: [],
                         chapters: (0..<3).map { Chapter(title: "Chapter \($0 + 1)", trackIndex: 0,
                                                       start: Double($0) * 60, duration: 60) },
                         addedAt: .now, totalBytes: 0)

@@ -15,7 +15,7 @@ struct MarkFinishedSheet: View {
             Form {
                 Section {
                     Text(book.title).font(.headline)
-                    Text(book.displayAuthor).font(.subheadline).foregroundStyle(.secondary)
+                    BookCreditsView(book: book, authorFont: .subheadline)
                 }
                 Section("Finished On") {
                     DatePicker("Date", selection: $finishedAt, in: ...Date.now, displayedComponents: .date)

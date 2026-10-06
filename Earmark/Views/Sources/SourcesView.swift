@@ -340,7 +340,7 @@ struct HiddenBooksView: View {
                     .frame(width: 44, height: 44)
                 VStack(alignment: .leading) {
                     Text(book.title).lineLimit(1)
-                    Text(book.displayAuthor).font(.caption).foregroundStyle(.secondary)
+                    BookCreditsView(book: book)
                 }
                 Spacer()
                 Button("Unhide") { library.setHidden(false, bookID: book.id) }

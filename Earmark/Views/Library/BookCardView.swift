@@ -48,10 +48,7 @@ struct BookCardView: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text(book.displayAuthor)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                BookCreditsView(book: book)
                 Text(Self.statusLine(for: book, progress: progress))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -66,6 +63,7 @@ struct BookCardView: View {
 
     static func accessibilityLabel(for book: Book, progress: PlaybackProgress, remote: Bool) -> String {
         var parts = [book.title, "by \(book.displayAuthor)"]
+        if let narrator = book.narratorCredit { parts.append(narrator) }
         if let series = book.series { parts.append(book.seriesIndex.map { "\(series) book \(BookDetailView.format($0))" } ?? series) }
         parts.append(statusLine(for: book, progress: progress))
         if remote { parts.append("on NAS") }
@@ -92,10 +90,7 @@ struct BookRowView: View {
                 Text(book.title)
                     .font(.body.weight(.medium))
                     .lineLimit(1)
-                Text(book.displayAuthor)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                BookCreditsView(book: book, authorFont: .subheadline)
                 HStack(spacing: 8) {
                     if progress.hasStarted, !progress.isFinished {
                         ProgressBar(fraction: progress.fraction(of: book))

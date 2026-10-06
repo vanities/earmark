@@ -71,7 +71,7 @@ final class CarPlayInterface: NSObject, CPNowPlayingTemplateObserver {
 
     private func listItem(for book: Book) -> CPListItem {
         let progress = environment.library.progress(for: book.id)
-        var detail = book.displayAuthor
+        var detail = book.displayCredits
         if progress.isFinished {
             detail += " · Finished"
         } else if progress.hasStarted {

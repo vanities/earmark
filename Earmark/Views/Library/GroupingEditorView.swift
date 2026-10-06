@@ -45,7 +45,11 @@ struct GroupingEditorView: View {
                                 selected.remove(book.id)
                             }
                         } label: {
-                            VStack(alignment: .leading) { Text(book.title); Text("\(book.tracks.count) \(book.tracks.count == 1 ? "track" : "tracks")").font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading) {
+                                Text(book.title)
+                                BookCreditsView(book: book)
+                                Text("\(book.tracks.count) \(book.tracks.count == 1 ? "track" : "tracks")").font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
