@@ -61,6 +61,9 @@ final class PlayerEngine {
     @ObservationIgnored private var interruptionObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var routeObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var pendingSeek: TimeInterval?
+    @ObservationIgnored private var seekRequestGeneration = 0
+    /// Keep the requested position until the latest native seek completes.
+    @ObservationIgnored private var activeSeekRequest: Int?
     @ObservationIgnored private var playWhenReady = false
     @ObservationIgnored private var playbackRequestGeneration = 0
     @ObservationIgnored private var pausedAt: Date?
@@ -625,10 +628,23 @@ final class PlayerEngine {
         }
         let generation = itemGeneration
         let requestGeneration = playbackRequestGeneration
-        player.seek(to: CMTime(seconds: clamped, preferredTimescale: 1000), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+        seekRequestGeneration += 1
+        let seekRequest = seekRequestGeneration
+        activeSeekRequest = seekRequest
+        // Millisecond rounding can land just before a fractional chapter boundary. The
+        // next tick then selects the previous chapter, making the next scrub relative to it.
+        // Keep microsecond precision and round forward if conversion undershoots the target.
+        var target = CMTime(seconds: clamped, preferredTimescale: 1_000_000)
+        if CMTimeGetSeconds(target) < clamped {
+            target = CMTimeAdd(target, CMTime(value: 1, timescale: target.timescale))
+        }
+        player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor [weak self] in
-                guard let self, generation == self.itemGeneration else { return }
-                if finished, thenPlay, requestGeneration == self.playbackRequestGeneration { self.startPlayback() }
+                guard let self, generation == self.itemGeneration, self.activeSeekRequest == seekRequest else { return }
+                self.activeSeekRequest = nil
+                if finished, thenPlay || self.playWhenReady, requestGeneration == self.playbackRequestGeneration {
+                    self.startPlayback()
+                }
                 self.notify()
             }
         }
@@ -825,8 +841,13 @@ final class PlayerEngine {
     // MARK: - Observers
 
     private func installObservers() {
-        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 2), queue: .main) { [weak self] time in
-            MainActor.assumeIsolated { self?.tick(CMTimeGetSeconds(time)) }
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 2), queue: .main) { [weak self] _ in
+            // A queued sample may predate a chapter jump or a later seek. Read the live
+            // item position so it cannot replace the requested chapter with an old one.
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.tick(CMTimeGetSeconds(self.player.currentTime()))
+            }
         }
         timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, _ in
             Task { @MainActor [weak self] in self?.syncPlayingState() }
@@ -845,6 +866,7 @@ final class PlayerEngine {
     }
 
     private func detachItemObservers() {
+        activeSeekRequest = nil
         currentLoader?.observeReadFailures(nil)
         statusObservation?.invalidate()
         statusObservation = nil
@@ -855,7 +877,7 @@ final class PlayerEngine {
     }
 
     private func tick(_ seconds: TimeInterval) {
-        guard player.currentItem != nil, !isLoading, pendingSeek == nil, seconds.isFinite else { return }
+        guard player.currentItem != nil, !isLoading, pendingSeek == nil, activeSeekRequest == nil, seconds.isFinite else { return }
         currentTime = seconds
         ticks += 1
         if ticks % 10 == 0 { persistPosition() }

@@ -26,7 +26,7 @@ spec = importlib.util.spec_from_file_location("tf", ROOT / "testflight.py")
 tf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tf)  # type: ignore[union-attr]
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 LOCALE = "en-US"
 SITE = "https://am2.biz/earmark"
 
@@ -59,7 +59,8 @@ Source code: github.com/vanities/earmark
 
 Supported audio: MP3, M4A, M4B, AAC, WAV, AIFF, CAF and FLAC.""",
     "keywords": "player,nas,smb,carplay,chapters,sleep,timer,bookmarks,speed,folders,library,flac,wav,aac",
-    "whatsNew": """Improved pause, interruption, sleep timer and track-skipping behavior.
+    "whatsNew": """Fixed the current chapter and playback position falling behind after changing chapters or scrubbing in Now Playing.
+Improved pause, interruption, sleep timer and track-skipping behavior.
 Fixed bookmark-note editing when playback advances to another book and improved widget updates.
 More reliable NAS downloads, retries and WAV streaming on iOS 27.
 Hidden books now stay hidden when restoring library backups.""",

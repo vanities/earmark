@@ -33,3 +33,8 @@ The runner holds a per-device lock and reuses a per-device DerivedData directory
 authoritative exit before starting another run on that simulator, including ordinary test runs
 or manual native-app control. A result path and test screenshots remain available after failure.
 No physical-device, CarPlay, NAS or hosted-release behavior is established by this suite.
+
+`testChapterChangesAndScrubbingKeepCurrentChapter` selects chapters in the generated M4B,
+pauses, drags the real slider to the start and then into the chapter, and verifies the current
+chapter button and slider update together. The existing sample passed before the fix too;
+the failing fractional-boundary and rapid-playback repros are in `PlayerLifecycleTests`.
