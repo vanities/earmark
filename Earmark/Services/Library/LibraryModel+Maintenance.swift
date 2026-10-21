@@ -70,6 +70,7 @@ extension LibraryModel {
         books = restored.books
         manualGroupings = restored.manualGroupings
         progress = restored.progress
+        hiddenBookIDs = restored.hiddenBookIDs
         metadataOverrides = restored.metadataOverrides
         customArtwork = restored.customArtwork
         bookmarks = restored.bookmarks

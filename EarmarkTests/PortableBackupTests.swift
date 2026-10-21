@@ -69,4 +69,26 @@ final class PortableBackupTests: XCTestCase {
         let current = LibraryState(books: [item(UUID()), item(UUID())])
         XCTAssertTrue(current.portableMatches(old).isEmpty)
     }
+
+    @MainActor
+    func testRestoreKeepsHiddenTitlesWithNewSourceIDs() throws {
+        let oldItem = item(UUID()), currentItem = item(UUID())
+        var old = LibraryState(books: [oldItem]), current = LibraryState(books: [currentItem])
+        old.hiddenBookIDs.insert(oldItem.id)
+        current.hiddenBookIDs.insert("already-hidden")
+        current.restorePortable(old)
+        XCTAssertTrue(current.hiddenBookIDs.contains(currentItem.id))
+        XCTAssertTrue(current.hiddenBookIDs.contains("already-hidden"))
+        XCTAssertFalse(current.hiddenBookIDs.contains(oldItem.id))
+
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let library = LibraryModel(store: LibraryStore(directory: directory), settings: AppSettings(defaults: defaults))
+        library.books = [currentItem]
+        library.restorePortable(old)
+        XCTAssertTrue(library.hiddenBookIDs.contains(currentItem.id), "The actual Restore action must apply the hidden flags")
+    }
 }

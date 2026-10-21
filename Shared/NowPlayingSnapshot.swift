@@ -16,7 +16,7 @@ struct NowPlayingSnapshot: Codable, Equatable {
 
     /// Metadata edits must refresh the widget even when playback position hasn't changed.
     var widgetUpdateKey: [AnyHashable] {
-        [bookID, title, author, narrator ?? "", isPlaying, Int(fraction * 100)]
+        [bookID, title, author, narrator ?? "", isPlaying, Int(fraction * 100), remaining]
     }
 }
 

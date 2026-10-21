@@ -25,6 +25,7 @@ extension LibraryState {
         preparePortableGrouping(old)
         deletedBookmarks = deletedBookmarks.merging(old.deletedBookmarks)
         for (from, to) in portableMatches(old) {
+            if old.hiddenBookIDs.contains(from) { hiddenBookIDs.insert(to) }
             if progress[to] == nil { progress[to] = old.progress[from] }
             if metadataOverrides[to] == nil { metadataOverrides[to] = old.metadataOverrides[from] }
             if customArtwork[to] == nil, let book = books.first(where: { $0.id == to }), coverChoices[book.syncKey] == nil { customArtwork[to] = old.customArtwork[from] }
