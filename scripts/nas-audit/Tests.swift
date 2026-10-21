@@ -54,6 +54,40 @@ final class EarmarkNASAuditTests: XCTestCase {
         await client.disconnect()
     }
 
+    func testChapterChangesAndScrubbingWhileStreaming() async throws {
+        try await withLibrary { library, settings, _, original, _ in
+            var book = original
+            let step = 10.000375
+            book.chapters = (0..<18).map { index in
+                let start = Double(index) * step
+                return Chapter(title: "Chapter \(index + 1)", trackIndex: 0, start: start,
+                               duration: min(step, book.totalDuration - start))
+            }
+            library.books = [book]
+            let player = PlayerEngine(library: library, settings: settings)
+            defer { player.unload() }
+            player.load(book, autoplay: true)
+            try await self.eventually { player.isPlaying && player.currentTime > 0.5 || player.errorMessage != nil }
+            XCTAssertNil(player.errorMessage)
+            XCTAssertTrue(player.isRemote)
+            for index in [4, 1, 8, 2, 12, 3] {
+                player.jump(to: book.chapters[index])
+                try await Task.sleep(for: .milliseconds(5))
+                player.seek(toChapterTime: 3)
+                for _ in 0..<10 {
+                    try await Task.sleep(for: .milliseconds(10))
+                    XCTAssertEqual(player.currentChapterIndex, index)
+                    XCTAssertEqual(player.chapterElapsed, 3, accuracy: 0.3)
+                }
+                // Advance beyond the optimistic target: native playback must actually arrive.
+                try await self.eventually { player.currentTime > book.chapters[index].start + 3.3 || player.errorMessage != nil }
+                XCTAssertNil(player.errorMessage)
+                XCTAssertEqual(player.currentChapterIndex, index)
+            }
+            player.pause()
+        }
+    }
+
     func testActualSMBPlaybackSeekingPauseAndReconnect() async throws {
         try await withLibrary { library, settings, client, book, _ in
             let player = PlayerEngine(library: library, settings: settings)

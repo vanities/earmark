@@ -423,6 +423,27 @@ final class PlayerFlowTests: XCTestCase {
         }
     }
 
+    func testChapterChangesAndScrubbingKeepCurrentChapter() {
+        prepareWindow()
+        openPausedFrankenstein()
+        for chapter in ["Letter 2", "Chapter 1", "Letter 2", "Letter 1"] {
+            chooseChapter(chapter)
+            pause()
+            let slider = app.sliders["Chapter position"]
+            XCTAssertTrue(slider.isHittable, app.debugDescription)
+            slider.adjust(toNormalizedSliderPosition: 0)
+            Thread.sleep(forTimeInterval: 0.8)
+            XCTAssertEqual(app.buttons["PlayerChapterButton"].label, chapter,
+                           "Scrubbing to the chapter start must not select the previous chapter: \(app.debugDescription)")
+            slider.adjust(toNormalizedSliderPosition: 0.6)
+            Thread.sleep(forTimeInterval: 0.8)
+            XCTAssertEqual(app.buttons["PlayerChapterButton"].label, chapter, app.debugDescription)
+            XCTAssertFalse((slider.value as? String ?? "").hasPrefix("0:00,"),
+                           "The slider must show the new position: \(String(describing: slider.value))")
+            capture("Chapter and scrubber agree - \(chapter)")
+        }
+    }
+
     func testBookmarkSeekingPresetAndQueuePlayback() {
         prepareWindow()
         openPausedFrankenstein()

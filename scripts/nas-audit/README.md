@@ -71,3 +71,8 @@ Both apps verify the complete retained prefix through bounded reads before resum
 unchanged-source cancellation, service restart and background cases guard that path too.
 Source snapshots do not provide atomic reads of a concurrently edited NAS file. The hidden
 `.versions` fixtures are generated test data and are never registered as library sources.
+
+`testChapterChangesAndScrubbingWhileStreaming` uses the real SMB-backed AVPlayer with
+fractional chapter metadata, jumps in both directions and immediately seeks within the
+chosen chapter. It checks the displayed chapter during each seek and waits for actual
+playback to advance beyond the requested position.

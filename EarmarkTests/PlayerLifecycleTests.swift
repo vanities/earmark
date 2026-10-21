@@ -5,6 +5,101 @@ import XCTest
 /// Exercises AVPlayer and the notification handlers, not just the position calculations.
 @MainActor
 final class PlayerLifecycleTests: XCTestCase {
+    func testChapterTapAtFractionalBoundaryKeepsSelectedChapter() async throws {
+        try await withPlayer(embeddedChapters: true) { player, books in
+            let book = try XCTUnwrap(books.first { $0.tracks.count == 3 })
+            player.load(book, autoplay: false)
+            try await self.eventually { !player.isLoading }
+            for index in [1, 3, 1, 3] {
+                player.jump(to: book.chapters[index])
+                try await Task.sleep(for: .milliseconds(600))
+                XCTAssertEqual(player.currentChapterIndex, index, "chapter start=\(book.chapters[index].start) actual=\(player.currentTime)")
+                player.seek(toChapterTime: 3)
+                try await Task.sleep(for: .milliseconds(100))
+                XCTAssertEqual(player.currentChapterIndex, index, "Seeking must be relative to the chosen chapter")
+                XCTAssertEqual(player.chapterElapsed, 3, accuracy: 0.1)
+            }
+        }
+    }
+
+    func testChapterChangesFollowedBySeekingKeepTheSelectedChapter() async throws {
+        try await withPlayer(embeddedChapters: true) { player, books in
+            let book = try XCTUnwrap(books.first { $0.tracks.count == 3 })
+            player.load(book, autoplay: false)
+            try await self.eventually { !player.isLoading }
+            // Exercise the same chapter-relative commands as the Now Playing sheet,
+            // allowing AVPlayer callbacks between the chapter tap and slider release.
+            for turn in 0..<60 {
+                let index = turn.isMultiple(of: 2) ? 4 : 1
+                player.jump(to: book.chapters[index])
+                try await Task.sleep(for: .milliseconds(5))
+                player.seek(toChapterTime: 3)
+                for sample in 0..<8 {
+                    try await Task.sleep(for: .milliseconds(5))
+                    XCTAssertEqual(player.currentChapterIndex, index, "turn=\(turn) sample=\(sample) time=\(player.currentTime)")
+                    XCTAssertEqual(player.chapterElapsed, 3, accuracy: 0.1, "turn=\(turn) sample=\(sample)")
+                }
+            }
+        }
+    }
+
+    func testTrackChangesFollowedBySeekingKeepTheSelectedChapter() async throws {
+        try await withPlayer(embeddedChapters: true) { player, books in
+            let book = try XCTUnwrap(books.first { $0.tracks.count == 3 })
+            player.load(book, autoplay: false)
+            try await self.eventually { !player.isLoading }
+            for turn in 0..<20 {
+                let index = turn.isMultiple(of: 2) ? 10 : 1
+                player.jump(to: book.chapters[index])
+                try await self.eventually { !player.isLoading }
+                player.seek(toChapterTime: 3)
+                for sample in 0..<8 {
+                    try await Task.sleep(for: .milliseconds(5))
+                    XCTAssertEqual(player.currentChapterIndex, index, "turn=\(turn) sample=\(sample) time=\(player.currentTime)")
+                    XCTAssertEqual(player.chapterElapsed, 3, accuracy: 0.1, "turn=\(turn) sample=\(sample)")
+                }
+            }
+        }
+    }
+
+    func testPlayingChapterChangesFollowedBySeekingKeepTheSelectedChapter() async throws {
+        try await withPlayer(embeddedChapters: true) { player, books in
+            let book = try XCTUnwrap(books.first { $0.tracks.count == 3 })
+            player.load(book, autoplay: true)
+            try await self.eventually { player.isPlaying && player.currentTime > 0.2 }
+            for turn in 0..<40 {
+                let index = turn.isMultiple(of: 2) ? 4 : 1
+                player.jump(to: book.chapters[index])
+                if turn.isMultiple(of: 2) { try await Task.sleep(for: .milliseconds(5)) }
+                player.seek(toChapterTime: 3)
+                for sample in 0..<8 {
+                    try await Task.sleep(for: .milliseconds(5))
+                    XCTAssertEqual(player.currentChapterIndex, index, "turn=\(turn) sample=\(sample) time=\(player.currentTime)")
+                    XCTAssertEqual(player.chapterElapsed, 3, accuracy: 0.3, "turn=\(turn) sample=\(sample)")
+                }
+            }
+            XCTAssertTrue(player.isPlaying)
+        }
+    }
+
+    func testSeekingAsTheInitialTrackBecomesReadyPreservesAutoplay() async throws {
+        try await withPlayer(embeddedChapters: true) { player, books in
+            let book = try XCTUnwrap(books.first { $0.tracks.count == 3 })
+            var redirected = false
+            player.stateDidChange = {
+                guard !player.isLoading, !redirected else { return }
+                redirected = true
+                player.jump(to: book.chapters[4])
+                player.seek(toChapterTime: 3)
+            }
+            defer { player.stateDidChange = nil }
+            player.load(book, autoplay: true)
+            try await self.eventually { player.isPlaying && player.currentTime > 43.1 }
+            XCTAssertTrue(redirected)
+            XCTAssertEqual(player.currentChapterIndex, 4)
+        }
+    }
+
     func testPauseWhileLoadingCancelsPendingAutoplay() async throws {
         try await withPlayer { player, books in
             player.load(books[0], autoplay: true)
@@ -104,7 +199,7 @@ final class PlayerLifecycleTests: XCTestCase {
         }
     }
 
-    private func withPlayer(_ body: (PlayerEngine, [Book]) async throws -> Void) async throws {
+    private func withPlayer(embeddedChapters: Bool = false, _ body: (PlayerEngine, [Book]) async throws -> Void) async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -126,7 +221,17 @@ final class PlayerLifecycleTests: XCTestCase {
             files.append(ScannedFile(relativePath: name, fileSize: 1, modifiedAt: nil, metadata: AudioMetadata(duration: 60)))
         }
         let source = UUID()
-        let books = BookGrouper.group(.init(sourceID: source, sourceName: "Test", files: files, imagesByDirectory: [:])).map(\.book)
+        var books = BookGrouper.group(.init(sourceID: source, sourceName: "Test", files: files, imagesByDirectory: [:])).map(\.book)
+        if embeddedChapters {
+            for index in books.indices {
+                books[index].chapters = books[index].tracks.indices.flatMap { track in
+                    (0..<6).map { chapter in
+                        Chapter(title: "Chapter \(track * 6 + chapter + 1)", trackIndex: track,
+                                start: Double(chapter) * 10.000375, duration: chapter == 5 ? 60 - 50.001875 : 10.000375)
+                    }
+                }
+            }
+        }
         XCTAssertEqual(books.count, 2)
         guard books.count == 2 else { throw CocoaError(.coderInvalidValue) }
         let library = LibraryModel(store: LibraryStore(directory: root.appending(path: "state")), settings: settings)
