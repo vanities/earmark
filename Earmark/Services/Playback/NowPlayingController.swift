@@ -136,6 +136,7 @@ final class NowPlayingController {
             artworkID = nil
             artworkLoading = false
             widgetCoverID = nil
+            lastWidgetSnapshot = nil
             SharedNowPlaying.write(nil)
             SharedNowPlaying.writeCover(nil)
             WidgetCenter.shared.reloadAllTimelines()

@@ -199,10 +199,15 @@ struct ChapterListSheet: View {
 }
 
 struct BookmarksSheet: View {
+    private struct EditingBookmark {
+        let id: String
+        let book: Book
+    }
+
     @Environment(PlayerEngine.self) private var player
     @Environment(LibraryModel.self) private var library
     @Environment(\.dismiss) private var dismiss
-    @State private var editing: Bookmark?
+    @State private var editing: EditingBookmark?
     @State private var noteDraft = ""
 
     var body: some View {
@@ -225,7 +230,8 @@ struct BookmarksSheet: View {
                                         library.removeBookmark(mark.id, for: book)
                                     }
                                     Button("Note", systemImage: "square.and.pencil") {
-                                        noteDraft = mark.note; editing = mark
+                                        noteDraft = mark.note
+                                        editing = EditingBookmark(id: mark.id, book: book)
                                     }.tint(.indigo)
                                 }
                             }
@@ -238,14 +244,16 @@ struct BookmarksSheet: View {
             .navigationTitle("Bookmarks")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .alert("Bookmark Note", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
-                TextField("Note", text: $noteDraft)
-                Button("Save") {
-                    if let mark = editing, let book = player.book { library.updateBookmark(mark.id, for: book, note: noteDraft) }
-                    editing = nil
-                }
-                Button("Cancel", role: .cancel) { editing = nil }
+        }
+        // Group forwards presentation modifiers to its changing children. Keep the editor
+        // on this stable container when autoplay changes the currently playing book.
+        .alert("Bookmark Note", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
+            TextField("Note", text: $noteDraft)
+            Button("Save") {
+                if let mark = editing { library.updateBookmark(mark.id, for: mark.book, note: noteDraft) }
+                editing = nil
             }
+            Button("Cancel", role: .cancel) { editing = nil }
         }
     }
 
@@ -294,6 +302,7 @@ struct ListeningQueueSheet: View {
                     .onMove { player.moveQueued(from: $0, to: $1) }
                 }
             }
+            .accessibilityIdentifier("ListeningQueueList")
             .navigationTitle("Listening queue")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
@@ -314,6 +323,7 @@ struct ListeningQueueSheet: View {
                             }
                         }.disabled(player.queueKeys.contains(book.syncKey) || player.book?.syncKey == book.syncKey)
                     }
+                    .accessibilityIdentifier("QueueBookPickerList")
                     .searchable(text: $search)
                     .navigationTitle("Add to queue")
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { adding = false } } }

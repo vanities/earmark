@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import Observation
 import os
+import ShelfKit
 
 // One state machine around one AVPlayer. Every section drives that player and its private
 // state, so splitting the file would mean opening both to the whole app; it runs past the
@@ -61,6 +62,7 @@ final class PlayerEngine {
     @ObservationIgnored private var routeObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var pendingSeek: TimeInterval?
     @ObservationIgnored private var playWhenReady = false
+    @ObservationIgnored private var playbackRequestGeneration = 0
     @ObservationIgnored private var pausedAt: Date?
     @ObservationIgnored private var wasPlayingBeforeInterruption = false
     @ObservationIgnored private var ticks = 0
@@ -69,6 +71,7 @@ final class PlayerEngine {
     /// The chapter the lock screen / CarPlay last heard about, so a new chapter is announced right away.
     @ObservationIgnored private var notifiedChapterIndex: Int?
     @ObservationIgnored private var sleepTask: Task<Void, Never>?
+    @ObservationIgnored private var sleepFadeTask: Task<Void, Never>?
     @ObservationIgnored private var sleepEndsAt: Date?
     @ObservationIgnored private var sleepArmedChapterIndex: Int?
     @ObservationIgnored private var itemGeneration = 0
@@ -171,6 +174,7 @@ final class PlayerEngine {
         errorMessage = nil
         didFinishCurrentBook = false
         pausedAt = nil
+        wasPlayingBeforeInterruption = false
         jumpOrigin = nil
 
         var saved = library.progress(for: newBook.id)
@@ -231,6 +235,9 @@ final class PlayerEngine {
     }
 
     func unload() {
+        playWhenReady = false
+        wasPlayingBeforeInterruption = false
+        playbackRequestGeneration += 1
         persistPosition()
         finishListening()
         jumpOrigin = nil
@@ -261,6 +268,9 @@ final class PlayerEngine {
     private func loadTrack(index: Int, startAt time: TimeInterval, autoplay: Bool) {
         guard let book, book.tracks.indices.contains(index) else { return }
         let track = book.tracks[index]
+        trackIndex = index
+        currentTime = time
+        trackDuration = track.duration
         guard let source = library.playbackSource(forTrack: track, in: book) else {
             fail(library.isRemote(book) ? "This NAS isn't set up anymore. Add it again under Folders." : "This book's folder isn't available. Re-add it under Folders.")
             return
@@ -270,9 +280,6 @@ final class PlayerEngine {
         let generation = itemGeneration
         detachItemObservers()
 
-        trackIndex = index
-        currentTime = time
-        trackDuration = track.duration
         isLoading = true
         errorMessage = nil
         pendingSeek = time
@@ -280,6 +287,13 @@ final class PlayerEngine {
         didFinishCurrentBook = false
 
         currentLoader = source.loader
+        source.loader?.observeReadFailures { [weak self] failure in
+            Task { @MainActor [weak self] in
+                guard let self, generation == self.itemGeneration, self.currentLoader != nil, !failure.isCancelled() else { return }
+                Logger.player.error("[player] SMB read failed: \(failure.message, privacy: .public)")
+                self.fail(self.remoteFailureMessage)
+            }
+        }
         isRemote = source.isRemote
         remoteServerName = source.serverName
         player.automaticallyWaitsToMinimizeStalling = source.isRemote
@@ -313,7 +327,6 @@ final class PlayerEngine {
             }
             isLoading = false
             let shouldPlay = playWhenReady
-            playWhenReady = false
             if let target = pendingSeek {
                 pendingSeek = nil
                 performSeek(target, thenPlay: shouldPlay)
@@ -327,7 +340,7 @@ final class PlayerEngine {
             isPlaying = false
             finishListening()
             if isRemote {
-                errorMessage = "Couldn't reach \(remoteServerName ?? "your NAS"). Make sure this iPhone is on the same network (or VPN) as the NAS, then tap play to retry."
+                errorMessage = remoteFailureMessage
             } else {
                 errorMessage = item.error?.localizedDescription ?? "Couldn't play this file."
             }
@@ -338,7 +351,20 @@ final class PlayerEngine {
         }
     }
 
+    private var remoteFailureMessage: String {
+        "Couldn't reach \(remoteServerName ?? "your NAS"). Make sure this \(DeviceStorage.device) is on the same network (or VPN) as the NAS, then tap play to retry."
+    }
+
     private func fail(_ message: String) {
+        // A source can disappear before a replacement item is created. Remove the old item
+        // rather than letting its audio and time observer keep running under the new title.
+        itemGeneration += 1
+        playbackRequestGeneration += 1
+        playWhenReady = false
+        pendingSeek = nil
+        detachItemObservers()
+        player.replaceCurrentItem(with: nil)
+        currentLoader = nil
         errorMessage = message
         isLoading = false
         isPlaying = false
@@ -351,7 +377,7 @@ final class PlayerEngine {
 
     func play() {
         guard book != nil else { return }
-        if errorMessage != nil, let book {
+        if errorMessage != nil || currentLoader?.hasReadFailure == true, let book {
             // Retry the current track (e.g. the folder came back).
             loadTrack(index: trackIndex, startAt: currentTime, autoplay: true)
             _ = book
@@ -392,7 +418,16 @@ final class PlayerEngine {
     }
 
     func pause() {
-        guard isPlaying || player.rate != 0 else { return }
+        // A file or its initial seek may still be loading when Pause arrives from headphones.
+        // Cancel that intent even before AVPlayer has a nonzero rate.
+        let pendingPlay = playWhenReady
+        playWhenReady = false
+        wasPlayingBeforeInterruption = false
+        playbackRequestGeneration += 1
+        sleepFadeTask?.cancel()
+        sleepFadeTask = nil
+        player.volume = 1
+        guard isPlaying || player.rate != 0 || pendingPlay else { return }
         player.pause()
         isPlaying = false
         pausedAt = .now
@@ -411,6 +446,7 @@ final class PlayerEngine {
     }
 
     private func startPlayback() {
+        playWhenReady = false
         AudioSessionManager.activate()
         player.volume = 1
         player.defaultRate = speed
@@ -463,22 +499,20 @@ final class PlayerEngine {
     func skip(by delta: TimeInterval) {
         guard let book else { return }
         pausedAt = nil
-        var target = currentTime + delta
-        if target < 0 {
-            if trackIndex > 0 {
-                let previous = book.tracks[trackIndex - 1]
-                loadTrack(index: trackIndex - 1, startAt: max(0, previous.duration + target), autoplay: isPlaying)
-                return
-            }
-            target = 0
-        } else if trackDuration > 0, target >= trackDuration {
-            if trackIndex + 1 < book.tracks.count {
-                loadTrack(index: trackIndex + 1, startAt: target - trackDuration, autoplay: isPlaying)
-                return
-            }
-            target = max(0, trackDuration - 1)
+        guard book.totalDuration > 0 else {
+            seek(toTrackTime: currentTime + delta)
+            return
         }
-        seek(toTrackTime: target)
+        // A skip may span several short tracks. Resolve it in book time rather than dropping
+        // the part beyond the immediately adjacent track.
+        let offset = book.absoluteOffset(trackIndex: trackIndex, time: currentTime)
+        let target = min(max(0, offset + delta), max(0, book.totalDuration - 1))
+        let position = book.position(atAbsoluteOffset: target)
+        if position.trackIndex != trackIndex {
+            loadTrack(index: position.trackIndex, startAt: position.time, autoplay: isPlaying)
+        } else {
+            seek(toTrackTime: position.time)
+        }
     }
 
     /// A spot the listener chose (scrub, skip, chapter). Smart rewind is only for resuming where you
@@ -590,10 +624,11 @@ final class PlayerEngine {
             return
         }
         let generation = itemGeneration
+        let requestGeneration = playbackRequestGeneration
         player.seek(to: CMTime(seconds: clamped, preferredTimescale: 1000), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor [weak self] in
                 guard let self, generation == self.itemGeneration else { return }
-                if finished, thenPlay { self.startPlayback() }
+                if finished, thenPlay, requestGeneration == self.playbackRequestGeneration { self.startPlayback() }
                 self.notify()
             }
         }
@@ -712,6 +747,9 @@ final class PlayerEngine {
     private func cancelSleepTimer(notify shouldNotify: Bool) {
         sleepTask?.cancel()
         sleepTask = nil
+        sleepFadeTask?.cancel()
+        sleepFadeTask = nil
+        player.volume = 1
         sleepEndsAt = nil
         sleepRemaining = nil
         sleepArmedChapterIndex = nil
@@ -726,9 +764,9 @@ final class PlayerEngine {
         Logger.player.info("[player] sleep timer fired (\(reason, privacy: .public))")
         cancelSleepTimer(notify: false)
         guard isPlaying else { return }
-        Task { [weak self] in
+        sleepFadeTask = Task { [weak self] in
             for step in stride(from: 9, through: 0, by: -1) {
-                guard let self else { return }
+                guard !Task.isCancelled, let self else { return }
                 guard self.isPlaying else {
                     // Paused mid-fade: put the volume back, or the next play starts quiet.
                     self.player.volume = 1
@@ -737,7 +775,7 @@ final class PlayerEngine {
                 self.player.volume = Float(step) / 10
                 try? await Task.sleep(for: .milliseconds(Int(Self.sleepFadeDuration * 100)))
             }
-            guard let self else { return }
+            guard !Task.isCancelled, let self else { return }
             self.pause()
             self.player.volume = 1
         }
@@ -749,7 +787,9 @@ final class PlayerEngine {
     private func trackDidEnd() {
         guard let book else { return }
         Logger.player.info("[player] track ended index=\(self.trackIndex)/\(book.tracks.count)")
-        let sleepAtChapterEnd = sleepTimer == .endOfChapter
+        // Starting a fade clears the timer, but its stop intent lasts until the fade
+        // finishes or is explicitly cancelled. Short tracks can end before that happens.
+        let sleepAtChapterEnd = sleepTimer == .endOfChapter || sleepFadeTask != nil
         if trackIndex + 1 < book.tracks.count {
             if sleepAtChapterEnd {
                 cancelSleepTimer(notify: false)
@@ -770,7 +810,7 @@ final class PlayerEngine {
                 finishedDownloadIDs.insert(book.id)
                 Logger.downloads.info("[downloads] \(book.title, privacy: .public) finished — removing its download when another book starts")
             }
-            let continueQueue = settings.autoplayQueue && sleepTimer == .off
+            let continueQueue = settings.autoplayQueue && sleepTimer == .off && sleepFadeTask == nil
             let queued = settings.queueKeys.first.flatMap { queuedBook(for: $0) }
             upNext = queued ?? (settings.queueKeys.isEmpty ? library.nextInSeries(after: book) : nil)
             if upNext != nil { Logger.player.info("[player] up next: \(self.upNext?.title ?? "-", privacy: .public)") }
@@ -805,6 +845,7 @@ final class PlayerEngine {
     }
 
     private func detachItemObservers() {
+        currentLoader?.observeReadFailures(nil)
         statusObservation?.invalidate()
         statusObservation = nil
         if let endObserver {
@@ -814,7 +855,7 @@ final class PlayerEngine {
     }
 
     private func tick(_ seconds: TimeInterval) {
-        guard !isLoading, pendingSeek == nil, seconds.isFinite else { return }
+        guard player.currentItem != nil, !isLoading, pendingSeek == nil, seconds.isFinite else { return }
         currentTime = seconds
         ticks += 1
         if ticks % 10 == 0 { persistPosition() }
@@ -866,16 +907,10 @@ final class PlayerEngine {
     private func handleInterruption(type: AVAudioSession.InterruptionType?, options: AVAudioSession.InterruptionOptions) {
         switch type {
         case .began:
-            wasPlayingBeforeInterruption = isPlaying
+            let shouldResume = isPlaying || playWhenReady
             Logger.player.info("[player] interruption began (wasPlaying=\(self.isPlaying))")
-            if isPlaying {
-                player.pause()
-                isPlaying = false
-                pausedAt = .now
-                persistPosition()
-                finishListening()
-                notify()
-            }
+            pause()
+            wasPlayingBeforeInterruption = shouldResume
         case .ended:
             Logger.player.info("[player] interruption ended shouldResume=\(options.contains(.shouldResume))")
             if wasPlayingBeforeInterruption, options.contains(.shouldResume) {
@@ -888,7 +923,7 @@ final class PlayerEngine {
     }
 
     private func handleRouteChange(_ reason: AVAudioSession.RouteChangeReason?) {
-        guard reason == .oldDeviceUnavailable, isPlaying else { return }
+        guard reason == .oldDeviceUnavailable else { return }
         Logger.player.info("[player] audio route lost — pausing")
         pause()
     }

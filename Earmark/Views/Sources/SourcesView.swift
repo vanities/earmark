@@ -91,7 +91,7 @@ struct SourcesView: View {
                 }
 
                 Section("Tips") {
-                    TipRowView(systemImage: "iphone", title: "Keep books on this phone",
+                    TipRowView(systemImage: DeviceStorage.device == "iPad" ? "ipad" : "iphone", title: "Keep books on this device",
                                detail: "In the Files app, move audiobooks into \(DeviceStorage.earmarkFolder). They stay put and show up here automatically.")
                     TipRowView(systemImage: "externaldrive.connected.to.line.below", title: "Play from a NAS",
                                detail: "Add NAS Share… streams books straight from an SMB share on your network, and downloads any you want to keep.")

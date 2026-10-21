@@ -233,6 +233,7 @@ struct PlayerContentView: View {
     private func bookHeading(for book: Book) -> some View {
         VStack(spacing: 6) {
             Text(book.title)
+                .accessibilityIdentifier("PlayerBookTitle")
                 .font(.title3.bold())
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -260,6 +261,7 @@ struct PlayerContentView: View {
                 .font(.footnote.weight(.medium))
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier("PlayerChapterButton")
             .buttonBorderShape(.capsule)
             .controlSize(.small)
             .padding(.top, 4)

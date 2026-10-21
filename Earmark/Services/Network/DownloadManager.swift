@@ -21,6 +21,8 @@ final class DownloadManager {
         var doneBytes: Int64 = 0
         var state: State = .queued
         var error: String?
+        /// Optional for queues saved by older builds. Persist intent before the worker stops.
+        var cancellationRequested: Bool?
 
         var fraction: Double { totalBytes > 0 ? min(1, Double(doneBytes) / Double(totalBytes)) : 0 }
         var isActive: Bool { state == .queued || state == .running }
@@ -33,23 +35,28 @@ final class DownloadManager {
         didSet { persistQueue() }
     }
 
-    @ObservationIgnored private let store = LibraryStore()
+    @ObservationIgnored private let store: LibraryStore
+    @ObservationIgnored private let backgroundSchedulingEnabled: Bool
     @ObservationIgnored private var restoring = false
     @ObservationIgnored private let library: LibraryModel
     @ObservationIgnored private var runner: Task<Void, Never>?
     @ObservationIgnored private let cancelled = OSAllocatedUnfairLock(initialState: Set<UUID>())
     @ObservationIgnored private var attempts: [String: Int] = [:]
     @ObservationIgnored private var observers: [any NSObjectProtocol] = []
-    @ObservationIgnored private var backgroundTask: BGProcessingTask?
+    @ObservationIgnored private var backgroundExecution: TransferBackgroundExecution?
+    @ObservationIgnored private var backgroundPaused = false
+    @ObservationIgnored private var systemInterrupted: Set<UUID> = []
     @ObservationIgnored private var queueGeneration = 0
     @ObservationIgnored private let writtenGeneration = OSAllocatedUnfairLock(initialState: 0)
 
-    init(library: LibraryModel) {
+    init(library: LibraryModel, store: LibraryStore = LibraryStore(), registersBackgroundTasks: Bool = true) {
         self.library = library
+        self.store = store
+        self.backgroundSchedulingEnabled = registersBackgroundTasks
         restoreQueue()
-        registerBackgroundTask()
+        if registersBackgroundTasks { registerBackgroundTask() }
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.resumeInterrupted(reason: "foreground") }
+            MainActor.assumeIsolated { self?.resumeInForeground() }
         })
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.scheduleBackgroundProcessingIfNeeded() }
@@ -65,17 +72,22 @@ final class DownloadManager {
     /// newer one brought a finished download back as pending on the next launch, and it fetched
     /// the book again — even one the user had since removed. Each save carries its generation,
     /// and only a newer one than what's on disk is written.
-    private func persistQueue() {
+    private func persistQueue(immediately: Bool = false) {
         guard !restoring else { return }
         queueGeneration += 1
         let generation = queueGeneration, snapshot = jobs, store = self.store, written = writtenGeneration
-        Task.detached(priority: .utility) {
+        let write: @Sendable () -> Void = {
             written.withLock { newest in
                 guard generation > newest else { return }
                 newest = generation
-                try? store.saveJSON(snapshot, named: DownloadManager.queueFile)
+                do {
+                    try store.saveJSON(snapshot, named: DownloadManager.queueFile)
+                } catch {
+                    Logger.downloads.error("[downloads] couldn't save transfer queue: \(error.localizedDescription, privacy: .public)")
+                }
             }
         }
+        if immediately { write() } else { Task.detached(priority: .utility) { write() } }
     }
 
     /// Jobs that were queued or running when the app died come back as queued; finished ones stay listed.
@@ -84,10 +96,15 @@ final class DownloadManager {
         defer { restoring = false }
         guard var saved = store.loadJSON([Job].self, named: Self.queueFile), !saved.isEmpty else { return }
         var pending = 0
-        for index in saved.indices where saved[index].state == .running || saved[index].state == .queued {
-            saved[index].state = .queued
-            saved[index].error = nil
-            pending += 1
+        for index in saved.indices {
+            if saved[index].cancellationRequested == true && saved[index].state != .done {
+                saved[index].state = .cancelled
+                saved[index].error = nil
+            } else if saved[index].state == .running || saved[index].state == .queued {
+                saved[index].state = .queued
+                saved[index].error = nil
+                pending += 1
+            }
         }
         jobs = saved
         Logger.downloads.info("[downloads] restored \(saved.count) job(s), \(pending) pending")
@@ -99,37 +116,44 @@ final class DownloadManager {
     // MARK: Keeping transfers alive
 
     /// Interrupted jobs (iOS suspended us mid-transfer, network blip) go back in the queue, up to 3 tries.
+    private func resumeInForeground() {
+        // iOS can deliver this before withdrawing the old background budget. Invalidate
+        // that budget now so its later expiry cannot pause foreground transfers.
+        finishBackgroundExecution(success: false)
+        resumeInterrupted(reason: "foreground")
+    }
+
     private func resumeInterrupted(reason: String) {
+        backgroundPaused = false
         var requeued = 0
-        for index in jobs.indices where jobs[index].state == .failed {
-            let key = jobs[index].bookID
+        for job in jobs where job.state == .failed && job.cancellationRequested != true {
+            let key = job.bookID
             guard (attempts[key] ?? 0) < 3 else { continue }
             attempts[key, default: 0] += 1
-            jobs[index].state = .queued
-            jobs[index].error = nil
+            update(job.id) { $0.state = .queued; $0.error = nil }
             requeued += 1
         }
         if requeued > 0 {
-            Logger.downloads.info("[downloads] requeued \(requeued) interrupted job(s) on \(reason, privacy: .public)")
-            runNext()
+            Logger.downloads.info("[transfers] requeued \(requeued) interrupted job(s) on \(reason, privacy: .public)")
         }
+        runNext()
     }
 
     private func updateIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = isSyncing
+        UIApplication.shared.isIdleTimerDisabled = isSyncing && !backgroundPaused
     }
 
     private func registerBackgroundTask() {
         let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.backgroundTaskIdentifier, using: nil) { [weak self] task in
             guard let task = task as? BGProcessingTask else { return }
-            Task { @MainActor [weak self] in self?.runInBackground(task) }
+            Task { @MainActor [weak self] in self?.runInBackground(.live(task)) }
         }
         Logger.downloads.info("[downloads] background task registered=\(registered)")
     }
 
     /// Ask iOS for processing time later (typically when idle/charging) if work is pending.
     private func scheduleBackgroundProcessingIfNeeded() {
-        guard jobs.contains(where: \.isActive) else { return }
+        guard backgroundSchedulingEnabled, jobs.contains(where: \.isActive) else { return }
         let request = BGProcessingTaskRequest(identifier: Self.backgroundTaskIdentifier)
         request.requiresNetworkConnectivity = true
         request.requiresExternalPower = false
@@ -141,29 +165,33 @@ final class DownloadManager {
         }
     }
 
-    private func runInBackground(_ task: BGProcessingTask) {
-        Logger.downloads.info("[downloads] background processing started")
-        backgroundTask = task
-        task.expirationHandler = { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                Logger.downloads.info("[downloads] background time expiring — pausing")
-                // Stop the current job between chunks; it resumes from its partial file later.
-                if let running = self.jobs.first(where: { $0.state == .running }) { self.cancel(running.id) }
-                self.scheduleBackgroundProcessingIfNeeded()
-                task.setTaskCompleted(success: false)
-                self.backgroundTask = nil
-            }
+    func runInBackground(_ task: TransferBackgroundExecution) {
+        finishBackgroundExecution(success: false)
+        backgroundExecution = task
+        task.setExpirationHandler { [weak self, id = task.id] in
+            Task { @MainActor [weak self] in self?.expireBackgroundExecution(id) }
         }
         resumeInterrupted(reason: "background task")
-        for index in jobs.indices where jobs[index].state == .cancelled && (attempts[jobs[index].bookID] ?? 0) < 3 {
-            jobs[index].state = .queued
+    }
+
+    private func expireBackgroundExecution(_ id: UUID) {
+        guard backgroundExecution?.id == id else { return }
+        backgroundPaused = true
+        if let running = jobs.first(where: { $0.state == .running && $0.cancellationRequested != true }) {
+            systemInterrupted.insert(running.id)
+            cancelled.withLock { _ = $0.insert(running.id) }
         }
-        runNext()
-        if !jobs.contains(where: \.isActive) {
-            task.setTaskCompleted(success: true)
-            backgroundTask = nil
-        }
+        // Pending jobs keep their queued state. A stopped worker joins them after unwinding.
+        finishBackgroundExecution(success: false)
+        scheduleBackgroundProcessingIfNeeded()
+        updateIdleTimer()
+    }
+
+    private func finishBackgroundExecution(success: Bool) {
+        guard let task = backgroundExecution else { return }
+        backgroundExecution = nil
+        task.setExpirationHandler(nil)
+        task.complete(success)
     }
 
     func job(for bookID: String) -> Job? {
@@ -198,10 +226,6 @@ final class DownloadManager {
     }
 
     var isSyncing: Bool { jobs.contains(where: \.isActive) }
-
-    func cancelAll() {
-        for job in jobs where job.isActive { cancel(job.id) }
-    }
 
     // MARK: Moving local books into "On My iPhone › Earmark"
 
@@ -260,10 +284,19 @@ final class DownloadManager {
     }
 
     func cancel(_ jobID: UUID) {
+        guard let job = jobs.first(where: { $0.id == jobID }), job.isActive else { return }
         cancelled.withLock { _ = $0.insert(jobID) }
-        if let index = jobs.firstIndex(where: { $0.id == jobID }), jobs[index].state == .queued {
-            jobs[index].state = .cancelled
+        update(jobID) {
+            $0.cancellationRequested = true
+            if $0.state == .queued { $0.state = .cancelled }
         }
+        // User control intent must survive termination before an async progress save runs.
+        persistQueue(immediately: true)
+        updateIdleTimer()
+    }
+
+    func cancelAll() {
+        for job in jobs where job.isActive { cancel(job.id) }
     }
 
     func clearFinished() {
@@ -274,30 +307,45 @@ final class DownloadManager {
     func retry(_ jobID: UUID) {
         guard let index = jobs.firstIndex(where: { $0.id == jobID }), !jobs[index].isActive else { return }
         attempts[jobs[index].bookID] = 0
-        cancelled.withLock { _ = $0.remove(jobID) }
+        backgroundPaused = false
+        jobs[index].cancellationRequested = nil
         jobs[index].state = .queued
         jobs[index].error = nil
+        persistQueue(immediately: true)
         Logger.downloads.info("[downloads] retry \(self.jobs[index].title, privacy: .public)")
         runNext()
     }
 
     private func runNext() {
         defer { updateIdleTimer() }
-        guard runner == nil, let index = jobs.firstIndex(where: { $0.state == .queued }) else {
-            if runner == nil, let task = backgroundTask, !jobs.contains(where: \.isActive) {
-                task.setTaskCompleted(success: true)
-                backgroundTask = nil
-                Logger.downloads.info("[downloads] background processing finished")
-            }
+        guard !backgroundPaused, runner == nil else { return }
+        guard let next = jobs.first(where: { $0.state == .queued }) else {
+            finishBackgroundExecution(success: !jobs.contains { $0.state == .failed })
             return
         }
-        jobs[index].state = .running
-        let job = jobs[index]
+        cancelled.withLock { _ = $0.remove(next.id) }
+        update(next.id) { $0.state = .running }
         runner = Task { [weak self] in
-            await self?.perform(job)
+            await self?.perform(next)
+            self?.finishWorker(next.id)
             self?.runner = nil
             self?.runNext()
         }
+    }
+
+    private func finishWorker(_ jobID: UUID) {
+        let interrupted = systemInterrupted.remove(jobID) != nil
+        update(jobID) {
+            guard $0.state != .done else { $0.cancellationRequested = nil; return }
+            if $0.cancellationRequested == true {
+                $0.state = .cancelled
+                $0.error = nil
+            } else if interrupted {
+                $0.state = .queued
+                $0.error = nil
+            }
+        }
+        cancelled.withLock { _ = $0.remove(jobID) }
     }
 
     private func update(_ jobID: UUID, _ change: (inout Job) -> Void) {
@@ -505,17 +553,33 @@ final class DownloadManager {
             let jobID = job.id
             let cancelled = self.cancelled
             do {
-                try await client.download(file.remote, to: partial) { [weak self] bytes, _ in
-                    Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + bytes } }
-                    return !cancelled.withLock { $0.contains(jobID) }
+                let source = try await DownloadPartial.currentSource(client: client, path: file.remote)
+                if cancelled.withLock({ $0.contains(job.id) }) { throw CancellationError() }
+                update(job.id) { $0.totalBytes += source.size - file.size }
+                let candidate = try DownloadPartial.prepare(at: partial, source: source)
+                let prepared = try await candidate.verifyingRetainedBytes(client: client) {
+                    !cancelled.withLock { $0.contains(jobID) }
                 }
+                update(job.id) { $0.doneBytes = base + prepared.retainedBytes }
+                if !prepared.isComplete {
+                    try await client.download(file.remote, to: partial) { [weak self] bytes, _ in
+                        Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + bytes } }
+                        return !cancelled.withLock { $0.contains(jobID) }
+                    }
+                }
+                if cancelled.withLock({ $0.contains(job.id) }) {
+                    update(job.id) { $0.state = .cancelled }
+                    return
+                }
+                try await prepared.validate(client: client)
                 if cancelled.withLock({ $0.contains(job.id) }) {
                     update(job.id) { $0.state = .cancelled }
                     return
                 }
                 try? FileManager.default.removeItem(at: destination)
                 try FileManager.default.moveItem(at: partial, to: destination)
-                done += file.size
+                prepared.removeMetadata()
+                done += source.size
                 update(job.id) { $0.doneBytes = done }
             } catch is CancellationError {
                 // keep the .part file: the next attempt resumes from it

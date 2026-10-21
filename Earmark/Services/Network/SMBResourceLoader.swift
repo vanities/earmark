@@ -7,12 +7,19 @@ import ShelfKit
 /// Feeds AVFoundation byte ranges read over SMB, so AVPlayer (and metadata loading) work on
 /// files that never touch the disk.
 final class SMBResourceLoader: NSObject, AVAssetResourceLoaderDelegate, @unchecked Sendable {
+    struct ReadFailure: Sendable {
+        let message: String
+        /// Re-check at main-actor delivery: a seek may abandon this range after its read fails.
+        let isCancelled: @Sendable () -> Bool
+    }
     let queue = DispatchQueue(label: "com.vanities.earmark.smb-loader")
 
     private let client: NASClient
     private let relativePath: String
     private let fileSize: Int64
     private let contentType: String
+    private let readFailureHandler = OSAllocatedUnfairLock<(@Sendable (ReadFailure) -> Void)?>(initialState: nil)
+    private let readFailed = OSAllocatedUnfairLock(initialState: false)
     private let inflight = OSAllocatedUnfairLock(initialState: [ObjectIdentifier: (task: Task<Void, Never>, cancelled: OSAllocatedUnfairLock<Bool>)]())
 
     init(client: NASClient, relativePath: String, fileSize: Int64, containerHint: String? = nil) {
@@ -30,6 +37,16 @@ final class SMBResourceLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
         default: contentType = UTType(filenameExtension: ext)?.identifier ?? UTType.audio.identifier
         }
     }
+
+    /// AVPlayer can stay ready while waiting forever after a resource-loading error.
+    /// The active player item also needs that failure to offer an explicit retry.
+    func observeReadFailures(_ handler: (@Sendable (ReadFailure) -> Void)?) {
+        readFailureHandler.withLock { $0 = handler }
+    }
+
+    /// Set on the loading queue before main-actor error delivery. An immediate Play must
+    /// retry with a fresh item even when that delivery is still queued behind the button.
+    var hasReadFailure: Bool { readFailed.withLock { $0 } }
 
     func resourceLoader(_ resourceLoader: AVAssetResourceLoader, shouldWaitForLoadingOfRequestedResource loadingRequest: AVAssetResourceLoadingRequest) -> Bool {
         if let info = loadingRequest.contentInformationRequest {
@@ -51,7 +68,7 @@ final class SMBResourceLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
         let path = relativePath
         Logger.nas.debug("[smb-loader] request offset=\(offset) length=\(length) file=\((path as NSString).lastPathComponent, privacy: .public)")
 
-        let task = Task.detached(priority: .userInitiated) { [inflight] in
+        let task = Task.detached(priority: .userInitiated) { [inflight, readFailureHandler, readFailed] in
             do {
                 if length > 0 {
                     try await client.read(path, offset: offset, length: length) { chunk in
@@ -63,8 +80,13 @@ final class SMBResourceLoader: NSObject, AVAssetResourceLoaderDelegate, @uncheck
                 if !cancelled.withLock({ $0 }) { loadingRequest.finishLoading() }
             } catch {
                 if !cancelled.withLock({ $0 }) {
+                    readFailed.withLock { $0 = true }
                     Logger.nas.error("[smb-loader] read failed offset=\(offset): \(error.localizedDescription, privacy: .public)")
                     loadingRequest.finishLoading(with: error)
+                    // Copy the observer out of the lock before invoking client code. Removed
+                    // items clear it; the player also checks the item generation on delivery.
+                    let report = readFailureHandler.withLock { $0 }
+                    report?(ReadFailure(message: error.localizedDescription, isCancelled: { cancelled.withLock { $0 } }))
                 }
             }
             inflight.withLock { _ = $0.removeValue(forKey: key) }

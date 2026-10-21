@@ -22,7 +22,10 @@ extension NASClient {
     /// alive for as long as the asset is in use.
     func makeAsset(relativePath: String, size: Int64, preciseTiming: Bool = false, containerHint: String? = nil) -> (asset: AVURLAsset, loader: SMBResourceLoader) {
         let url = Self.assetURL(serverID: server.id, relativePath: relativePath)
-        let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: preciseTiming])
+        // iOS 27 rejects custom-scheme WAV streams with approximate timing before
+        // requesting the tail range. Precise timing preserves ranged playback.
+        let container = (containerHint ?? (relativePath as NSString).pathExtension).lowercased()
+        let asset = AVURLAsset(url: url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: preciseTiming || container == "wav"])
         let loader = SMBResourceLoader(client: self, relativePath: relativePath, fileSize: size, containerHint: containerHint)
         asset.resourceLoader.setDelegate(loader, queue: loader.queue)
         return (asset, loader)
